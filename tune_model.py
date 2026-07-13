@@ -5,13 +5,15 @@ import xgboost as xgb
 import warnings; warnings.filterwarnings('ignore')
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-df = pd.read_csv('bengaluru_thunderstorm_features.csv')
+df = pd.read_csv('bengaluru_thunderstorm_features_v2.csv')
 
 FEATURES = ['MAX','MIN','DTR','AW','RF','EVP','DRNRF','SSH',
             'RF_3d','RF_7d','MAX_3d_avg','MIN_3d_avg','DTR_3d_avg',
             'RF_lag1','MAX_lag1','MIN_lag1','LABEL_lag1',
-            'MONTH_sin','MONTH_cos','DOY_sin','DOY_cos','SEASON',
-            'HA_flag','RF_nonzero']
+            'MONTH_sin','MONTH_cos','DOY_sin','DOY_cos',
+            'RF_nonzero',
+            'KI','TT','CT','VT','SI','LI','CAPE','wind_shear',
+            'T850','T700','T500','Td850','Td700']
 
 X_train = df[df['YEAR'] <= 2022][FEATURES].fillna(0)
 y_train = df[df['YEAR'] <= 2022]['LABEL']
@@ -57,5 +59,5 @@ proba = best.predict_proba(X_test)[:,1]
 auroc = roc_auc_score(y_test, proba)
 print("\nTest AUROC:", round(auroc, 4))
 
-joblib.dump({'model': best, 'features': FEATURES}, 'thunderstorm_model.pkl')
+joblib.dump({'model': best, 'features': FEATURES, 'threshold': 0.57}, 'thunderstorm_model.pkl')
 print("Saved: thunderstorm_model.pkl")

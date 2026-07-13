@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ─── LOAD ────────────────────────────────────────────────────────────────────
-df = pd.read_csv('bengaluru_thunderstorm_features.csv')
+df = pd.read_csv('bengaluru_thunderstorm_features_v2.csv')
 df['date'] = pd.to_datetime(df['date'])
 
 SURFACE_FEATURES = [

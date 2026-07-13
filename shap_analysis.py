@@ -4,7 +4,7 @@ bundle   = joblib.load('thunderstorm_model.pkl')
 model    = bundle['model']
 FEATURES = bundle['features']
 
-df     = pd.read_csv('bengaluru_thunderstorm_features.csv')
+df = pd.read_csv('bengaluru_thunderstorm_features_v2.csv')
 X_test = df[df['YEAR'] >= 2023][FEATURES].fillna(0)
 
 print("Computing SHAP values...")
@@ -19,4 +19,6 @@ print("Saved: shap_summary.png")
 
 importance = pd.Series(np.abs(shap_vals).mean(axis=0), index=FEATURES)
 print("\nTop features by SHAP impact:")
-print(importance.sort_values(ascending=False).round(4).to_string())
+imp = importance.sort_values(ascending=False).round(4)
+print(imp.to_string())
+imp.to_csv('shap_importance.csv')
