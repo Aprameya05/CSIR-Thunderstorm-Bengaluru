@@ -34,7 +34,7 @@ The system has two operational modes:
 ## System Architecture
 
 <p align="center">
-  <img src="assets/system_architecture.png"
+  <img src="./assetsystem_architecture.png"
        alt="CSIR Thunderstorm Prediction System Architecture"
        width="900"/>
 </p>
