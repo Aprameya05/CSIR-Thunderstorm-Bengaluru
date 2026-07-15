@@ -33,13 +33,10 @@ The system has two operational modes:
 
 ## System Architecture
 
-<p align="center">
-  <img src="./assetsystem_architecture.png"
-       alt="CSIR Thunderstorm Prediction System Architecture"
-       width="900"/>
-</p>
+![CSIR Thunderstorm Prediction System Architecture](assets/system_architecture.png)
 
-The figure below illustrates the complete operational workflow of the CSIR Thunderstorm Prediction System, beginning with IMD surface observations, IGRA upper-air soundings, and ERA5 reanalysis data, followed by preprocessing, feature engineering, XGBoost model training, explainability using SHAP, deployment through FastAPI, and generation of operational thunderstorm forecasts.
+The figure above illustrates the complete operational workflow of the CSIR Thunderstorm Prediction System, beginning with IMD surface observations, IGRA upper-air soundings, and ERA5 reanalysis data, followed by preprocessing, feature engineering, XGBoost model training, explainability using SHAP, deployment through FastAPI, and generation of operational thunderstorm forecasts.
+
 ## Dataset
 
 | Dataset | Period | Status |
