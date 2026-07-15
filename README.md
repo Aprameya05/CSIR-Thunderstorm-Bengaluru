@@ -33,45 +33,13 @@ The system has two operational modes:
 
 ## System Architecture
 
-```text
-IMD Surface Observations (Station 43295)
-         +  IGRA Upper-Air Soundings
-         +  ERA5 Reanalysis (Daily → 6-Hourly in progress)
-                          │
-                          ▼
-              Data Preprocessing & Label Construction
-              (Daily labels + 6-hr slot labels from G-codes)
-                          │
-                          ▼
-                  Feature Engineering
-         (Surface · Rolling · Lag · Stability Indices · ERA5)
-                          │
-                          ▼
-              ┌───────────────────────────┐
-              │     XGBoost Classifier    │
-              │  5-Fold Stratified CV     │
-              │  Optuna Hyperparameter    │
-              │  Tuning (50 trials)       │
-              └───────────────────────────┘
-                          │
-                          ▼
-              ┌───────────────────────────┐
-              │   Daily Model (Phase 1)   │  ← thunderstorm_model.pkl
-              │   6-Hr Slot Models (A3)   │  ← nowcast_slot{0-3}_xgb.pkl
-              └───────────────────────────┘
-                          │
-                          ▼
-              SHAP Explainability + WMO Metrics
-                          │
-                          ▼
-                   FastAPI REST API
-                          │
-                          ▼
-              Operational Forecast Output
-```
+<p align="center">
+  <img src="assets/system_architecture.png"
+       alt="CSIR Thunderstorm Prediction System Architecture"
+       width="900"/>
+</p>
 
----
-
+The figure below illustrates the complete operational workflow of the CSIR Thunderstorm Prediction System, beginning with IMD surface observations, IGRA upper-air soundings, and ERA5 reanalysis data, followed by preprocessing, feature engineering, XGBoost model training, explainability using SHAP, deployment through FastAPI, and generation of operational thunderstorm forecasts.
 ## Dataset
 
 | Dataset | Period | Status |
