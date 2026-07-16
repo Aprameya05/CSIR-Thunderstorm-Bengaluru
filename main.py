@@ -73,7 +73,7 @@ def load_models():
 
     # Nowcast slot models
     for slot_id in range(4):
-        slot_path = MODELS / f"nowcast_slot{slot_id}_xgb.pkl"
+        slot_path = MODELS / f"nowcast_slot{slot_id}_xgb_v2.pkl"
         if slot_path.exists():
             nowcast_slot_artifacts[slot_id] = joblib.load(slot_path)
             print(f"✓ Slot {slot_id} model loaded: {slot_path.name}")
