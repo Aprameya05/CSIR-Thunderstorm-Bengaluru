@@ -43,7 +43,7 @@ SLOT_EMOJI = {0: "🌙", 1: "🌅", 2: "☀️ ", 3: "🌆"}
 def load_models():
     models = {}
     for slot_id in range(4):
-        path = MODELS / f"nowcast_slot{slot_id}_xgb.pkl"
+        path = MODELS / f"nowcast_slot{slot_id}_xgb_v2.pkl"
         if not path.exists():
             raise FileNotFoundError(
                 f"Model not found: {path}\n"
