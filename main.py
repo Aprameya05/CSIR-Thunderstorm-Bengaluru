@@ -314,6 +314,17 @@ def predict_slot(slot_id: int, payload: NowcastInput):
         raise HTTPException(503, f"Slot {slot_id} model not loaded")
     if payload.slot != slot_id:
         raise HTTPException(400, "URL slot_id must match payload slot field")
+    if payload.CAPE is None or payload.CAPE == 0.0:
+        raise HTTPException(
+            status_code=422,
+            detail="CAPE is required and cannot be zero — it is the most critical feature for thunderstorm prediction"
+        )
+
+    if payload.ERA5_T2M is None or payload.ERA5_T2M == 0.0:
+        raise HTTPException(
+            status_code=422,
+            detail="ERA5_T2M is required and cannot be zero"
+        )
 
     artifact     = nowcast_slot_artifacts[slot_id]
     model        = artifact["model"]
