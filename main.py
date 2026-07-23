@@ -243,14 +243,40 @@ def derive_nowcast_features(p: NowcastInput) -> dict:
     }
 
 # ── ROUTES ────────────────────────────────────────────────────────────────────
+# @app.get("/")
+# def health():
+#     return {
+#         "status": "ok",
+#         "system": "CSIR Thunderstorm Prediction System",
+#         "station": "Bengaluru Airport — IMD 43295",
+#         "daily_model":   daily_model_artifact is not None,
+#         "nowcast_models": {s: s in nowcast_slot_artifacts for s in range(4)},
+#     }
+
 @app.get("/")
 def health():
+    nowcast_info = {}
+
+    for s in range(4):
+        if s in nowcast_slot_artifacts:
+            a = nowcast_slot_artifacts[s]
+            nowcast_info[str(s)] = {
+                "loaded": True,
+                "version": "v2",
+                "threshold": a.get("threshold", "unknown"),
+                "slot_name": a.get("slot_name", SLOT_INFO[s]["label"]),
+            }
+        else:
+            nowcast_info[str(s)] = {
+                "loaded": False
+            }
+
     return {
         "status": "ok",
         "system": "CSIR Thunderstorm Prediction System",
         "station": "Bengaluru Airport — IMD 43295",
-        "daily_model":   daily_model_artifact is not None,
-        "nowcast_models": {s: s in nowcast_slot_artifacts for s in range(4)},
+        "daily_model": daily_model_artifact is not None,
+        "nowcast_models": nowcast_info,
     }
 
 @app.post("/predict", response_model=DailyOutput)
@@ -288,6 +314,17 @@ def predict_slot(slot_id: int, payload: NowcastInput):
         raise HTTPException(503, f"Slot {slot_id} model not loaded")
     if payload.slot != slot_id:
         raise HTTPException(400, "URL slot_id must match payload slot field")
+    if payload.CAPE is None or payload.CAPE == 0.0:
+        raise HTTPException(
+            status_code=422,
+            detail="CAPE is required and cannot be zero — it is the most critical feature for thunderstorm prediction"
+        )
+
+    if payload.ERA5_T2M is None or payload.ERA5_T2M == 0.0:
+        raise HTTPException(
+            status_code=422,
+            detail="ERA5_T2M is required and cannot be zero"
+        )
 
     artifact     = nowcast_slot_artifacts[slot_id]
     model        = artifact["model"]
