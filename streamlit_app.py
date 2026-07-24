@@ -294,18 +294,7 @@ def make_timeline(results):
 # ── MAIN APP ──────────────────────────────────────────────────────────────────
 def main():
     # Header
-    st.markdown("""
-    <div class="main-header">
-        <h1 style="margin:0;font-size:1.8rem">⛈️ CSIR Thunderstorm Nowcast System</h1>
-        <p style="margin:0.5rem 0 0 0;opacity:0.85;font-size:1rem">
-            Kempegowda International Airport — IMD Station 43295, Bengaluru
-        </p>
-        <p style="margin:0.3rem 0 0 0;opacity:0.65;font-size:0.85rem">
-            XGBoost v3 Calibrated Models | 6-Hourly ERA5 | Real-Time GFS Pipeline
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.image(str(BASE / "hero.png"), use_container_width=True)
     # Load resources
     with st.spinner("Loading models..."):
         models  = load_models()
