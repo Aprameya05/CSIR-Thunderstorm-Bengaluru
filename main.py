@@ -73,7 +73,7 @@ def load_models():
 
     # Nowcast slot models
     for slot_id in range(4):
-        slot_path = MODELS / f"nowcast_slot{slot_id}_xgb_v2.pkl"
+        slot_path = MODELS / f"nowcast_slot{slot_id}_xgb_v3_calibrated.pkl"
         if slot_path.exists():
             nowcast_slot_artifacts[slot_id] = joblib.load(slot_path)
             print(f"✓ Slot {slot_id} model loaded: {slot_path.name}")
@@ -201,7 +201,7 @@ def derive_nowcast_features(p: NowcastInput) -> dict:
         (12,0):0.000,(12,1):0.000,(12,2):0.000,(12,3):0.000,
     }
 
-    return {
+    obs =  {
         "MAX": p.MAX, "MIN": p.MIN, "DTR": DTR,
         "AW": p.AW, "RF": p.RF, "EVP": p.EVP,
         "DRNRF": p.DRNRF, "SSH": p.SSH,
@@ -241,6 +241,18 @@ def derive_nowcast_features(p: NowcastInput) -> dict:
         "ts_label_lag1_slot": p.ts_label_lag1_slot,
         "ts_any_yesterday":   p.ts_any_yesterday,
     }
+    obs['cape_x_kindex']      = p.CAPE * p.K_INDEX
+    obs['li_x_totals']        = abs(p.LIFTED_INDEX) * p.TOTALS_TOTALS
+    obs['q_gradient_500_850'] = p.ERA5_q_850hPa - p.ERA5_q_500hPa
+    obs['thetae_850']         = p.ERA5_t_850hPa + 2491 * p.ERA5_q_850hPa
+    obs['wind_shear_500_850'] = ((p.ERA5_u_500hPa-p.ERA5_u_850hPa)**2 + (p.ERA5_v_500hPa-p.ERA5_v_850hPa)**2)**0.5
+    obs['wind_shear_700_850'] = ((p.ERA5_u_700hPa-p.ERA5_u_850hPa)**2 + (p.ERA5_v_700hPa-p.ERA5_v_850hPa)**2)**0.5
+    obs['moisture_flux_850']  = p.ERA5_q_850hPa * (p.ERA5_u_850hPa**2 + p.ERA5_v_850hPa**2)**0.5
+    obs['moisture_flux_700']  = p.ERA5_q_700hPa * (p.ERA5_u_700hPa**2 + p.ERA5_v_700hPa**2)**0.5
+    obs['thickness_500_850']  = p.ERA5_t_850hPa - p.ERA5_t_500hPa
+    obs['mid_level_drying']   = p.ERA5_q_700hPa / (p.ERA5_q_850hPa + 1e-9)
+
+    return obs
 
 # ── ROUTES ────────────────────────────────────────────────────────────────────
 # @app.get("/")
@@ -256,26 +268,22 @@ def derive_nowcast_features(p: NowcastInput) -> dict:
 @app.get("/")
 def health():
     nowcast_info = {}
-
     for s in range(4):
         if s in nowcast_slot_artifacts:
             a = nowcast_slot_artifacts[s]
             nowcast_info[str(s)] = {
-                "loaded": True,
-                "version": "v2",
+                "loaded":    True,
+                "version":   "v3_calibrated",
                 "threshold": a.get("threshold", "unknown"),
                 "slot_name": a.get("slot_name", SLOT_INFO[s]["label"]),
             }
         else:
-            nowcast_info[str(s)] = {
-                "loaded": False
-            }
-
+            nowcast_info[str(s)] = {"loaded": False}
     return {
-        "status": "ok",
-        "system": "CSIR Thunderstorm Prediction System",
-        "station": "Bengaluru Airport — IMD 43295",
-        "daily_model": daily_model_artifact is not None,
+        "status":         "ok",
+        "system":         "CSIR Thunderstorm Prediction System",
+        "station":        "Bengaluru Airport — IMD 43295",
+        "daily_model":    daily_model_artifact is not None,
         "nowcast_models": nowcast_info,
     }
 
@@ -317,7 +325,7 @@ def predict_slot(slot_id: int, payload: NowcastInput):
     if payload.CAPE is None or payload.CAPE == 0.0:
         raise HTTPException(
             status_code=422,
-            detail="CAPE is required and cannot be zero — it is the most critical feature for thunderstorm prediction"
+            detail="CAPE is required and cannot be zero"
         )
 
     if payload.ERA5_T2M is None or payload.ERA5_T2M == 0.0:
