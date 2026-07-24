@@ -325,7 +325,7 @@ def predict_slot(slot_id: int, payload: NowcastInput):
     if payload.CAPE is None or payload.CAPE == 0.0:
         raise HTTPException(
             status_code=422,
-            detail="CAPE is required and cannot be zero — it is the most critical feature for thunderstorm prediction"
+            detail="CAPE is required and cannot be zero"
         )
 
     if payload.ERA5_T2M is None or payload.ERA5_T2M == 0.0:
