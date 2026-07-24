@@ -20,7 +20,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import json
 
-BASE         = Path(r"C:\Users\Aprameya\OneDrive\Pictures\Desktop\CSIR_Thunderstorm")
+BASE         = Path(__file__).parent
 FORECAST_LOG = BASE / "data" / "forecast_log.csv"
 ACTUAL_LOG   = BASE / "data" / "actual_log.csv"
 ALERT_LOG    = BASE / "data" / "performance_alerts.csv"
