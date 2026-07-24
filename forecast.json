@@ -1,0 +1,42 @@
+{
+  "date": "2026-07-24",
+  "generated_at": "2026-07-24 23:18 IST",
+  "slots": [
+    {
+      "slot": 0,
+      "label": "Late Night",
+      "time": "0001-0600 IST",
+      "probability": 0.015,
+      "predicted": false,
+      "threshold": 0.29
+    },
+    {
+      "slot": 1,
+      "label": "Morning",
+      "time": "0601-1200 IST",
+      "probability": 0.015,
+      "predicted": false,
+      "threshold": 0.41
+    },
+    {
+      "slot": 2,
+      "label": "Afternoon",
+      "time": "1201-1800 IST",
+      "probability": 0.194,
+      "predicted": false,
+      "threshold": 0.34
+    },
+    {
+      "slot": 3,
+      "label": "Evening",
+      "time": "1801-2400 IST",
+      "probability": 0.096,
+      "predicted": false,
+      "threshold": 0.6
+    }
+  ],
+  "alert_active": false,
+  "peak_slot": 2,
+  "peak_probability": 0.194,
+  "model_version": "v3_calibrated"
+}
