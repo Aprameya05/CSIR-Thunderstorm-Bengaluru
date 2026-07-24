@@ -268,26 +268,22 @@ def derive_nowcast_features(p: NowcastInput) -> dict:
 @app.get("/")
 def health():
     nowcast_info = {}
-
     for s in range(4):
         if s in nowcast_slot_artifacts:
             a = nowcast_slot_artifacts[s]
             nowcast_info[str(s)] = {
-                "loaded": True,
-                "version": "v2",
+                "loaded":    True,
+                "version":   "v3_calibrated",
                 "threshold": a.get("threshold", "unknown"),
                 "slot_name": a.get("slot_name", SLOT_INFO[s]["label"]),
             }
         else:
-            nowcast_info[str(s)] = {
-                "loaded": False
-            }
-
+            nowcast_info[str(s)] = {"loaded": False}
     return {
-        "status": "ok",
-        "system": "CSIR Thunderstorm Prediction System",
-        "station": "Bengaluru Airport — IMD 43295",
-        "daily_model": daily_model_artifact is not None,
+        "status":         "ok",
+        "system":         "CSIR Thunderstorm Prediction System",
+        "station":        "Bengaluru Airport — IMD 43295",
+        "daily_model":    daily_model_artifact is not None,
         "nowcast_models": nowcast_info,
     }
 
