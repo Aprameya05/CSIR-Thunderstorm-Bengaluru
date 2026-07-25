@@ -428,7 +428,7 @@
     }
 
     // --- 1. DASHBOARD PAGE ---
-    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime }) {
+    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData }) {
       const currentSlot = slots[selectedSlotIndex] || slots[2];
       const photoInfo = SLOT_AIRPORT_PHOTOS[selectedSlotIndex] || SLOT_AIRPORT_PHOTOS[2];
       const riskInfo = getRiskBadge(currentSlot.ts_probability);
@@ -1542,6 +1542,7 @@
                       isLiveData={isLiveData}
                       lastUpdated={lastUpdated}
                       liveTime={liveTime}
+                      liveData={liveData}
                     />
                   </motion.div>
                 )}
