@@ -2,7 +2,7 @@ name: Update Forecast JSON
 
 on:
   schedule:
-    - cron: '15 4,10,16,22 * * *'
+    - cron: '15 10,16 * * *'
   workflow_dispatch:
 
 jobs:
