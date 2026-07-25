@@ -10,6 +10,8 @@ Endpoints:
   POST /nowcast/predict/slot/{id} — 6-hour slot prediction
   POST /nowcast/predict/all       — all 4 slots in one call
   GET  /nowcast/slots/info        — slot metadata
+  POST /rag/explain               — Llama-3.3 forecast explanation
+  POST /rag/analogs               — historical analog retrieval
 
 Run:
   uvicorn main:app --reload
@@ -20,6 +22,7 @@ Swagger UI:
 Author: Satvik (Deployment), Aprameya (ML), CSIR Thunderstorm Project
 """
 
+import os
 import joblib
 import numpy as np
 import pandas as pd
@@ -33,7 +36,7 @@ from typing import Optional
 app = FastAPI(
     title="CSIR Thunderstorm Prediction System",
     description="AI-based thunderstorm forecasting for Bengaluru Airport (IMD Station 43295)",
-    version="2.0.0",
+    version="2.1.0",
 )
 
 app.add_middleware(
@@ -44,8 +47,9 @@ app.add_middleware(
 )
 
 # ── PATHS ─────────────────────────────────────────────────────────────────────
-BASE      = Path(__file__).parent
-MODELS    = BASE / "models"
+BASE   = Path(__file__).parent
+MODELS = BASE / "models"
+DATA   = BASE / "data"
 
 # ── SLOT METADATA ─────────────────────────────────────────────────────────────
 SLOT_INFO = {
@@ -55,15 +59,16 @@ SLOT_INFO = {
     3: {"label": "1801-2400 IST", "era5_utc": "18Z", "description": "Evening"},
 }
 
+SLOT_NAMES = {0: "Late Night", 1: "Morning", 2: "Afternoon", 3: "Evening"}
+
 # ── LOAD MODELS AT STARTUP ────────────────────────────────────────────────────
-daily_model_artifact  = None
+daily_model_artifact   = None
 nowcast_slot_artifacts = {}
 
 @app.on_event("startup")
 def load_models():
     global daily_model_artifact, nowcast_slot_artifacts
 
-    # Daily model
     daily_path = MODELS / "thunderstorm_model.pkl"
     if daily_path.exists():
         daily_model_artifact = joblib.load(daily_path)
@@ -71,7 +76,6 @@ def load_models():
     else:
         print(f"⚠ Daily model not found at {daily_path}")
 
-    # Nowcast slot models
     for slot_id in range(4):
         slot_path = MODELS / f"nowcast_slot{slot_id}_xgb_v3_calibrated.pkl"
         if slot_path.exists():
@@ -94,19 +98,18 @@ class DailyInput(BaseModel):
     LABEL_lag1: int   = Field(0,   example=0)
 
 class DailyOutput(BaseModel):
-    date:                    str
+    date:                     str
     thunderstorm_probability: float
-    alert_level:             str
-    prediction:              bool
-    threshold:               float
-    message:                 str
+    alert_level:              str
+    prediction:               bool
+    threshold:                float
+    message:                  str
 
 # ── SCHEMAS — NOWCAST ─────────────────────────────────────────────────────────
 class NowcastInput(BaseModel):
     date:       str = Field(..., example="2026-07-16")
     slot:       int = Field(..., ge=0, le=3)
 
-    # Surface
     MAX:        float = Field(..., example=29.0)
     MIN:        float = Field(..., example=21.0)
     AW:         float = Field(0.0, example=4.0)
@@ -115,7 +118,6 @@ class NowcastInput(BaseModel):
     DRNRF:      float = Field(0.0, example=0.0)
     SSH:        float = Field(300.0, example=300.0)
 
-    # Rolling / lag
     RF_3d:       float = Field(0.0)
     RF_7d:       float = Field(0.0)
     MAX_3d_avg:  float = Field(None)
@@ -126,14 +128,12 @@ class NowcastInput(BaseModel):
     MIN_lag1:    float = Field(None)
     LABEL_lag1:  int   = Field(0)
 
-    # Stability indices
     CAPE:          float = Field(..., example=500.0)
     K_INDEX:       float = Field(..., example=35.0)
     LIFTED_INDEX:  float = Field(..., example=-2.0)
     TOTALS_TOTALS: float = Field(..., example=45.0)
     PRECIP_WATER:  float = Field(40.0, example=40.0)
 
-    # ERA5
     ERA5_T2M:      float = Field(..., example=299.0)
     ERA5_D2M:      float = Field(293.0)
     ERA5_U10:      float = Field(-2.0)
@@ -153,18 +153,40 @@ class NowcastInput(BaseModel):
     ERA5_v_700hPa: float = Field(1.0)
     ERA5_v_850hPa: float = Field(2.0)
 
-    # Slot lag
-    ts_label_lag1_slot: int   = Field(0)
-    ts_any_yesterday:   int   = Field(0)
+    ts_label_lag1_slot: int = Field(0)
+    ts_any_yesterday:   int = Field(0)
 
 class NowcastOutput(BaseModel):
-    date:              str
-    slot:              int
-    slot_label:        str
-    ts_probability:    float
-    ts_predicted:      bool
-    threshold_used:    float
-    alert_level:       str
+    date:           str
+    slot:           int
+    slot_label:     str
+    ts_probability: float
+    ts_predicted:   bool
+    threshold_used: float
+    alert_level:    str
+
+# ── SCHEMAS — RAG ─────────────────────────────────────────────────────────────
+class RAGExplainInput(BaseModel):
+    query: str = Field(..., example="Why did Slot 2 fire today?")
+    date:  str = Field(..., example="2026-07-25")
+
+class RAGExplainOutput(BaseModel):
+    query:       str
+    date:        str
+    explanation: str
+    source:      str
+
+class RAGAnalogsInput(BaseModel):
+    date:      str   = Field(..., example="2026-07-25")
+    cape:      float = Field(None, example=500.0)
+    k_index:   float = Field(None, example=38.0)
+    slot:      int   = Field(2,    example=2)
+    top_n:     int   = Field(5,    example=5)
+
+class RAGAnalogsOutput(BaseModel):
+    date:    str
+    slot:    int
+    analogs: list
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 def get_alert_level(prob: float) -> str:
@@ -174,15 +196,13 @@ def get_alert_level(prob: float) -> str:
     else:             return "RED"
 
 def derive_nowcast_features(p: NowcastInput) -> dict:
-    """Fill derived fields and defaults from raw input."""
     import math
     date  = pd.Timestamp(p.date)
     doy   = date.dayofyear
     month = date.month
     slot  = p.slot
-
-    DTR = p.MAX - p.MIN
-    m   = month
+    DTR   = p.MAX - p.MIN
+    m     = month
 
     season = 1 if m in [3,4,5] else 2 if m in [6,7,8,9] else 3 if m in [10,11] else 0
 
@@ -201,7 +221,7 @@ def derive_nowcast_features(p: NowcastInput) -> dict:
         (12,0):0.000,(12,1):0.000,(12,2):0.000,(12,3):0.000,
     }
 
-    obs =  {
+    obs = {
         "MAX": p.MAX, "MIN": p.MIN, "DTR": DTR,
         "AW": p.AW, "RF": p.RF, "EVP": p.EVP,
         "DRNRF": p.DRNRF, "SSH": p.SSH,
@@ -254,17 +274,94 @@ def derive_nowcast_features(p: NowcastInput) -> dict:
 
     return obs
 
-# ── ROUTES ────────────────────────────────────────────────────────────────────
-# @app.get("/")
-# def health():
-#     return {
-#         "status": "ok",
-#         "system": "CSIR Thunderstorm Prediction System",
-#         "station": "Bengaluru Airport — IMD 43295",
-#         "daily_model":   daily_model_artifact is not None,
-#         "nowcast_models": {s: s in nowcast_slot_artifacts for s in range(4)},
-#     }
 
+def build_met_context(date: str) -> str:
+    """Read today's met params from upperair CSV for RAG context."""
+    upper_path = DATA / "upperair_realtime_43295.csv"
+    if not upper_path.exists():
+        return "No real-time upper-air data available."
+
+    try:
+        df = pd.read_csv(upper_path)
+        date_col = next((c for c in df.columns if "date" in c.lower()), None)
+        if date_col:
+            df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+            row = df[df[date_col].dt.strftime("%Y-%m-%d") == date]
+            if row.empty:
+                row = df.tail(1)
+        else:
+            row = df.tail(1)
+
+        r = row.iloc[-1]
+        parts = []
+        for col in ["CAPE", "cape", "CIN", "cin", "K_INDEX", "k_index",
+                    "LIFTED_INDEX", "lifted_index", "TOTALS_TOTALS",
+                    "PRECIP_WATER", "precip_water"]:
+            if col in r.index and pd.notna(r[col]):
+                parts.append(f"{col}={r[col]:.2f}")
+        return ", ".join(parts) if parts else "Met data present but no key indices found."
+    except Exception as e:
+        return f"Error reading met data: {e}"
+
+
+def call_groq_llama(prompt: str) -> str:
+    """Call Groq Llama-3.3-70b for explanation generation."""
+    try:
+        import requests
+        groq_key = os.environ.get("GROQ_API_KEY", "")
+        if not groq_key:
+            return generate_rule_based_explanation(prompt)
+
+        headers = {
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert meteorologist specializing in thunderstorm forecasting "
+                        "for Bengaluru Airport (VOBL), India. You explain forecasts from an "
+                        "XGBoost ML model trained on IMD observations, ERA5 reanalysis, and "
+                        "upper-air sounding data. Be concise, scientific, and specific to "
+                        "Bengaluru's convective climatology. Keep responses under 150 words."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 300,
+            "temperature": 0.4,
+        }
+        res = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=body,
+            timeout=20,
+        )
+        if res.status_code == 200:
+            return res.json()["choices"][0]["message"]["content"].strip()
+        else:
+            return generate_rule_based_explanation(prompt)
+    except Exception:
+        return generate_rule_based_explanation(prompt)
+
+
+def generate_rule_based_explanation(prompt: str) -> str:
+    """Fallback rule-based explanation when Groq is unavailable."""
+    return (
+        "The CSIR XGBoost v3 model evaluates atmospheric instability using CAPE, K-Index, "
+        "Lifted Index, and ERA5 reanalysis fields. For Bengaluru Airport (VOBL), the primary "
+        "convective window is Slot 2 (1201-1800 IST) driven by surface heating over the Deccan "
+        "Plateau. Key triggers include CAPE > 500 J/kg, K-Index > 35, and strong moisture "
+        "convergence at 850hPa from Arabian Sea westerly flow during monsoon onset. "
+        "The cape_x_kindex interaction term is the top SHAP feature across all slots. "
+        "[Note: Groq API unavailable — rule-based fallback active]"
+    )
+
+
+# ── ROUTES — EXISTING ─────────────────────────────────────────────────────────
 @app.get("/")
 def health():
     nowcast_info = {}
@@ -285,6 +382,7 @@ def health():
         "station":        "Bengaluru Airport — IMD 43295",
         "daily_model":    daily_model_artifact is not None,
         "nowcast_models": nowcast_info,
+        "rag_endpoints":  ["/rag/explain", "/rag/analogs"],
     }
 
 @app.post("/predict", response_model=DailyOutput)
@@ -292,8 +390,8 @@ def predict_daily(payload: DailyInput):
     if daily_model_artifact is None:
         raise HTTPException(503, "Daily model not loaded")
 
-    model    = daily_model_artifact.get("model") or daily_model_artifact
-    features = daily_model_artifact.get("feature_cols", [])
+    model     = daily_model_artifact.get("model") or daily_model_artifact
+    features  = daily_model_artifact.get("feature_cols", [])
     threshold = daily_model_artifact.get("threshold", 0.45)
 
     data = payload.dict()
@@ -323,16 +421,9 @@ def predict_slot(slot_id: int, payload: NowcastInput):
     if payload.slot != slot_id:
         raise HTTPException(400, "URL slot_id must match payload slot field")
     if payload.CAPE is None or payload.CAPE == 0.0:
-        raise HTTPException(
-            status_code=422,
-            detail="CAPE is required and cannot be zero"
-        )
-
+        raise HTTPException(422, "CAPE is required and cannot be zero")
     if payload.ERA5_T2M is None or payload.ERA5_T2M == 0.0:
-        raise HTTPException(
-            status_code=422,
-            detail="ERA5_T2M is required and cannot be zero"
-        )
+        raise HTTPException(422, "ERA5_T2M is required and cannot be zero")
 
     artifact     = nowcast_slot_artifacts[slot_id]
     model        = artifact["model"]
@@ -366,3 +457,114 @@ def predict_all(payloads: list[NowcastInput]):
         except HTTPException as e:
             results.append({"slot": p.slot, "error": e.detail})
     return {"date": payloads[0].date, "predictions": results}
+
+
+# ── ROUTES — RAG ──────────────────────────────────────────────────────────────
+@app.post("/rag/explain", response_model=RAGExplainOutput)
+def rag_explain(payload: RAGExplainInput):
+    """
+    Generate a physical meteorological explanation for the forecast query
+    using Llama-3.3-70b (Groq) with real met parameter context.
+    """
+    # Load today's met context
+    met_context = build_met_context(payload.date)
+
+    # Build prompt
+    prompt = (
+        f"Date: {payload.date}\n"
+        f"Station: Bengaluru Airport (VOBL / IMD 43295)\n"
+        f"Current atmospheric conditions: {met_context}\n\n"
+        f"Slot thresholds: Slot0=0.24, Slot1=0.38, Slot2=0.16, Slot3=0.39\n"
+        f"Top SHAP features: cape_x_kindex, ERA5_CAPE (Slot3), K_INDEX, LIFTED_INDEX\n\n"
+        f"User question: {payload.query}\n\n"
+        f"Provide a concise meteorological explanation referencing the actual values above."
+    )
+
+    explanation = call_groq_llama(prompt)
+    source = "Groq Llama-3.3-70b" if os.environ.get("GROQ_API_KEY") else "Rule-based fallback"
+
+    return RAGExplainOutput(
+        query=payload.query,
+        date=payload.date,
+        explanation=explanation,
+        source=source,
+    )
+
+
+@app.post("/rag/analogs", response_model=RAGAnalogsOutput)
+def rag_analogs(payload: RAGAnalogsInput):
+    """
+    Find historical analog days with similar atmospheric conditions
+    from the merged feature dataset.
+    """
+    features_path = BASE / "bengaluru_thunderstorm_features_merged.csv"
+    if not features_path.exists():
+        # Try data subfolder
+        features_path = DATA / "bengaluru_thunderstorm_features_merged.csv"
+
+    if not features_path.exists():
+        raise HTTPException(503, "Historical features dataset not found on server")
+
+    try:
+        df = pd.read_csv(features_path, parse_dates=["date"])
+    except Exception as e:
+        raise HTTPException(500, f"Error reading features dataset: {e}")
+
+    # Filter to same slot climatology month ± 1
+    try:
+        target_month = pd.Timestamp(payload.date).month
+        months = [(target_month - 1) % 12 or 12, target_month, (target_month % 12) + 1]
+        df["month"] = pd.to_datetime(df["date"]).dt.month
+        df_filtered = df[df["month"].isin(months)].copy()
+    except Exception:
+        df_filtered = df.copy()
+
+    if df_filtered.empty:
+        df_filtered = df.copy()
+
+    # Score similarity using available fields
+    score_cols = []
+    weights    = []
+
+    if payload.cape is not None and "CAPE" in df_filtered.columns:
+        df_filtered["_cape_diff"] = (df_filtered["CAPE"] - payload.cape).abs()
+        score_cols.append("_cape_diff")
+        weights.append(2.0)
+
+    if payload.k_index is not None and "K_INDEX" in df_filtered.columns:
+        df_filtered["_ki_diff"] = (df_filtered["K_INDEX"] - payload.k_index).abs()
+        score_cols.append("_ki_diff")
+        weights.append(1.5)
+
+    if not score_cols:
+        # No scoring possible — return most recent positives
+        analogs_df = df_filtered[df_filtered.get("LABEL", df_filtered.get("label", pd.Series(dtype=int))) == 1].tail(payload.top_n)
+    else:
+        # Normalise and weight
+        for col in score_cols:
+            rng = df_filtered[col].max() - df_filtered[col].min()
+            df_filtered[col] = df_filtered[col] / (rng + 1e-9)
+
+        df_filtered["_score"] = sum(
+            df_filtered[col] * w for col, w in zip(score_cols, weights)
+        )
+        analogs_df = df_filtered.nsmallest(payload.top_n, "_score")
+
+    label_col = "LABEL" if "LABEL" in analogs_df.columns else "label" if "label" in analogs_df.columns else None
+
+    analogs = []
+    for _, row in analogs_df.iterrows():
+        entry = {
+            "date":  str(row["date"])[:10],
+            "CAPE":  round(float(row["CAPE"]), 1)  if "CAPE"    in row.index else None,
+            "K_INDEX": round(float(row["K_INDEX"]), 1) if "K_INDEX" in row.index else None,
+            "LIFTED_INDEX": round(float(row["LIFTED_INDEX"]), 2) if "LIFTED_INDEX" in row.index else None,
+            "thunderstorm_occurred": bool(row[label_col]) if label_col else None,
+        }
+        analogs.append(entry)
+
+    return RAGAnalogsOutput(
+        date=payload.date,
+        slot=payload.slot,
+        analogs=analogs,
+    )
