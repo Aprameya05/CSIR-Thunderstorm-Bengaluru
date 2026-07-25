@@ -222,17 +222,45 @@ def compute_stability_indices(row):
         if not any(np.isnan(x) for x in [T850, T700, T500, Td850, Td700]):
             row['K_INDEX'] = (T850 - T500) + Td850 - (T700 - Td700)
             row['TOTALS_TOTALS'] = (T850 + Td850) - (2 * T500)
-            # Lifted Index: approximate (surface parcel lifted to 500hPa)
-            T_parcel_500 = T850 - 6.5 * (500 - 850) / 100  # dry adiabatic approx
-            row['LIFTED_INDEX'] = T500 - T_parcel_500
-            row['CAPE'] = row.get('ERA5_CAPE', 0.0)
-            row['PRECIP_WATER'] = float(q850 * 850 * 100 / 9.81 +
-                                         q700 * 150 * 100 / 9.81) if not np.isnan(q850) else np.nan
 
-            print(f'  K-Index: {row["K_INDEX"]:.2f}')
+            # Lifted Index using moist adiabatic approximation
+            # LCL temperature from surface parcel (850hPa as proxy for surface)
+            # Moist adiabatic lapse rate ~6 C/km, pressure scale ~8km/decade
+            # Simple Bolton (1980) approximation
+            try:
+                import metpy.calc as mpcalc
+                from metpy.units import units
+                p   = [850, 700, 500] * units.hPa
+                T_k = [(T850+273.15), (T700+273.15), (T500+273.15)] * units.kelvin
+                Td_k= [(Td850+273.15), (Td700+273.15), (Td700+273.15)] * units.kelvin
+                li  = mpcalc.lifted_index(p, T_k, Td_k)
+                row['LIFTED_INDEX'] = float(li.magnitude)
+            except Exception:
+                # Simple empirical LI approximation (George 1960)
+                # LI = T500 - Tp500 where Tp500 estimated from surface dewpoint
+                # Empirical: LI ≈ 2*(T500+20) - (Td850+T850)  (simplified)
+                # More reliable: use Showalter-style from 850hPa
+                # Showalter Index = T500 - T_parcel lifted from 850hPa
+                # Moist adiabatic lapse rate ~5.5 C/km, 850->500hPa ~ 3.5 km
+                spread = T850 - Td850  # dewpoint depression
+                # Parcel cools at dry adiabatic to LCL, then moist adiabatic
+                # LCL height approx: (T850 - Td850) / 8 km per C (rule of thumb)
+                lcl_C_above_850 = spread / 8.0  # km above 850hPa level
+                # Moist adiabatic from LCL to 500hPa (~3.5km total, minus LCL height)
+                moist_distance = max(0, 3.5 - lcl_C_above_850)
+                dry_distance = min(3.5, lcl_C_above_850)
+                T_parcel_500 = T850 - (dry_distance * 9.8) - (moist_distance * 5.5)
+                row['LIFTED_INDEX'] = round(T500 - T_parcel_500, 2)
+
+            row['CAPE'] = row.get('ERA5_CAPE', 0.0)
+            row['PRECIP_WATER'] = float(
+                q850 * 850 * 100 / 9.81 + q700 * 150 * 100 / 9.81
+            ) if not np.isnan(q850) else np.nan
+
+            print(f'  K-Index:       {row["K_INDEX"]:.2f}')
             print(f'  Totals-Totals: {row["TOTALS_TOTALS"]:.2f}')
-            print(f'  Lifted Index: {row["LIFTED_INDEX"]:.2f}')
-            print(f'  CAPE: {row["CAPE"]:.2f}')
+            print(f'  Lifted Index:  {row["LIFTED_INDEX"]:.2f}')
+            print(f'  CAPE:          {row["CAPE"]:.2f}')
         else:
             print('  Could not compute stability indices — missing T/q profiles')
 
