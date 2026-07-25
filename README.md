@@ -118,62 +118,19 @@ CORS enabled for all origins. No authentication required. Free to use for resear
 
 ---
 
-## System Architecture
+## 🏗️ System Architecture
 
-```
-╔══════════════════════════════════════════════════════════════════╗
-║                     DATA INGESTION LAYER                        ║
-║                                                                  ║
-║  GFS NOMADS        Himawari-9 AWS S3    IMD / ERA5 Reanalysis   ║
-║  (real-time)       (10-min cadence)     (historical training)    ║
-║  CAPE, LI, TT      Band 13 10.4μm IR    6-hourly 500/700/850hPa ║
-║  K-Index, PW       50km VOBL crop       T, q, u, v fields       ║
-╚══════════╦═══════════════╦══════════════════╦═══════════════════╝
-           ║               ║                  ║
-           ▼               ▼                  ▼
-╔══════════════════════════════════════════════════════════════════╗
-║                     PROCESSING LAYER                            ║
-║                                                                  ║
-║  forecast_action.py          fetch_himawari_realtime.py         ║
-║  • 54-feature vector          • satpy + pyresample              ║
-║  • per-slot inference         • haversine distance mask         ║
-║  • met param enrichment       • storm flag + cold pixel count   ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║                     ML INFERENCE LAYER                          ║
-║                                                                  ║
-║  nowcast_slot{0-3}_xgb_v3_calibrated.pkl                        ║
-║  ┌─────────┬──────────┬───────────┬──────────┐                  ║
-║  │ Slot 0  │ Slot 1   │ Slot 2    │ Slot 3   │                  ║
-║  │ 0001-06 │ 0601-12  │ 1201-18   │ 1801-24  │                  ║
-║  │ t=0.24  │ t=0.38   │ t=0.16    │ t=0.39   │                  ║
-║  │ Platt   │ Platt    │ Isotonic  │ Isotonic │                  ║
-║  └─────────┴──────────┴───────────┴──────────┘                  ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║                     CI/CD & OUTPUT LAYER                        ║
-║                                                                  ║
-║  GitHub Actions (2x daily)                                       ║
-║  └─► forecast.json committed to repo                            ║
-║      └─► Cloudflare Pages auto-deploy (< 60s end-to-end)       ║
-║                                                                  ║
-║  FastAPI on Render (always-on)                                   ║
-║  └─► /nowcast/predict/all  (real-time slot predictions)         ║
-║      /rag/explain           (Groq Llama-3.3-70b)                ║
-║      /rag/analogs           (historical similarity search)      ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║              LIVE DASHBOARD — Cloudflare Pages                  ║
-║                                                                  ║
-║  Dashboard  │  Forecast  │  Radar Map  │  Models               ║
-║  Explainability  │  Regimes  │  Live API  │  ATC View           ║
-╚══════════════════════════════════════════════════════════════════╝
+The CSIR Thunderstorm Prediction System follows a production-grade end-to-end AI pipeline, integrating real-time numerical weather prediction, satellite observations, feature engineering, calibrated machine learning, explainable AI, and automated cloud deployment into a fully operational nowcasting platform.
+
+<p align="center">
+  <img src="assets/architecture_v2.png"
+       alt="CSIR Thunderstorm Prediction System Architecture"
+       width="100%">
+</p>
+
+<p align="center">
+<b>Figure.</b> End-to-end operational architecture of the CSIR Thunderstorm Prediction System showing data ingestion, feature engineering, XGBoost inference, explainability engine, CI/CD automation, FastAPI deployment, and Cloudflare-based dashboard delivery.
+</p>
 ```
 
 ---
