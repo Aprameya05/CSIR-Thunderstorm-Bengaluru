@@ -211,6 +211,44 @@ forecast = {
     },
 }
 
+# Load Himawari satellite signal
+himawari = {}
+himawari_history = []
+himawari_path = DATA / 'himawari_realtime.json'
+himawari_hist_path = DATA / 'himawari_history.json'
+
+if himawari_path.exists():
+    try:
+        with open(himawari_path) as f:
+            himawari = json.load(f)
+        print(f"Himawari loaded: storm_detected={himawari.get('storm_detected')} min_bt={himawari.get('min_bt_50km')}°C")
+    except Exception as e:
+        print(f"Himawari load error: {e}")
+
+if himawari_hist_path.exists():
+    try:
+        with open(himawari_hist_path) as f:
+            himawari_history = json.load(f)
+    except Exception:
+        pass
+
+forecast["satellite"] = {
+    "himawari9": {
+        "timestamp_utc":         himawari.get("timestamp_utc"),
+        "timestamp_ist":         himawari.get("timestamp_ist"),
+        "vobl_bt_celsius":       himawari.get("vobl_bt_celsius"),
+        "min_bt_50km":           himawari.get("min_bt_50km"),
+        "mean_bt_50km":          himawari.get("mean_bt_50km"),
+        "cold_pixels_count":     himawari.get("cold_pixels_count", 0),
+        "storm_detected":        himawari.get("storm_detected", False),
+        "nearest_pixel_dist_km": himawari.get("nearest_pixel_dist_km"),
+        "threshold_celsius":     himawari.get("threshold_celsius", -40.0),
+        "data_source":           "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
+        "available":             bool(himawari),
+    },
+    "history": himawari_history[-6:] if himawari_history else [],
+}
+
 with open('forecast.json', 'w') as f:
     json.dump(forecast, f, indent=2)
 
