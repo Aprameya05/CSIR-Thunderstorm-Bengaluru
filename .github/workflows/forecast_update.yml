@@ -295,6 +295,6 @@ print(f"  Slots: {slot_summary}")
           if git diff --staged --quiet; then
             echo "No changes to forecast.json"
           else
-            git commit -m "auto: forecast update ${{ env.IST_TIME }}"
+            git commit -m "auto: forecast update"
             git push
           fi
