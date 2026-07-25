@@ -7,3 +7,12 @@ scikit-learn
 xgboost
 shap
 matplotlib
+fastapi
+uvicorn[standard]
+pydantic
+python-multipart
+requests
+pytz
+chromadb
+sentence-transformers
+groq
