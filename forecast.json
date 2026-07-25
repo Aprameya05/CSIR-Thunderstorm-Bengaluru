@@ -1,6 +1,6 @@
 {
   "date": "2026-07-25",
-  "generated_at": "2026-07-25 19:11 IST",
+  "generated_at": "2026-07-25 22:04 IST",
   "station": "Bengaluru Airport (VOBL / IMD 43295)",
   "model_version": "v3_calibrated",
   "slots": [
@@ -8,7 +8,7 @@
       "slot": 0,
       "label": "Late Night",
       "time": "0001\u20130600 IST",
-      "ts_probability": 0.0,
+      "ts_probability": 0.023,
       "ts_predicted": false,
       "threshold": 0.24
     },
@@ -16,7 +16,7 @@
       "slot": 1,
       "label": "Morning",
       "time": "0601\u20131200 IST",
-      "ts_probability": 0.0,
+      "ts_probability": 0.008,
       "ts_predicted": false,
       "threshold": 0.38
     },
@@ -24,7 +24,7 @@
       "slot": 2,
       "label": "Afternoon",
       "time": "1201\u20131800 IST",
-      "ts_probability": 0.0,
+      "ts_probability": 0.009,
       "ts_predicted": false,
       "threshold": 0.16
     },
@@ -32,14 +32,14 @@
       "slot": 3,
       "label": "Evening",
       "time": "1801\u20132400 IST",
-      "ts_probability": 0.0,
+      "ts_probability": 0.036,
       "ts_predicted": false,
       "threshold": 0.39
     }
   ],
   "alert_active": false,
-  "peak_slot": 0,
-  "peak_probability": 0.0,
+  "peak_slot": 3,
+  "peak_probability": 0.036,
   "met_parameters": {
     "ua_cape_jkg": 195.0,
     "ua_cin_jkg": -70.55,

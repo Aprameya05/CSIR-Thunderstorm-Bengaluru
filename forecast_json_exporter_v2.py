@@ -60,7 +60,7 @@ def load_forecast_slots(today_str):
         slot_id = int(row.get("slot", -1))
         if slot_id not in SLOT_META:
             continue
-        prob = safe_float(row.get("ts_probability", 0), decimals=3)
+        prob = safe_float(row.get("probability", 0), decimals=3)
         thresh = THRESHOLDS.get(slot_id, 0.30)
         predicted = bool(prob is not None and prob >= thresh)
         slots.append({
