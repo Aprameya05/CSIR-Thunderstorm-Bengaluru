@@ -421,6 +421,19 @@ for s in forecast['slots']:
     s['trend_diff'] = diff
     s['prev_probability'] = round(prev_p, 3)
 
+# Compute real-time SHAP
+try:
+    import subprocess
+    subprocess.run(['python', 'compute_realtime_shap.py'], check=True, timeout=120)
+    shap_path = DATA / 'realtime_shap.json'
+    if shap_path.exists():
+        with open(shap_path) as f:
+            realtime_shap = json.load(f)
+        forecast['realtime_shap'] = realtime_shap
+        print(f"SHAP computed: {len(realtime_shap)} slots")
+except Exception as e:
+    print(f"SHAP computation error: {e}")
+
 with open('forecast.json', 'w') as f:
     json.dump(forecast, f, indent=2)
 

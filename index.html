@@ -187,18 +187,32 @@
       { name: 'BIAS', val: '1.208', delta: '▲ 0.05' },
     ];
 
-    const SHAP_DATA = [
-      { feature: 'TOTALS_TOTALS', value: 0.823, isDerived: false },
-      { feature: 'cape_x_kindex', value: 0.755, isDerived: true },
-      { feature: 'K_INDEX', value: 0.707, isDerived: false },
-      { feature: 'CAPE', value: 0.625, isDerived: false },
-      { feature: 'ERA5_T2M', value: 0.540, isDerived: false },
-      { feature: 'li_x_totals', value: 0.480, isDerived: true },
-      { feature: 'thetae_850', value: 0.450, isDerived: true },
-      { feature: 'q_gradient_500_850', value: 0.410, isDerived: true },
-      { feature: 'wind_shear_700_850', value: 0.380, isDerived: true },
-      { feature: 'moisture_flux_700', value: 0.350, isDerived: true },
-    ];
+    const DERIVED_FEATURES = new Set(['cape_x_kindex','li_x_totals','thetae_850','q_gradient_500_850','wind_shear_500_850','wind_shear_700_850','moisture_flux_850','moisture_flux_700','thickness_500_850','mid_level_drying']);
+
+    const realtimeShap = liveData?.realtime_shap?.[String(shapSlot)];
+    const SHAP_DATA = realtimeShap?.top_features
+      ? realtimeShap.top_features.map(f => ({
+          feature: f.feature,
+          value: Math.abs(f.shap),
+          raw_shap: f.shap,
+          isDerived: DERIVED_FEATURES.has(f.feature),
+          direction: f.direction,
+          actual_value: f.value,
+        }))
+      : [
+          { feature: 'TOTALS_TOTALS', value: 0.823, isDerived: false },
+          { feature: 'cape_x_kindex', value: 0.755, isDerived: true },
+          { feature: 'K_INDEX', value: 0.707, isDerived: false },
+          { feature: 'CAPE', value: 0.625, isDerived: false },
+          { feature: 'ERA5_T2M', value: 0.540, isDerived: false },
+          { feature: 'li_x_totals', value: 0.480, isDerived: true },
+          { feature: 'thetae_850', value: 0.450, isDerived: true },
+          { feature: 'q_gradient_500_850', value: 0.410, isDerived: true },
+          { feature: 'wind_shear_700_850', value: 0.380, isDerived: true },
+          { feature: 'moisture_flux_700', value: 0.350, isDerived: true },
+        ];
+    const maxShap = Math.max(...SHAP_DATA.map(d => d.value), 0.01);
+    const isRealtime = !!realtimeShap;
 
     const SYNOPTIC_REGIMES = [
       { id: 'R1', name: 'R1 Hot Pre-Monsoon', ts_rate: 1.2, auroc: 1.000, color: '#4caf50', desc: 'Dry thermal low baseline, low storm occurrence' },
@@ -1041,7 +1055,7 @@
     }
 
     // --- 4. EXPLAINABILITY PAGE (SHAP BARS + RAG TERMINAL) ---
-    function ExplainabilityPage() {
+    function ExplainabilityPage({ liveData }) {
       const [shapSlot, setShapSlot] = useState(2);
       const [ragQuery, setRagQuery] = useState('');
       const [ragLogs, setRagLogs] = useState(
@@ -1114,19 +1128,31 @@
 
           {/* SHAP Horizontal Bar Chart */}
           <div className="space-y-2.5 text-xs">
+            {isRealtime && (
+              <div className="text-[9px] text-emerald-400 mb-2 font-bold">
+                ● LIVE SHAP — computed from today's GFS inputs ({realtimeShap?.computed_at})
+              </div>
+            )}
             {SHAP_DATA.map(item => (
               <div key={item.feature} className="flex items-center gap-3">
                 <div className="w-48 text-[#90a4ae] font-medium truncate">{item.feature}</div>
                 <div className="flex-1 bg-[#050811] h-6 rounded border border-[#172338] relative overflow-hidden flex items-center px-3">
-                  <div 
-                    className="absolute inset-y-0 left-0 rounded transition-all duration-700" 
-                    style={{ 
-                      width: `${(item.value / 0.85) * 100}%`,
-                      backgroundColor: item.isDerived ? '#ef5350' : '#38bdf8'
-                    }} 
+                  <div
+                    className="absolute inset-y-0 left-0 rounded transition-all duration-700"
+                    style={{
+                      width: `${(item.value / maxShap) * 100}%`,
+                      backgroundColor: isRealtime
+                        ? (item.direction === 'increases_risk' ? '#ef5350' : '#38bdf8')
+                        : (item.isDerived ? '#ef5350' : '#38bdf8')
+                    }}
                   />
-                  <span className="relative z-10 text-white font-bold ml-auto">{item.value.toFixed(3)}</span>
+                  <span className="relative z-10 text-white font-bold ml-auto">
+                    {isRealtime ? (item.raw_shap > 0 ? '+' : '') + item.raw_shap?.toFixed(4) : item.value.toFixed(3)}
+                  </span>
                 </div>
+                {isRealtime && item.actual_value !== undefined && (
+                  <div className="w-20 text-[9px] text-[#607d8b] text-right">={item.actual_value?.toFixed(2)}</div>
+                )}
               </div>
             ))}
           </div>
@@ -1694,7 +1720,7 @@
 
                 {activeNavTab === 'RADAR MAP' && <RadarMapPage key="radar" liveData={liveData} />}
                 {activeNavTab === 'MODELS' && <ModelsPage key="models" liveData={liveData} />}
-                {activeNavTab === 'EXPLAINABILITY' && <ExplainabilityPage key="explain" />}
+                {activeNavTab === 'EXPLAINABILITY' && <ExplainabilityPage key="explain" liveData={liveData} />}
                 {activeNavTab === 'REGIMES' && <RegimesPage key="regimes" />}
                 {activeNavTab === 'LIVE API' && <LiveApiPage key="api" />}
               </AnimatePresence>
