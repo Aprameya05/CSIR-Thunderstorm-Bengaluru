@@ -1,72 +1,57 @@
 {
   "date": "2026-07-25",
-  "generated_at": "2026-07-25 13:32 IST",
-  "alert_active": false,
-  "peak_slot": 3,
-  "peak_probability": 0.0288,
+  "generated_at": "2026-07-25 19:11 IST",
+  "station": "Bengaluru Airport (VOBL / IMD 43295)",
   "model_version": "v3_calibrated",
   "slots": [
     {
       "slot": 0,
       "label": "Late Night",
-      "time": "0001-0600 IST",
-      "probability": 0.0231,
-      "predicted": false,
-      "threshold": 0.24,
-      "primary": false,
-      "source": "model_defaults",
-      "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "time": "0001\u20130600 IST",
+      "ts_probability": 0.0,
+      "ts_predicted": false,
+      "threshold": 0.24
     },
     {
       "slot": 1,
       "label": "Morning",
-      "time": "0601-1200 IST",
-      "probability": 0.0078,
-      "predicted": false,
-      "threshold": 0.38,
-      "primary": false,
-      "source": "model_defaults",
-      "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "time": "0601\u20131200 IST",
+      "ts_probability": 0.0,
+      "ts_predicted": false,
+      "threshold": 0.38
     },
     {
       "slot": 2,
       "label": "Afternoon",
-      "time": "1201-1800 IST",
-      "probability": 0.0,
-      "predicted": false,
-      "threshold": 0.16,
-      "primary": true,
-      "source": "model_defaults",
-      "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "time": "1201\u20131800 IST",
+      "ts_probability": 0.0,
+      "ts_predicted": false,
+      "threshold": 0.16
     },
     {
       "slot": 3,
       "label": "Evening",
-      "time": "1801-2400 IST",
-      "probability": 0.0288,
-      "predicted": false,
-      "threshold": 0.39,
-      "primary": false,
-      "source": "model_defaults",
-      "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "time": "1801\u20132400 IST",
+      "ts_probability": 0.0,
+      "ts_predicted": false,
+      "threshold": 0.39
     }
   ],
+  "alert_active": false,
+  "peak_slot": 0,
+  "peak_probability": 0.0,
   "met_parameters": {
-    "CAPE": 0.0,
-    "K_INDEX": 30.0,
-    "LIFTED_INDEX": -2.0,
-    "TOTALS_TOTALS": 44.0
+    "ua_cape_jkg": 195.0,
+    "ua_cin_jkg": -70.55,
+    "ua_k_index": 40.31,
+    "ua_lifted_index": -0.49,
+    "ua_totals_totals": 44.34,
+    "ua_precip_water_mm": 42.39,
+    "instability_level": "Marginal"
+  },
+  "data_sources": {
+    "gfs_available": false,
+    "upperair_available": true,
+    "forecast_log_available": true
   }
 }
