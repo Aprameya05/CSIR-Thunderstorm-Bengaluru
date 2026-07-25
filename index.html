@@ -1510,13 +1510,14 @@
                   </div>
                 )}
 
-                {/* No data overlay */}
-                {!h9?.available && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-[#607d8b] text-xs font-mono text-center">
+                {/* No BT data — show satellite status */}
+                {(!voblBT && !minBT) && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-[#607d8b] text-xs font-mono text-center mt-32">
                       <div className="text-2xl mb-2">🛰️</div>
-                      <div>Himawari-9 data loading...</div>
-                      <div className="text-[9px] mt-1">Next fetch: every 10 minutes</div>
+                      <div className="text-cyan-300">HIMAWARI-9 BAND 13 — VOBL 50km BOX</div>
+                      <div className="mt-1">BT values available during daylight hours</div>
+                      <div className="text-[9px] mt-1 text-[#607d8b]">Last fetch: {frame?.timestamp_ist?.replace('T',' ') ?? '—'} IST</div>
                     </div>
                   </div>
                 )}
