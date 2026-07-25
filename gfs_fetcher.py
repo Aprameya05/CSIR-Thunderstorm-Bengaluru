@@ -294,7 +294,7 @@ def main():
         print('  ERROR: No GFS cycle available on NOMADS')
         return 1
 
-    # Fetch and parse
+    # Fetch and parse — today (f012)
     try:
         grib_path = fetch_grib_data(avail_date, avail_cycle)
         row = parse_grib(grib_path)
@@ -310,6 +310,49 @@ def main():
     row['date'] = date_str
     row['gfs_cycle'] = f'{avail_date} {avail_cycle:02d}Z'
     row['fetched_at'] = now_ist.strftime('%Y-%m-%d %H:%M IST')
+
+    # Fetch tomorrow (f024) and day after (f036)
+    multiday = []
+    for fhour, day_offset, day_label in [(24, 1, 'tomorrow'), (48, 2, 'day_after')]:
+        try:
+            print(f'\n  Fetching {day_label} (f{fhour:03d})...')
+            url = (
+                f'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl'
+                f'?dir=%2Fgfs.{avail_date}%2F{avail_cycle:02d}%2Fatmos'
+                f'&file=gfs.t{avail_cycle:02d}z.pgrb2.0p25.f{fhour:03d}'
+                f'&var_TMP=on&var_RH=on&var_UGRD=on&var_VGRD=on'
+                f'&var_CAPE=on&var_CIN=on&var_SPFH=on&var_PRES=on'
+                f'&lev_2_m_above_ground=on&lev_10_m_above_ground=on'
+                f'&lev_surface=on&lev_500_mb=on&lev_700_mb=on&lev_850_mb=on'
+                f'&lev_255-0_mb_above_ground=on&lev_90-0_mb_above_ground=on'
+                f'&subregion=&toplat=13.25&leftlon=77.25&rightlon=77.75&bottomlat=12.75'
+            )
+            r = requests.get(url, timeout=120, stream=True)
+            if r.status_code == 200 and len(r.content) > 500:
+                with tempfile.NamedTemporaryFile(suffix='.grib2', delete=False) as f:
+                    f.write(r.content)
+                    tmp = f.name
+                day_row = parse_grib(tmp)
+                os.unlink(tmp)
+                day_row = compute_stability_indices(day_row)
+                future_date = (now_ist + timedelta(days=day_offset)).strftime('%Y-%m-%d')
+                day_row['date'] = future_date
+                day_row['day_label'] = day_label
+                day_row['fhour'] = fhour
+                day_row['gfs_cycle'] = f'{avail_date} {avail_cycle:02d}Z f{fhour:03d}'
+                multiday.append(day_row)
+                print(f'  ✓ {day_label}: CAPE={day_row.get("CAPE",0):.0f} K={day_row.get("K_INDEX",0):.1f} LI={day_row.get("LIFTED_INDEX",0):.2f}')
+            else:
+                print(f'  ⚠ {day_label}: HTTP {r.status_code} or empty')
+        except Exception as e:
+            print(f'  ⚠ {day_label} failed: {e}')
+
+    # Save multiday forecast
+    multiday_path = OUT_DIR / 'gfs_multiday_43295.json'
+    import json as _json2
+    with open(multiday_path, 'w') as f:
+        _json2.dump(multiday, f, indent=2, default=str)
+    print(f'\n  Saved → {multiday_path} ({len(multiday)} days)')
 
     # Save latest
     df = pd.DataFrame([row])

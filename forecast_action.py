@@ -320,6 +320,55 @@ forecast["convective_initiation"] = {
 }
 print(f"Convective initiation: {initiation_status} | Score: {instability_score} | Risk: {initiation_risk}")
 
+# Multi-day outlook using GFS f024/f048
+multiday_path = DATA / 'gfs_multiday_43295.json'
+multiday_outlook = []
+
+if multiday_path.exists():
+    try:
+        with open(multiday_path) as f:
+            multiday_data = json.load(f)
+
+        for day_row in multiday_data:
+            day_cape = float(day_row.get('CAPE', 0))
+            day_ki   = float(day_row.get('K_INDEX', 30))
+            day_li   = float(day_row.get('LIFTED_INDEX', 0))
+            day_tt   = float(day_row.get('TOTALS_TOTALS', 44))
+
+            # Run Slot 2 model (afternoon — highest climatological TS rate)
+            slot2_artifact = nowcast_slot_artifacts.get(2) if 'nowcast_slot_artifacts' in dir() else None
+
+            # Compute instability score for future day
+            d_cape_score = min(day_cape / 2000.0 * 40, 40)
+            d_ki_score   = max(0, min((day_ki - 20) / 20.0 * 30, 30))
+            d_li_score   = max(0, min((-day_li) / 6.0 * 20, 20))
+            d_tt_score   = max(0, min((day_tt - 40) / 10.0 * 10, 10))
+            d_score      = round(d_cape_score + d_ki_score + d_li_score + d_tt_score, 1)
+
+            # Simple probability estimate from instability score
+            d_prob = min(round(d_score / 100.0 * 0.6, 3), 0.95)
+
+            risk = "HIGH" if d_score >= 70 else "MODERATE" if d_score >= 45 else "LOW" if d_score >= 25 else "MINIMAL"
+
+            multiday_outlook.append({
+                "date":              day_row.get('date'),
+                "day_label":         day_row.get('day_label'),
+                "cape":              round(day_cape, 1),
+                "k_index":           round(day_ki, 2),
+                "lifted_index":      round(day_li, 2),
+                "totals_totals":     round(day_tt, 2),
+                "instability_score": d_score,
+                "ts_probability_slot2": d_prob,
+                "risk_level":        risk,
+                "peak_window":       "1300-1800 IST",
+            })
+            print(f"  {day_row.get('day_label')}: score={d_score} prob={d_prob*100:.1f}% risk={risk}")
+
+    except Exception as e:
+        print(f"  Multiday outlook error: {e}")
+
+forecast["multiday_outlook"] = multiday_outlook
+
 # Extract Slot 2 30-day metrics (primary operational slot)
 slot2_30d = verification.get("metrics_30day", {}).get("2", {})
 forecast["verification"] = {
