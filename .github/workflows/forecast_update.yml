@@ -2,13 +2,12 @@ name: Update Forecast JSON
 
 on:
   schedule:
-    - cron: '15 10,16 * * *'
+    - cron: "15 10,16 * * *"
   workflow_dispatch:
 
 jobs:
   update-forecast:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,10 +17,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pandas numpy joblib scikit-learn xgboost requests
+        run: pip install pandas numpy joblib scikit-learn xgboost requests pytz
 
       - name: Run forecast pipeline
         run: python forecast_action.py
@@ -31,4 +30,10 @@ jobs:
           git config --global user.name "CSIR Forecast Bot"
           git config --global user.email "bot@csir-thunderstorm.in"
           git add forecast.json
-          git diff --staged --quiet || git commit -m "auto: forecast update" && git push
+          git diff --staged --quiet || (git commit -m "auto: forecast update $(date -u '+%Y-%m-%d %H:%M UTC')" && git push)
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy . --project-name=csir-thunderstorm-bengaluru --branch=main
