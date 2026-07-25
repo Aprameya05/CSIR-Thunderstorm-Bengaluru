@@ -1,6 +1,6 @@
 {
   "date": "2026-07-25",
-  "generated_at": "2026-07-25 21:01 IST",
+  "generated_at": "2026-07-25 21:14 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0231,
@@ -138,16 +138,42 @@
   "convective_initiation": {
     "instability_score": 13.0,
     "initiation_status": "POST-CONVECTIVE",
-    "initiation_message": "Next peak window in 16.0h (tomorrow 1300 IST)",
+    "initiation_message": "Next peak window in 15.8h (tomorrow 1300 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 16.0,
+    "hours_to_peak": 15.8,
     "cape_now": 0.0,
     "ki_now": 28.7,
     "li_now": 0.23,
     "tt_now": 38.41,
     "peak_window_ist": "1300-1800 IST",
-    "computed_at": "2026-07-25 21:01 IST"
+    "computed_at": "2026-07-25 21:14 IST"
   },
+  "multiday_outlook": [
+    {
+      "date": "2026-07-27",
+      "day_label": "tomorrow",
+      "cape": 41.0,
+      "k_index": 34.12,
+      "lifted_index": -0.92,
+      "totals_totals": 40.93,
+      "instability_score": 26.0,
+      "ts_probability_slot2": 0.156,
+      "risk_level": "LOW",
+      "peak_window": "1300-1800 IST"
+    },
+    {
+      "date": "2026-07-28",
+      "day_label": "day_after",
+      "cape": 59.0,
+      "k_index": 36.07,
+      "lifted_index": -2.0,
+      "totals_totals": 43.01,
+      "instability_score": 35.0,
+      "ts_probability_slot2": 0.21,
+      "risk_level": "LOW",
+      "peak_window": "1300-1800 IST"
+    }
+  ],
   "verification": {
     "pod": 0.0,
     "far": 0.0,
