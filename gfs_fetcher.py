@@ -28,7 +28,9 @@ LAT = 12.97
 LON = 77.58
 OUT_DIR = Path('data')
 OUT_DIR.mkdir(exist_ok=True)
-OUT_FILE = OUT_DIR / 'gfs_realtime_43295.csv'
+OUT_FILE      = OUT_DIR / 'gfs_realtime_43295.csv'
+OUT_HIST_FILE = OUT_DIR / 'gfs_history_43295.json'
+KEEP_CYCLES   = 6
 
 NOMADS_BASE = 'https://nomads.ncep.noaa.gov'
 
@@ -309,11 +311,40 @@ def main():
     row['gfs_cycle'] = f'{avail_date} {avail_cycle:02d}Z'
     row['fetched_at'] = now_ist.strftime('%Y-%m-%d %H:%M IST')
 
-    # Save
+    # Save latest
     df = pd.DataFrame([row])
     df.to_csv(OUT_FILE, index=False)
     print(f'\n  Saved → {OUT_FILE}')
     print(f'  Variables: {[c for c in df.columns if not c.startswith("date") and not c.startswith("gfs") and not c.startswith("fetched")]}')
+
+    # Save to rolling history (last 6 cycles)
+    import json as _json
+    history = []
+    if OUT_HIST_FILE.exists():
+        try:
+            with open(OUT_HIST_FILE) as f:
+                history = _json.load(f)
+        except Exception:
+            history = []
+
+    # Build history record with key met params only
+    hist_record = {
+        'fetched_at':    row.get('fetched_at'),
+        'gfs_cycle':     row.get('gfs_cycle'),
+        'date':          row.get('date'),
+        'CAPE':          row.get('CAPE', 0),
+        'K_INDEX':       row.get('K_INDEX'),
+        'LIFTED_INDEX':  row.get('LIFTED_INDEX'),
+        'TOTALS_TOTALS': row.get('TOTALS_TOTALS'),
+        'PRECIP_WATER':  row.get('PRECIP_WATER'),
+        'ERA5_T2M':      row.get('ERA5_T2M'),
+    }
+    history.append(hist_record)
+    history = history[-KEEP_CYCLES:]
+
+    with open(OUT_HIST_FILE, 'w') as f:
+        _json.dump(history, f, indent=2)
+    print(f'  Saved → {OUT_HIST_FILE} ({len(history)} cycles)')
 
     return 0
 

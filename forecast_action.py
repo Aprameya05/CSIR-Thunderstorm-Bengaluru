@@ -260,6 +260,66 @@ if verif_path.exists():
     except Exception as e:
         print(f"Verification load error: {e}")
 
+# Convective Initiation Timer
+import math as _math
+now_hour_ist = now.hour + now.minute / 60.0
+
+# Current atmospheric state
+gfs_row = gfs_df.iloc[0] if len(gfs_df) > 0 else {}
+cape_now = float(gfs_row.get('CAPE', 0)) if len(gfs_df) > 0 else 0
+ki_now   = float(gfs_row.get('K_INDEX', 30)) if len(gfs_df) > 0 else 30
+li_now   = float(gfs_row.get('LIFTED_INDEX', 0)) if len(gfs_df) > 0 else 0
+tt_now   = float(gfs_row.get('TOTALS_TOTALS', 44)) if len(gfs_df) > 0 else 44
+
+# Instability score (0-100)
+cape_score = min(cape_now / 2000.0 * 40, 40)
+ki_score   = max(0, min((ki_now - 20) / 20.0 * 30, 30))
+li_score   = max(0, min((-li_now) / 6.0 * 20, 20))
+tt_score   = max(0, min((tt_now - 40) / 10.0 * 10, 10))
+instability_score = round(cape_score + ki_score + li_score + tt_score, 1)
+
+# Peak convective window for Bengaluru: 13:00-18:00 IST
+PEAK_START = 13.0
+PEAK_END   = 18.0
+
+if now_hour_ist < PEAK_START:
+    hours_to_peak = PEAK_START - now_hour_ist
+    initiation_status = "PRE-CONVECTIVE"
+    initiation_message = f"Peak convective window in {hours_to_peak:.1f}h (1300-1800 IST)"
+elif PEAK_START <= now_hour_ist <= PEAK_END:
+    hours_to_peak = 0
+    initiation_status = "CONVECTIVE WINDOW ACTIVE"
+    initiation_message = "Currently in peak thunderstorm window (1300-1800 IST)"
+else:
+    hours_to_peak = 24 - now_hour_ist + PEAK_START
+    initiation_status = "POST-CONVECTIVE"
+    initiation_message = f"Next peak window in {hours_to_peak:.1f}h (tomorrow 1300 IST)"
+
+# Risk level based on instability score
+if instability_score >= 70:
+    initiation_risk = "HIGH"
+elif instability_score >= 45:
+    initiation_risk = "MODERATE"
+elif instability_score >= 25:
+    initiation_risk = "LOW"
+else:
+    initiation_risk = "MINIMAL"
+
+forecast["convective_initiation"] = {
+    "instability_score":  instability_score,
+    "initiation_status":  initiation_status,
+    "initiation_message": initiation_message,
+    "initiation_risk":    initiation_risk,
+    "hours_to_peak":      round(hours_to_peak, 1),
+    "cape_now":           round(cape_now, 1),
+    "ki_now":             round(ki_now, 2),
+    "li_now":             round(li_now, 2),
+    "tt_now":             round(tt_now, 2),
+    "peak_window_ist":    "1300-1800 IST",
+    "computed_at":        now.strftime('%Y-%m-%d %H:%M IST'),
+}
+print(f"Convective initiation: {initiation_status} | Score: {instability_score} | Risk: {initiation_risk}")
+
 # Extract Slot 2 30-day metrics (primary operational slot)
 slot2_30d = verification.get("metrics_30day", {}).get("2", {})
 forecast["verification"] = {
