@@ -524,29 +524,38 @@
               </div>
             </div>
 
-            {/* Tile 5: PEAK RISK WINDOW */}
-            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+            {/* Tile 5: CONVECTIVE INITIATION TIMER */}
+            <div className={`atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px] ${liveData?.convective_initiation?.initiation_risk === 'HIGH' ? 'border-red-500/40' : liveData?.convective_initiation?.initiation_risk === 'MODERATE' ? 'border-orange-500/40' : ''}`}>
               <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
-                <span>⚙️</span>
-                <span>PEAK RISK WINDOW</span>
+                <span>⚡</span>
+                <span>CONVECTIVE INITIATION</span>
               </div>
-              <div className="my-1 flex items-center justify-between">
-                <svg className="w-14 h-7 text-emerald-400" viewBox="0 0 60 30" fill="none">
-                  <polyline points="0,25 15,20 28,8 40,18 60,12" stroke="#4caf50" strokeWidth="2" fill="none" />
-                </svg>
-                <div className="text-right">
-                  <div className="text-base font-extrabold text-white">{(currentSlot.ts_probability * 100).toFixed(1)}%</div>
-                  <div className="text-[9px] text-[#607d8b]">16:00 – 18:00 IST</div>
+              <div className="my-1">
+                <div className={`text-base font-extrabold ${
+                  liveData?.convective_initiation?.initiation_risk === 'HIGH' ? 'text-red-400' :
+                  liveData?.convective_initiation?.initiation_risk === 'MODERATE' ? 'text-orange-400' :
+                  liveData?.convective_initiation?.initiation_risk === 'LOW' ? 'text-yellow-400' :
+                  'text-emerald-400'
+                }`}>
+                  {liveData?.convective_initiation?.initiation_risk ?? 'MINIMAL'}
+                </div>
+                <div className="text-[9px] text-[#607d8b] mt-0.5 leading-tight">
+                  {liveData?.convective_initiation?.initiation_status ?? 'PRE-CONVECTIVE'}
+                </div>
+                <div className="text-[9px] text-white mt-1">
+                  {liveData?.convective_initiation?.hours_to_peak > 0
+                    ? `Peak in ${liveData?.convective_initiation?.hours_to_peak}h`
+                    : 'In peak window now'}
                 </div>
               </div>
               <div className="grid grid-cols-2 text-[10px] text-center border-t border-[#172338] pt-1.5">
                 <div>
-                  <div className="font-bold text-white">7 HRS</div>
-                  <div className="text-[8px] text-[#607d8b]">DURATION</div>
+                  <div className="font-bold text-white">{liveData?.convective_initiation?.instability_score ?? '—'}</div>
+                  <div className="text-[8px] text-[#607d8b]">INSTABILITY</div>
                 </div>
                 <div>
-                  <div className="font-bold text-white">MODERATE</div>
-                  <div className="text-[8px] text-[#607d8b]">CONFIDENCE</div>
+                  <div className="font-bold text-white">{liveData?.convective_initiation?.peak_window_ist ?? '1300-1800'}</div>
+                  <div className="text-[8px] text-[#607d8b]">PEAK WINDOW</div>
                 </div>
               </div>
             </div>
