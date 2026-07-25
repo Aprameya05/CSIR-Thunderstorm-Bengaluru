@@ -20,7 +20,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pandas numpy joblib scikit-learn xgboost requests pytz
+        run: pip install pandas numpy joblib scikit-learn xgboost requests pytz cfgrib eccodes xarray
+
+      - name: Fetch GFS real-time data
+        run: python gfs_fetcher.py
 
       - name: Run forecast pipeline
         run: python forecast_action.py

@@ -91,10 +91,10 @@ if ua_path.exists():
 
 # Load GFS data if available
 gfs_df   = pd.DataFrame()
-gfs_path = DATA / 'gfs_realtime' / f"gfs_{date_str}.csv"
+gfs_path = DATA / 'gfs_realtime_43295.csv'
 if gfs_path.exists():
     gfs_df = pd.read_csv(gfs_path)
-    print(f"GFS loaded: {len(gfs_df)} rows")
+    print(f"GFS loaded: {len(gfs_df)} rows, cycle: {gfs_df.get('gfs_cycle', ['unknown'])[0] if len(gfs_df) else 'N/A'}")
 
 slots_output = []
 results      = {}
@@ -141,16 +141,20 @@ for slot_id in range(4):
     }
 
     if len(gfs_df) > 0:
-        slot_gfs = gfs_df[gfs_df['slot'] == slot_id]
-        if len(slot_gfs) > 0:
-            row = slot_gfs.iloc[0]
-            for col in ['ERA5_T2M','ERA5_D2M','ERA5_U10','ERA5_V10','ERA5_CAPE','ERA5_SP',
-                        'ERA5_t_500hPa','ERA5_t_700hPa','ERA5_t_850hPa',
-                        'ERA5_q_500hPa','ERA5_q_700hPa','ERA5_q_850hPa',
-                        'ERA5_u_500hPa','ERA5_u_700hPa','ERA5_u_850hPa',
-                        'ERA5_v_500hPa','ERA5_v_700hPa','ERA5_v_850hPa']:
-                if col in row and pd.notna(row[col]):
-                    obs[col] = float(row[col])
+        # gfs_realtime_43295.csv is a single-row file (latest cycle)
+        # apply same GFS values to all slots
+        row = gfs_df.iloc[0]
+        for col in ['ERA5_T2M','ERA5_D2M','ERA5_U10','ERA5_V10','ERA5_CAPE','ERA5_SP',
+                    'ERA5_t_500hPa','ERA5_t_700hPa','ERA5_t_850hPa',
+                    'ERA5_q_500hPa','ERA5_q_700hPa','ERA5_q_850hPa',
+                    'ERA5_u_500hPa','ERA5_u_700hPa','ERA5_u_850hPa',
+                    'ERA5_v_500hPa','ERA5_v_700hPa','ERA5_v_850hPa']:
+            if col in row.index and pd.notna(row[col]):
+                obs[col] = float(row[col])
+        # Also load derived stability indices if available
+        for col in ['K_INDEX','TOTALS_TOTALS','LIFTED_INDEX','CAPE','PRECIP_WATER']:
+            if col in row.index and pd.notna(row[col]):
+                obs[col] = float(row[col])
 
     if slot_id in upper_air:
         ua = upper_air[slot_id]

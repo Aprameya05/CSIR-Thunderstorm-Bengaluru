@@ -1,9 +1,9 @@
 {
-  "date": "2026-07-25",
-  "generated_at": "2026-07-25 17:56 IST",
+  "date": "2026-07-26",
+  "generated_at": "2026-07-26 01:17 IST",
   "alert_active": false,
-  "peak_slot": 3,
-  "peak_probability": 0.0288,
+  "peak_slot": 0,
+  "peak_probability": 0.0231,
   "model_version": "v3_calibrated",
   "slots": [
     {
@@ -16,9 +16,9 @@
       "primary": false,
       "source": "model_defaults",
       "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "k_index": 28.7,
+      "lifted_index": -44.45,
+      "totals_totals": 38.4
     },
     {
       "slot": 1,
@@ -30,44 +30,44 @@
       "primary": false,
       "source": "model_defaults",
       "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "k_index": 28.7,
+      "lifted_index": -44.45,
+      "totals_totals": 38.4
     },
     {
       "slot": 2,
       "label": "Afternoon",
       "time": "1201-1800 IST",
-      "ts_probability": 0.0,
+      "ts_probability": 0.0028,
       "ts_predicted": false,
       "threshold": 0.16,
       "primary": true,
       "source": "model_defaults",
       "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "k_index": 28.7,
+      "lifted_index": -44.45,
+      "totals_totals": 38.4
     },
     {
       "slot": 3,
       "label": "Evening",
       "time": "1801-2400 IST",
-      "ts_probability": 0.0288,
+      "ts_probability": 0.0,
       "ts_predicted": false,
       "threshold": 0.39,
       "primary": false,
       "source": "model_defaults",
       "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0
+      "k_index": 28.7,
+      "lifted_index": -44.45,
+      "totals_totals": 38.4
     }
   ],
   "met_parameters": {
     "ua_cape_jkg": 0.0,
-    "ua_k_index": 30.0,
-    "ua_lifted_index": -2.0,
-    "ua_totals_totals": 44.0,
+    "ua_k_index": 28.7,
+    "ua_lifted_index": -44.45,
+    "ua_totals_totals": 38.4,
     "instability_level": "Stable"
   }
 }
