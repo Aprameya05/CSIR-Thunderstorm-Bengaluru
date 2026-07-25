@@ -1426,7 +1426,7 @@
       // Fetch forecast telemetry
       const fetchRealForecast = async () => {
         try {
-          const res = await fetch('https://raw.githubusercontent.com/Aprameya05/CSIR-Thunderstorm-Bengaluru/main/forecast.json?cache=' + Date.now());
+          const res = await fetch('./forecast.json');
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json = await res.json();
           setLiveData(json);
