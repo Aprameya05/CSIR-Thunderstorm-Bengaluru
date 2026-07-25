@@ -123,7 +123,7 @@ CORS enabled for all origins. No authentication required. Free to use for resear
 The CSIR Thunderstorm Prediction System follows a production-grade end-to-end AI pipeline, integrating real-time numerical weather prediction, satellite observations, feature engineering, calibrated machine learning, explainable AI, and automated cloud deployment into a fully operational nowcasting platform.
 
 <p align="center">
-  <img src="assets/architecture_v2.png"
+  <img src="assets/architecture_v2"
        alt="CSIR Thunderstorm Prediction System Architecture"
        width="100%">
 </p>
