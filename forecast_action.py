@@ -285,6 +285,33 @@ forecast["verification"] = {
     }
 }
 
+# Load previous forecast for trend comparison
+prev_probs = {}
+if Path('forecast.json').exists():
+    try:
+        with open('forecast.json') as f:
+            prev = json.load(f)
+        for s in prev.get('slots', []):
+            prev_probs[s['slot']] = s.get('ts_probability', 0) or 0
+    except Exception:
+        pass
+
+# Add trend arrows to each slot
+for s in forecast['slots']:
+    slot_id = s['slot']
+    curr = s.get('ts_probability') or 0
+    prev_p = prev_probs.get(slot_id, curr)
+    diff = round(curr - prev_p, 3)
+    if diff > 0.01:
+        trend = 'up'
+    elif diff < -0.01:
+        trend = 'down'
+    else:
+        trend = 'stable'
+    s['trend'] = trend
+    s['trend_diff'] = diff
+    s['prev_probability'] = round(prev_p, 3)
+
 with open('forecast.json', 'w') as f:
     json.dump(forecast, f, indent=2)
 

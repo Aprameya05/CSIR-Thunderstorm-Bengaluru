@@ -606,8 +606,15 @@
                         </div>
 
                         <div className="text-right">
-                          <div className="text-sm font-extrabold text-white">{probPct}%</div>
-                          <div className="text-[9px] text-[#607d8b] uppercase font-bold">RISK</div>
+                          <div className="text-sm font-extrabold text-white flex items-center gap-1 justify-end">
+                            {s.trend === 'up' && <span className="text-red-400 text-xs">↑</span>}
+                            {s.trend === 'down' && <span className="text-emerald-400 text-xs">↓</span>}
+                            {s.trend === 'stable' && <span className="text-[#607d8b] text-xs">→</span>}
+                            {probPct}%
+                          </div>
+                          <div className="text-[9px] text-[#607d8b] uppercase font-bold">
+                            {s.trend === 'up' ? `+${(s.trend_diff*100).toFixed(1)}%` : s.trend === 'down' ? `${(s.trend_diff*100).toFixed(1)}%` : 'STABLE'}
+                          </div>
                         </div>
                       </div>
                     );
