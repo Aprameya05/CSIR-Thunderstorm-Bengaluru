@@ -4,7 +4,7 @@
 
 ### AI-Based Operational Thunderstorm Forecasting for Bengaluru Airport (IMD Station 43295)
 
-Machine learning framework for predicting thunderstorm occurrence using **surface meteorological observations**, **upper-air stability indices**, **ERA5 reanalysis (6-hourly)**, and **explainable AI** — with a fully operational **6-hour nowcasting system**.
+Machine learning framework for predicting thunderstorm occurrence using **surface meteorological observations**, **upper-air stability indices**, **ERA5 reanalysis (6-hourly)**, **Himawari-9 satellite imagery**, and **explainable AI** — with a fully operational **6-hour nowcasting system** and **live public dashboard**.
 
 <p>
   <img src="https://img.shields.io/badge/Python-3.13-blue?logo=python" />
@@ -13,7 +13,12 @@ Machine learning framework for predicting thunderstorm occurrence using **surfac
   <img src="https://img.shields.io/badge/Status-Operational-brightgreen" />
   <img src="https://img.shields.io/badge/Nowcasting-6--Hour%20Slots-orange" />
   <img src="https://img.shields.io/badge/ERA5-6--Hourly-blue" />
+  <img src="https://img.shields.io/badge/Dashboard-Live-brightgreen" />
 </p>
+
+🌐 **Live Dashboard:** [csir-thunderstorm-bengaluru.pages.dev](https://csir-thunderstorm-bengaluru.pages.dev)
+🔗 **Live API:** [csir-thunderstorm-api.onrender.com](https://csir-thunderstorm-api.onrender.com)
+📖 **API Docs:** [csir-thunderstorm-api.onrender.com/docs](https://csir-thunderstorm-api.onrender.com/docs)
 
 </div>
 
@@ -23,8 +28,6 @@ Machine learning framework for predicting thunderstorm occurrence using **surfac
 
 The **CSIR Thunderstorm Prediction System** is an operational machine learning framework developed to forecast thunderstorm occurrence over **Kempegowda International Airport, Bengaluru (IMD Station 43295)**, in collaboration with **IMD Bengaluru (Dr. Geeta Agnihotri, Scientist F)**.
 
-The system operates in two modes:
-
 | Mode | Description | Status |
 |------|-------------|:------:|
 | **Daily Model** | Predicts whether a thunderstorm will occur on a given day | ✅ Complete |
@@ -33,141 +36,123 @@ The system operates in two modes:
 ---
 
 ## System Architecture
-![CSIR Thunderstorm Prediction System Architecture](assetssystem_architecture.png)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DATA INGESTION LAYER                         │
+│                                                                 │
+│  GFS NOMADS (real-time)  │  Himawari-9 S3  │  IMD Upper-Air   │
+│  CAPE, K-Index, LI, TT   │  Band 13 IR BT  │  Soundings       │
+│  ERA5 Reanalysis          │  50km VOBL box  │  MetPy indices   │
+└──────────────┬────────────┴────────┬────────┴──────────┬───────┘
+               │                    │                    │
+               ▼                    ▼                    ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    PROCESSING LAYER                             │
+│                                                                 │
+│  forecast_action.py    fetch_himawari_realtime.py              │
+│  54-feature vector     Storm proximity signal                  │
+│  4 slot inference      himawari_realtime.json                  │
+└──────────────┬─────────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    ML INFERENCE LAYER                           │
+│                                                                 │
+│  nowcast_slot{0-3}_xgb_v3_calibrated.pkl                       │
+│  Isotonic (Slots 2,3) │ Platt (Slots 0,1)                      │
+│  Thresholds: 0.24 │ 0.38 │ 0.16 │ 0.39                        │
+└──────────────┬─────────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    OUTPUT LAYER                                 │
+│                                                                 │
+│  forecast.json → GitHub → Cloudflare Pages (auto-deploy)      │
+│  FastAPI (Render) → /nowcast/predict/all │ /rag/explain        │
+│  RAG (Groq Llama-3.3-70b) → Physical explanation engine       │
+└──────────────┬─────────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              LIVE DASHBOARD (React, Cloudflare Pages)           │
+│                                                                 │
+│  6-Hour Slot Probabilities │ Real Met Parameters               │
+│  Himawari Storm Proximity  │ SHAP Explainability               │
+│  AI RAG Chatbox            │ Model Verification Metrics        │
+│  ATC View                  │ Synoptic Regime Panel             │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 6-Hour Slot Definition
 
-Labels derived from IMD Table-II weather type codes (T=9 = Thunderstorm) and G-codes (time of commencement):
-
-| Slot | IST Window | ERA5 Snapshot | GFS Cycle | Base Rate | Operational Status |
-|------|-----------|---------------|-----------|-----------|-------------------|
-| 0 | 0001–0600 | 00Z UTC | prev-day 06Z f012 | 3.7% | Monitoring |
-| 1 | 0601–1200 | 06Z UTC | prev-day 12Z f012 | 1.1% | Monitoring |
-| **2** | **1201–1800** | **12Z UTC** | **prev-day 18Z f012** | **6.3%** | **Operational ✅** |
-| 3 | 1801–2400 | 18Z UTC | same-day 00Z f012 | 5.9% | Monitoring |
+| Slot | IST Window | ERA5 Snapshot | Base Rate | Status |
+|------|-----------|---------------|-----------|--------|
+| 0 | 0001–0600 | 00Z UTC | 3.7% | Monitoring |
+| 1 | 0601–1200 | 06Z UTC | 1.1% | Monitoring |
+| **2** | **1201–1800** | **12Z UTC** | **6.3%** | **Operational ✅** |
+| 3 | 1801–2400 | 18Z UTC | 5.9% | Monitoring |
 
 ---
 
-## Feature Engineering
+## Model Performance — v3 Calibrated (Production)
 
-| Category | Features | Count |
-|----------|----------|------:|
-| Surface Variables | MAX, MIN, DTR, AW, RF, EVP, DRNRF, SSH | 8 |
-| Rolling Statistics | RF_3d, RF_7d, MAX_3d_avg, MIN_3d_avg, DTR_3d_avg | 5 |
-| Lag Features | RF_lag1, MAX_lag1, MIN_lag1, LABEL_lag1 | 4 |
-| Seasonal Encodings | MONTH_sin, MONTH_cos, DOY_sin, DOY_cos, SEASON | 5 |
-| Weather Flags | HA_flag, RF_nonzero | 2 |
-| Upper-Air Stability | CAPE, K_INDEX, LIFTED_INDEX, TOTALS_TOTALS, PRECIP_WATER | 5 |
-| ERA5 Surface (6-hrly) | T2M, D2M, U10, V10, CAPE, SP | 6 |
-| ERA5 Pressure Levels (6-hrly) | T/q/u/v at 500, 700, 850 hPa | 12 |
-| Slot Encodings | slot_sin, slot_cos, slot_month_clim, doy_sin, doy_cos | 5 |
-| Slot Lag Features | ts_label_lag1_slot, ts_any_yesterday | 2 |
-| **Total** | | **54** |
+| Slot | AUROC | POD | FAR | CSI | HSS | Threshold | Calibration |
+|------|:-----:|----:|----:|----:|----:|:---------:|:-----------:|
+| 0 | 0.901 | 0.200 | 0.950 | 0.042 | 0.065 | 0.24 | Platt |
+| 1 | 0.911 | 0.000 | 1.000 | 0.000 | — | 0.38 | Platt |
+| **2** | **0.821** | **0.356** | **0.623** | **0.224** | **0.318** | **0.16** | **Isotonic** |
+| 3 | 0.842 | 0.286 | 0.926 | 0.063 | 0.087 | 0.39 | Isotonic |
+
+> **Key finding:** ERA5_CAPE jumped from rank 42 → rank 2 for Slot 3 with 6-hourly ERA5. The `cape_x_kindex` interaction term entered top 5 in 3 of 4 slots. Slot 3 Brier score improved 64% after isotonic calibration.
 
 ---
 
-## Model Performance
-
-### Daily Model (Phase 1)
-
-| Model | AUROC | POD | FAR | CSI | HSS |
-|-------|------:|----:|----:|----:|----:|
-| Logistic Regression | 0.818 | — | — | — | — |
-| Random Forest | 0.842 | — | — | — | — |
-| LightGBM | 0.799 | — | — | — | — |
-| XGBoost (surface only) | 0.809 | 0.510 | 0.742 | 0.207 | 0.247 |
-| **XGBoost (surface + upper-air + ERA5)** | **0.871** | **0.500** | **0.586** | **0.293** | **0.389** |
-
-### 6-Hour Nowcast — v1 vs v2
-
-| Slot | Window | v1 AUROC | v2 AUROC | v2 POD | v2 FAR | v2 CSI | v2 HSS | Threshold |
-|------|--------|:--------:|:--------:|-------:|-------:|-------:|-------:|:---------:|
-| 0 | 0001–0600 | 0.9205 | 0.9016 | 0.200 | 0.950 | 0.042 | 0.065 | 0.29 |
-| 1 | 0601–1200 | 0.8637 | 0.9108 | 0.000 | 1.000 | 0.000 | — | 0.41 |
-| **2** | **1201–1800** | **0.8333** | **0.8212** | **0.356** | **0.623** | **0.224** | **0.318** | **0.34** |
-| 3 | 1801–2400 | 0.8166 | 0.8415 | 0.286 | 0.926 | 0.063 | 0.087 | 0.60 |
-| **Weighted** | | 0.8390 | **0.8352** | **0.318** | **0.724** | **0.169** | **0.240** | |
-
-> **Key finding from v1 → v2:** With 6-hourly ERA5, `ERA5_CAPE` jumped from rank 42 → rank 2 for Slot 3 (evening). The model can now distinguish afternoon (12Z) from evening (18Z) atmospheric states, improving Slot 3 AUROC by +0.025. Slot 2 (1201–1800 IST) is the operationally ready window — HSS 0.318 with AUROC 0.821.
-
----
-
-## SHAP Feature Importance (v2 Models)
+## SHAP Feature Importance (v3)
 
 | Slot | #1 | #2 | #3 | #4 | #5 |
 |------|----|----|----|----|-----|
-| 0 (Night) | CAPE | LABEL_lag1 | LIFTED_INDEX | DRNRF | MIN_3d_avg |
-| 1 (Morning) | ts_any_yesterday | CAPE | RF | ERA5_q_700hPa | DRNRF |
-| **2 (Afternoon)** | **CAPE** | **TOTALS_TOTALS** | **K_INDEX** | **ERA5_T2M** | **MIN** |
-| 3 (Evening) | K_INDEX | ERA5_CAPE ↑ | LIFTED_INDEX | CAPE | ERA5_T2M ↑ |
-
-↑ = significant rank improvement vs v1 model
+| 0 | CAPE | LABEL_lag1 | LIFTED_INDEX | DRNRF | MIN_3d_avg |
+| 1 | ts_any_yesterday | CAPE | RF | ERA5_q_700hPa | DRNRF |
+| **2** | **cape_x_kindex** | **CAPE** | **TOTALS_TOTALS** | **K_INDEX** | **ERA5_T2M** |
+| 3 | cape_x_kindex | ERA5_CAPE ↑ | K_INDEX | LIFTED_INDEX | thetae_850 |
 
 ---
 
 ## Real-Time Pipeline
 
-Based on GFS 0.25° operational forecasts from NOAA NOMADS (t+12 approach, per Atul's pipeline scoping):
+### GitHub Actions (2x daily, fully automated)
 
-| UTC Cron | Script | Feeds |
-|----------|--------|-------|
-| 10:15 UTC | `fetch_gfs_realtime.py` + `fetch_upperair_realtime.py` | Slot 0 |
-| 16:15 UTC | same | Slot 1 |
-| 22:15 UTC | same | Slot 2 |
-| 04:15 UTC | same | Slot 3 |
+| UTC | IST | Action |
+|-----|-----|--------|
+| 10:15 | 15:45 | Fetch → Forecast → Commit → Deploy to Cloudflare |
+| 16:15 | 21:45 | Fetch → Forecast → Commit → Deploy to Cloudflare |
 
-GFS posts ~3.5–4h after cycle time. t+12 approach gives ~6.5h buffer before each slot. IGRA radiosonde data used for training only (not real-time — daily batch product).
+### Himawari-9 Satellite (Atul)
+
+`fetch_himawari_realtime.py` — Band 13 (10.4μm IR) from NOAA AWS S3, segments S04+S05+S06, VOBL 50km bounding box:
+
+| Signal | Threshold | Meaning |
+|--------|-----------|---------|
+| Min BT | < −40°C | Storm cell present |
+| Cold pixels | > 0 | Active deep convection |
+| VOBL BT | — | Cloud-top temp directly overhead |
 
 ---
 
-## Repository Structure
+## REST API
 
-```text
-CSIR_Thunderstorm/
-│
-├── data/
-│   ├── bengaluru_thunderstorm_features_merged.csv     # daily features (54 cols)
-│   ├── bengaluru_6hr_labels.csv                       # 6-hr slot labels (15,276 rows)
-│   ├── bengaluru_6hr_training_dataset.csv             # v1 training dataset
-│   ├── bengaluru_6hr_training_dataset_v2.csv          # v2 training dataset (6-hr ERA5)
-│   ├── era5_6hrly_bengaluru_2015_2025.csv             # ERA5 6-hourly (Vidhi)
-│   └── gfs_realtime/                                  # GFS real-time CSVs
-│
-├── models/
-│   ├── thunderstorm_model.pkl                         # daily XGBoost model
-│   ├── nowcast_6hr_xgb_v1.pkl                        # combined 6-hr model
-│   ├── nowcast_slot{0-3}_xgb.pkl                     # v1 slot models (daily ERA5)
-│   └── nowcast_slot{0-3}_xgb_v2.pkl                  # v2 slot models (6-hr ERA5) ← active
-│
-├── results/
-│   ├── evaluation_results.csv                         # daily model metrics
-│   ├── evaluation_results_per_slot.csv                # v1 slot metrics
-│   ├── evaluation_results_per_slot_v2.csv             # v2 slot metrics
-│   ├── shap_per_slot_importance.csv                   # v1 SHAP
-│   ├── shap_per_slot_importance_v2.csv                # v2 SHAP
-│   ├── shap_figures/                                  # v1 SHAP charts
-│   ├── shap_figures_v2/                               # v2 SHAP charts
-│   └── eda_figures/                                   # EDA charts (Sneha)
-│
-├── A1_feature_engineering.py      # builds 6-hr training dataset
-├── A2_train_model.py              # trains combined 6-hr XGBoost
-├── A3_slot_models.py              # trains v1 slot models (daily ERA5)
-├── A4_shap_analysis.py            # SHAP on v1 models
-├── A4_shap_analysis_v2.py         # SHAP on v2 models
-├── A5_retrain_with_6hr_era5.py    # trains v2 slot models (6-hr ERA5)
-├── fetch_gfs_realtime.py          # GFS real-time data fetcher
-├── fetch_upperair_realtime.py     # upper-air stability indices from GFS (Atul)
-├── predict_nowcast.py             # 6-hr nowcast prediction script
-├── main.py                        # FastAPI application
-├── API_EXAMPLES.md                # curl examples for all endpoints
-├── baseline_model.py
-├── tune_model.py
-├── evaluate.py
-├── predict.py
-└── README.md
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| POST | `/predict` | Daily prediction |
+| GET | `/nowcast/slots/info` | Slot metadata |
+| POST | `/nowcast/predict/slot/{id}` | Single slot |
+| POST | `/nowcast/predict/all` | All 4 slots |
+| POST | `/rag/explain` | Llama-3.3-70b explanation |
+| POST | `/rag/analogs` | Historical analog retrieval |
 
 ---
 
@@ -176,85 +161,62 @@ CSIR_Thunderstorm/
 ```bash
 git clone https://github.com/Aprameya05/CSIR-Thunderstorm-Bengaluru.git
 cd CSIR-Thunderstorm-Bengaluru
-pip install xgboost optuna scikit-learn joblib shap pandas numpy fastapi uvicorn cfgrib eccodes xarray requests metpy
+pip install xgboost scikit-learn joblib shap pandas numpy fastapi uvicorn \
+            requests metpy boto3 satpy pyresample pytz groq
 ```
 
 ---
 
 ## Usage
 
-### Run 6-hour nowcast (demo)
 ```bash
+# Run nowcast
 python predict_nowcast.py
-```
-
-### Run for a specific date
-```bash
 python predict_nowcast.py --date 2023-10-11
-```
 
-### Start the API
-```bash
+# Run full pipeline
+python run_daily_forecast_v2.py
+
+# Export forecast.json
+python forecast_json_exporter_v2.py
+
+# Fetch satellite data
+python fetch_himawari_realtime.py
+
+# Start API
 uvicorn main:app --reload
 ```
-Swagger UI: `http://127.0.0.1:8000/docs`
-
-### Fetch real-time GFS data
-```bash
-python fetch_gfs_realtime.py --slot 2
-python fetch_upperair_realtime.py --slot 2
-```
-
----
-
-## REST API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Health check — model versions and thresholds |
-| POST | `/predict` | Daily thunderstorm prediction |
-| GET | `/nowcast/slots/info` | Slot metadata |
-| POST | `/nowcast/predict/slot/{id}` | Single slot prediction (0–3) |
-| POST | `/nowcast/predict/all` | All 4 slots in one call |
-
-See `API_EXAMPLES.md` for curl examples.
 
 ---
 
 ## Development Roadmap
 
 ### Phase 1 — Daily Model ✅
-- [x] Surface data preprocessing and feature engineering
-- [x] Baseline ML models (LR, RF, LightGBM, XGBoost)
-- [x] Hyperparameter optimisation (Optuna, 5-fold CV)
-- [x] Upper-air stability indices (IGRA)
-- [x] ERA5 daily feature integration
+- [x] XGBoost with surface + upper-air + ERA5 (AUROC 0.871)
 - [x] SHAP explainability
-- [x] WMO verification metrics
 - [x] FastAPI REST API
 
 ### Phase 2 — 6-Hour Nowcasting ✅
-- [x] 6-hr label construction from IMD G-codes
-- [x] 6-hr feature engineering pipeline (A1)
-- [x] Combined 6-hr XGBoost model (A2)
-- [x] Per-slot XGBoost models v1 — daily ERA5 (A3)
-- [x] SHAP analysis v1 (A4)
-- [x] ERA5 6-hourly data pull 2015–2025 (Vidhi)
-- [x] Per-slot XGBoost models v2 — 6-hourly ERA5 (A5)
-- [x] SHAP analysis v2 — ERA5_CAPE rank 42→2 for Slot 3 (A4 v2)
-- [x] GFS real-time fetcher with t+12 cycle logic (Atul)
-- [x] Upper-air stability indices from GFS via MetPy (Atul)
-- [x] Prediction script with demo/date/live modes
-- [x] FastAPI nowcast endpoints (Satvik)
-- [x] EDA charts (Sneha)
-- [x] API documentation and curl examples
+- [x] Per-slot XGBoost v1/v2/v3 with calibration
+- [x] ERA5 6-hourly 2015–2025 (Vidhi)
+- [x] GFS real-time + upper-air MetPy (Atul)
+- [x] RAG endpoints (Groq Llama-3.3-70b)
 
-### Phase 3 — Operations 📋
-- [ ] Cron job deployment on server
-- [ ] predict_nowcast.py --live-gfs mode
-- [ ] Ceilometer integration
+### Phase 3 — Operations ✅
+- [x] Live React dashboard (Cloudflare Pages)
+- [x] GitHub Actions auto-deploy (2x daily)
+- [x] FastAPI public deployment (Render)
+- [x] RAG chatbox live
+- [x] Himawari-9 storm proximity fetcher (Atul)
+- [x] Real met parameters on dashboard
+- [x] Rolling verification (Sneha)
+
+### Phase 4 — Enhancements 📋
+- [ ] gfs_fetcher.py — all 4 slots real-time
+- [ ] Himawari signal in forecast.json + dashboard panel
+- [ ] Daily automated verification in GitHub Action
 - [ ] LSTM temporal model
-- [ ] Dashboard (Sneha)
+- [ ] IMD radar integration (pending Dr. Agnihotri)
 
 ---
 
@@ -262,11 +224,11 @@ See `API_EXAMPLES.md` for curl examples.
 
 | Member | Role | Contribution |
 |--------|------|-------------|
-| **Aprameya Bharadwaj** | ML Lead | A1–A5, SHAP, predict_nowcast.py, GFS fetcher, architecture |
-| **Atul Denny** | Pipeline Lead | Pipeline scoping, GFS fetcher, upper-air stability indices via MetPy |
-| **Satvik** | Deployment | FastAPI main.py, all 5 endpoints, input validation, API docs |
-| **Vidhi** | ERA5 Data | 6-hourly ERA5 2015–2025 (16,072 rows, zero nulls) |
-| **Sneha** | Visualization | 7 EDA charts — monthly heatmap, slot activity, yearly trends, CAPE, correlation |
+| **Aprameya Bharadwaj** | ML Lead | A1–A5, pipeline, RAG, dashboard, architecture |
+| **Atul Denny** | Pipeline Lead | GFS fetcher, upper-air MetPy, Himawari-9 fetcher |
+| **Satvik** | Deployment | FastAPI, Render, RAG endpoints |
+| **Vidhi** | ERA5 Data | 6-hourly ERA5 2015–2025 (16,072 rows) |
+| **Sneha** | Verification | EDA, ForecastLogger, verification dashboard |
 
 ---
 
@@ -278,5 +240,5 @@ Developed under the guidance of **Dr. Geeta Agnihotri (Scientist F, IMD Bengalur
 
 ## License
 
-This repository is intended for academic and research purposes.
+For academic and research purposes only.
 Copyright © 2026 CSIR Thunderstorm Prediction System. All rights reserved.
