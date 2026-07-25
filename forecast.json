@@ -1,42 +1,72 @@
 {
-  "date": "2026-07-24",
-  "generated_at": "2026-07-24 23:18 IST",
+  "date": "2026-07-25",
+  "generated_at": "2026-07-25 13:32 IST",
+  "alert_active": false,
+  "peak_slot": 3,
+  "peak_probability": 0.0288,
+  "model_version": "v3_calibrated",
   "slots": [
     {
       "slot": 0,
       "label": "Late Night",
       "time": "0001-0600 IST",
-      "probability": 0.015,
+      "probability": 0.0231,
       "predicted": false,
-      "threshold": 0.29
+      "threshold": 0.24,
+      "primary": false,
+      "source": "model_defaults",
+      "cape": 0.0,
+      "k_index": 30.0,
+      "lifted_index": -2.0,
+      "totals_totals": 44.0
     },
     {
       "slot": 1,
       "label": "Morning",
       "time": "0601-1200 IST",
-      "probability": 0.015,
+      "probability": 0.0078,
       "predicted": false,
-      "threshold": 0.41
+      "threshold": 0.38,
+      "primary": false,
+      "source": "model_defaults",
+      "cape": 0.0,
+      "k_index": 30.0,
+      "lifted_index": -2.0,
+      "totals_totals": 44.0
     },
     {
       "slot": 2,
       "label": "Afternoon",
       "time": "1201-1800 IST",
-      "probability": 0.194,
+      "probability": 0.0,
       "predicted": false,
-      "threshold": 0.34
+      "threshold": 0.16,
+      "primary": true,
+      "source": "model_defaults",
+      "cape": 0.0,
+      "k_index": 30.0,
+      "lifted_index": -2.0,
+      "totals_totals": 44.0
     },
     {
       "slot": 3,
       "label": "Evening",
       "time": "1801-2400 IST",
-      "probability": 0.096,
+      "probability": 0.0288,
       "predicted": false,
-      "threshold": 0.6
+      "threshold": 0.39,
+      "primary": false,
+      "source": "model_defaults",
+      "cape": 0.0,
+      "k_index": 30.0,
+      "lifted_index": -2.0,
+      "totals_totals": 44.0
     }
   ],
-  "alert_active": false,
-  "peak_slot": 2,
-  "peak_probability": 0.194,
-  "model_version": "v3_calibrated"
+  "met_parameters": {
+    "CAPE": 0.0,
+    "K_INDEX": 30.0,
+    "LIFTED_INDEX": -2.0,
+    "TOTALS_TOTALS": 44.0
+  }
 }
