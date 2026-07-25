@@ -1,6 +1,6 @@
 {
-  "date": "2026-07-26",
-  "generated_at": "2026-07-26 02:16 IST",
+  "date": "2026-07-25",
+  "generated_at": "2026-07-25 20:32 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0231,
@@ -18,10 +18,7 @@
       "cape": 0.0,
       "k_index": 28.7,
       "lifted_index": 0.23,
-      "totals_totals": 38.4,
-      "trend": "stable",
-      "trend_diff": 0.0,
-      "prev_probability": 0.023
+      "totals_totals": 38.4
     },
     {
       "slot": 1,
@@ -35,10 +32,7 @@
       "cape": 0.0,
       "k_index": 28.7,
       "lifted_index": 0.23,
-      "totals_totals": 38.4,
-      "trend": "stable",
-      "trend_diff": 0.0,
-      "prev_probability": 0.008
+      "totals_totals": 38.4
     },
     {
       "slot": 2,
@@ -52,10 +46,7 @@
       "cape": 0.0,
       "k_index": 28.7,
       "lifted_index": 0.23,
-      "totals_totals": 38.4,
-      "trend": "stable",
-      "trend_diff": 0,
-      "prev_probability": 0
+      "totals_totals": 38.4
     },
     {
       "slot": 3,
@@ -69,10 +60,7 @@
       "cape": 0.0,
       "k_index": 28.7,
       "lifted_index": 0.23,
-      "totals_totals": 38.4,
-      "trend": "stable",
-      "trend_diff": 0,
-      "prev_probability": 0
+      "totals_totals": 38.4
     }
   ],
   "met_parameters": {
@@ -143,7 +131,7 @@
     "csi": 0.0,
     "n_days": 30,
     "n_ts": 0,
-    "date_verified": "2026-07-25 19:10 IST",
+    "date_verified": "2026-07-24 17:47 IST",
     "slot": 2,
     "window": "30-day",
     "available": true,
