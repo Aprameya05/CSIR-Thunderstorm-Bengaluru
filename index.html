@@ -1209,7 +1209,7 @@
     }
 
     // --- 7. RADAR MAP PAGE (DOPPLER RADAR DISPLAY) ---
-    function RadarMapPage() {
+    function RadarMapPage({ liveData }) {
       const [scrubberTime, setScrubberTime] = useState(4);
       const [isPlaying, setIsPlaying] = useState(false);
 
@@ -1234,6 +1234,70 @@
               LIVE DATA PENDING — IMD MOSDAC INTEGRATION IN PROGRESS
             </span>
           </div>
+
+          {/* Himawari-9 Satellite Storm Proximity Panel */}
+          {(() => {
+            const h9 = liveData?.satellite?.himawari9;
+            const stormDetected = h9?.storm_detected;
+            const minBT = h9?.min_bt_50km;
+            const voblBT = h9?.vobl_bt_celsius;
+            const coldPx = h9?.cold_pixels_count ?? 0;
+            const nearestKm = h9?.nearest_pixel_dist_km;
+            const timestampIST = h9?.timestamp_ist?.replace('T', ' ') + ' IST';
+            const available = h9?.available;
+
+            return (
+              <div className={`p-4 rounded-xl border font-mono ${stormDetected ? 'bg-red-500/10 border-red-500/40' : 'bg-[#020409] border-[#172338]'}`}>
+                <div className="flex justify-between items-center mb-3 border-b border-[#172338] pb-2">
+                  <span className="text-xs font-bold text-cyan-300 flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${stormDetected ? 'bg-red-400 animate-ping' : available ? 'bg-emerald-400' : 'bg-gray-500'}`}></span>
+                    HIMAWARI-9 SATELLITE — STORM PROXIMITY SIGNAL
+                  </span>
+                  <span className="text-[10px] text-[#607d8b]">Band 13 · 10.4μm IR · 50km VOBL Box</span>
+                </div>
+
+                {available ? (
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 text-center text-xs">
+                    <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                      <div className="text-[9px] text-[#607d8b] mb-1">STORM DETECTED</div>
+                      <div className={`text-sm font-bold ${stormDetected ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {stormDetected ? '⚡ YES' : '✓ CLEAR'}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                      <div className="text-[9px] text-[#607d8b] mb-1">MIN BT (50km)</div>
+                      <div className={`text-sm font-bold ${minBT !== null && minBT < -40 ? 'text-red-400' : 'text-white'}`}>
+                        {minBT !== null ? `${minBT}°C` : '—'}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                      <div className="text-[9px] text-[#607d8b] mb-1">VOBL BT</div>
+                      <div className="text-sm font-bold text-white">
+                        {voblBT !== null ? `${voblBT}°C` : '—'}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                      <div className="text-[9px] text-[#607d8b] mb-1">COLD PIXELS</div>
+                      <div className={`text-sm font-bold ${coldPx > 0 ? 'text-orange-400' : 'text-white'}`}>
+                        {coldPx} {coldPx > 0 ? '⚠' : ''}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                      <div className="text-[9px] text-[#607d8b] mb-1">NEAREST CELL</div>
+                      <div className="text-sm font-bold text-white">
+                        {nearestKm !== null ? `${nearestKm} km` : '—'}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-[#607d8b] text-xs py-2">Satellite data unavailable — fetcher not yet run</div>
+                )}
+                <div className="text-[9px] text-[#607d8b] mt-2 text-right">
+                  Last update: {available ? timestampIST : '—'} · Threshold: −40°C · Source: NOAA AWS S3
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="relative w-full h-[550px] bg-[#020409] rounded-xl border border-[#172338] overflow-hidden flex items-center justify-center">
             {/* Concentric Range Rings */}
@@ -1557,7 +1621,7 @@
                   </motion.div>
                 )}
 
-                {activeNavTab === 'RADAR MAP' && <RadarMapPage key="radar" />}
+                {activeNavTab === 'RADAR MAP' && <RadarMapPage key="radar" liveData={liveData} />}
                 {activeNavTab === 'MODELS' && <ModelsPage key="models" />}
                 {activeNavTab === 'EXPLAINABILITY' && <ExplainabilityPage key="explain" />}
                 {activeNavTab === 'REGIMES' && <RegimesPage key="regimes" />}

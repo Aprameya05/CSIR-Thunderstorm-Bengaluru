@@ -17,8 +17,10 @@ BASE_DIR = r"C:\Users\Aprameya\OneDrive\Pictures\Desktop\CSIR_Thunderstorm"
 
 FORECAST_LOG   = os.path.join(BASE_DIR, "data", "forecast_log.csv")
 GFS_REALTIME   = os.path.join(BASE_DIR, "data", "gfs_realtime_43295.csv")
-UPPER_REALTIME = os.path.join(BASE_DIR, "data", "upperair_realtime_43295.csv")
-OUTPUT_JSON    = os.path.join(BASE_DIR, "forecast.json")
+UPPER_REALTIME  = os.path.join(BASE_DIR, "data", "upperair_realtime_43295.csv")
+HIMAWARI_FILE   = os.path.join(BASE_DIR, "data", "himawari_realtime.json")
+HIMAWARI_HIST   = os.path.join(BASE_DIR, "data", "himawari_history.json")
+OUTPUT_JSON     = os.path.join(BASE_DIR, "forecast.json")
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -272,7 +274,42 @@ def build_forecast_json():
         },
     }
 
-    # ── 5. Write ─────────────────────────────────────────────────────────────
+    # ── 5. Load Himawari satellite signal ────────────────────────────────────
+    himawari = {}
+    if os.path.exists(HIMAWARI_FILE):
+        try:
+            with open(HIMAWARI_FILE) as f:
+                himawari = json.load(f)
+            print(f"  ✓ Himawari loaded: storm_detected={himawari.get('storm_detected')} min_bt={himawari.get('min_bt_50km')}°C")
+        except Exception as e:
+            print(f"  [WARN] Himawari load error: {e}")
+
+    himawari_history = []
+    if os.path.exists(HIMAWARI_HIST):
+        try:
+            with open(HIMAWARI_HIST) as f:
+                himawari_history = json.load(f)
+        except Exception:
+            pass
+
+    # ── 6. Assemble and write ─────────────────────────────────────────────────
+    output["satellite"] = {
+        "himawari9": {
+            "timestamp_utc":         himawari.get("timestamp_utc"),
+            "timestamp_ist":         himawari.get("timestamp_ist"),
+            "vobl_bt_celsius":       himawari.get("vobl_bt_celsius"),
+            "min_bt_50km":           himawari.get("min_bt_50km"),
+            "mean_bt_50km":          himawari.get("mean_bt_50km"),
+            "cold_pixels_count":     himawari.get("cold_pixels_count", 0),
+            "storm_detected":        himawari.get("storm_detected", False),
+            "nearest_pixel_dist_km": himawari.get("nearest_pixel_dist_km"),
+            "threshold_celsius":     himawari.get("threshold_celsius", -40.0),
+            "data_source":           himawari.get("data_source", "Himawari-9 Band 13 (10.4um) via NOAA AWS S3"),
+            "available":             bool(himawari),
+        },
+        "history": himawari_history[-6:] if himawari_history else [],
+    }
+
     with open(OUTPUT_JSON, "w") as f:
         json.dump(output, f, indent=2)
 
