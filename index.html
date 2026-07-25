@@ -187,19 +187,14 @@
       { name: 'BIAS', val: '1.208', delta: '▲ 0.05' },
     ];
 
-    const DERIVED_FEATURES = new Set(['cape_x_kindex','li_x_totals','thetae_850','q_gradient_500_850','wind_shear_500_850','wind_shear_700_850','moisture_flux_850','moisture_flux_700','thickness_500_850','mid_level_drying']);
-
-    const realtimeShap = liveData?.realtime_shap?.[String(shapSlot)];
-    const SHAP_DATA = realtimeShap?.top_features
-      ? realtimeShap.top_features.map(f => ({
+    const SHAP_DATA = isRealtime ? realtimeShap.top_features.map(f => ({
           feature: f.feature,
           value: Math.abs(f.shap),
           raw_shap: f.shap,
-          isDerived: DERIVED_FEATURES.has(f.feature),
+          isDerived: DERIVED_FEATURES_RT.has(f.feature),
           direction: f.direction,
           actual_value: f.value,
-        }))
-      : [
+        })) : [
           { feature: 'TOTALS_TOTALS', value: 0.823, isDerived: false },
           { feature: 'cape_x_kindex', value: 0.755, isDerived: true },
           { feature: 'K_INDEX', value: 0.707, isDerived: false },
@@ -211,8 +206,7 @@
           { feature: 'wind_shear_700_850', value: 0.380, isDerived: true },
           { feature: 'moisture_flux_700', value: 0.350, isDerived: true },
         ];
-    const maxShap = Math.max(...SHAP_DATA.map(d => d.value), 0.01);
-    const isRealtime = !!realtimeShap;
+    
 
     const SYNOPTIC_REGIMES = [
       { id: 'R1', name: 'R1 Hot Pre-Monsoon', ts_rate: 1.2, auroc: 1.000, color: '#4caf50', desc: 'Dry thermal low baseline, low storm occurrence' },
@@ -1061,6 +1055,12 @@
       const [ragLogs, setRagLogs] = useState(
         `System ready. Connect to /rag/explain endpoint to activate Llama-3.3 powered meteorological explanation. Ask: Why did Slot 2 fire today?`
       );
+
+      // Real-time SHAP — computed inside component so liveData is in scope
+      const DERIVED_FEATURES_RT = new Set(['cape_x_kindex','li_x_totals','thetae_850','q_gradient_500_850','wind_shear_500_850','wind_shear_700_850','moisture_flux_850','moisture_flux_700','thickness_500_850','mid_level_drying']);
+      const realtimeShap = liveData?.realtime_shap?.[String(shapSlot)];
+      const isRealtime = !!realtimeShap?.top_features;
+      const maxShap = isRealtime ? Math.max(...realtimeShap.top_features.map(f => Math.abs(f.shap)), 0.01) : 0.85;
 
       const handleRunQuery = async (e) => {
         e.preventDefault();
