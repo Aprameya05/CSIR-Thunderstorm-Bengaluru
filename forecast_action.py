@@ -111,8 +111,8 @@ for slot_id in range(4):
         slots_output.append({
             "slot": slot_id, "label": SLOT_LABELS[slot_id],
             "time": SLOT_NAMES[slot_id],
-            "probability": round(prob, 4),
-            "predicted": prob >= THRESHOLDS[slot_id],
+            "ts_probability": round(prob, 4),
+            "ts_predicted": prob >= THRESHOLDS[slot_id],
             "threshold": THRESHOLDS[slot_id],
             "primary": slot_id == 2,
             "source": "climatology",
@@ -167,8 +167,8 @@ for slot_id in range(4):
     slots_output.append({
         "slot": slot_id, "label": SLOT_LABELS[slot_id],
         "time": SLOT_NAMES[slot_id],
-        "probability": round(float(cal), 4),
-        "predicted": float(cal) >= threshold,
+        "ts_probability": round(float(cal), 4),
+        "ts_predicted": float(cal) >= threshold,
         "threshold": threshold,
         "primary": slot_id == 2,
         "source": "gfs+upperair" if slot_id in upper_air else "model_defaults",
@@ -193,10 +193,17 @@ forecast = {
     "model_version":    "v3_calibrated",
     "slots":            slots_output,
     "met_parameters": {
-        "CAPE":          met_slot.get('cape', 0),
-        "K_INDEX":       met_slot.get('k_index', 0),
-        "LIFTED_INDEX":  met_slot.get('lifted_index', 0),
-        "TOTALS_TOTALS": met_slot.get('totals_totals', 0),
+        "ua_cape_jkg":       met_slot.get('cape', 0),
+        "ua_k_index":        met_slot.get('k_index', 0),
+        "ua_lifted_index":   met_slot.get('lifted_index', 0),
+        "ua_totals_totals":  met_slot.get('totals_totals', 0),
+        "instability_level": (
+            "Extreme" if met_slot.get('cape', 0) >= 3000 else
+            "High"    if met_slot.get('cape', 0) >= 1500 else
+            "Moderate" if met_slot.get('cape', 0) >= 500 else
+            "Marginal" if met_slot.get('cape', 0) >= 100 else
+            "Stable"
+        ),
     },
 }
 
