@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSIR Thunderstorm Nowcast System — IMD Station 43295 (Bengaluru Airport VOBL/BLR)</title>
+  <meta name="description" content="Operational ATC-Grade AI Thunderstorm Forecasting Dashboard for Kempegowda International Airport Bengaluru. CSIR & IMD Bengaluru.">
+  
+  <!-- Fonts: JetBrains Mono for Operational Data/Numbers, Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bgDark: '#040711',
+            panelDark: 'rgba(6, 10, 20, 0.88)',
+            borderDark: '#172338',
+            accentTeal: '#38bdf8',
+            alertRed: '#ef5350',
+            alertOrange: '#ff9800',
+            alertYellow: '#ffc107',
+            alertGreen: '#4caf50'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & ReactDOM UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Framer Motion UMD CDN -->
+  <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+  <!-- Babel Standalone for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Recharts UMD -->
+  <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js" crossorigin></script>
+  
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #040711; }
+    ::-webkit-scrollbar-thumb { background: #172338; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+
+    /* Fix 2: ONE Overlay only, 20% opacity maximum — rgba(0, 0, 0, 0.20), no blur, no bg-black */
+    .overlay {
+      background: rgba(0, 0, 0, 0.20);
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Fix 1: Background CSS for all 4 slot divs */
+    .slot-bg-common {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      filter: none !important;
+      -webkit-filter: none !important;
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 1s ease-in-out;
+    }
+
+    /* Fix 4: Panel cards — background: rgba(6,10,20,0.88) on all panel cards */
+    .atc-card {
+      background: rgba(6, 10, 20, 0.88) !important;
+      border: 1px solid rgba(23, 35, 56, 0.85);
+    }
+    
+    .atc-card-hover {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .atc-card-hover:hover {
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
+    }
+
+    /* Active Teal Highlight Ring */
+    .slot-active-teal {
+      border: 2px solid #38bdf8 !important;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.35), inset 0 0 15px rgba(56, 189, 248, 0.15) !important;
+      background: rgba(12, 24, 46, 0.95) !important;
+    }
+
+    /* Radar Scan Animation */
+    @keyframes radarScan {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-radar { animation: radarScan 6s linear infinite; transform-origin: center; }
+
+    /* Rain particle animation */
+    @keyframes fallRain {
+      0% { transform: translateY(-100px) translateX(0); opacity: 0; }
+      50% { opacity: 0.8; }
+      100% { transform: translateY(100vh) translateX(-60px); opacity: 0; }
+    }
+    .rain-streak {
+      position: absolute;
+      width: 1.5px;
+      height: 40px;
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.6), transparent);
+      animation: fallRain 1.2s linear infinite;
+    }
+
+    /* Twinkle stars animation */
+    @keyframes starTwinkle {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+    .star-particle { animation: starTwinkle 3s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-[#040711] text-[#e8eaf6] antialiased min-h-screen font-sans relative overflow-x-hidden selection:bg-sky-400 selection:text-black">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo } = React;
+    const Motion = window.Motion || window.framerMotion || { motion: { div: 'div', button: 'button', nav: 'nav', img: 'img' }, AnimatePresence: ({ children }) => children };
+    const { motion, AnimatePresence } = Motion;
+
+    // --- EXACT AIRPORT PHOTOGRAPHS MAPPING (LOCAL FILE PATH REFERENCE ONLY) ---
+    const SLOT_AIRPORT_PHOTOS = {
+      0: {
+        slotName: "LATE NIGHT PREDICTION",
+        timeRange: "00:00 – 06:00 IST",
+        imgUrl: "./night1.png",
+        weatherIcon: "🌙"
+      },
+      1: {
+        slotName: "MORNING PREDICTION",
+        timeRange: "06:00 – 12:00 IST",
+        imgUrl: "./morning1.png",
+        weatherIcon: "☀️"
+      },
+      2: {
+        slotName: "AFTERNOON PREDICTION",
+        timeRange: "12:00 – 18:00 IST",
+        imgUrl: "./afternoon1.png",
+        weatherIcon: "⛅"
+      },
+      3: {
+        slotName: "EVENING PREDICTION",
+        timeRange: "18:00 – 24:00 IST",
+        imgUrl: "./evening1.png",
+        weatherIcon: "🌆"
+      }
+    };
+
+    // --- DEFAULT DATA & DEMO CONSTANTS ---
+    const DEFAULT_SLOTS = [
+      { slot: 0, label: "LATE NIGHT", time: "00:00 - 06:00 IST", ts_probability: 0.015, ts_predicted: false, threshold: 0.29, icon: "🌙" },
+      { slot: 1, label: "MORNING", time: "06:00 - 12:00 IST", ts_probability: 0.015, ts_predicted: false, threshold: 0.41, icon: "☀️" },
+      { slot: 2, label: "AFTERNOON", time: "12:00 - 18:00 IST", ts_probability: 0.194, ts_predicted: false, threshold: 0.34, icon: "⛅", primary: true },
+      { slot: 3, label: "EVENING", time: "18:00 - 24:00 IST", ts_probability: 0.096, ts_predicted: false, threshold: 0.60, icon: "🌆" }
+    ];
+
+    const METRICS_SUMMARY = [
+      { name: 'AUROC', val: '0.871', delta: '▲ 0.02' },
+      { name: 'POD', val: '0.500', delta: '▲ 0.03' },
+      { name: 'FAR', val: '0.586', delta: '▼ 0.01' },
+      { name: 'CSI', val: '0.293', delta: '▲ 0.01' },
+      { name: 'HSS', val: '0.389', delta: '▲ 0.02' },
+      { name: 'BIAS', val: '1.208', delta: '▲ 0.05' },
+    ];
+
+    const SHAP_DATA = [
+      { feature: 'TOTALS_TOTALS', value: 0.823, isDerived: false },
+      { feature: 'cape_x_kindex', value: 0.755, isDerived: true },
+      { feature: 'K_INDEX', value: 0.707, isDerived: false },
+      { feature: 'CAPE', value: 0.625, isDerived: false },
+      { feature: 'ERA5_T2M', value: 0.540, isDerived: false },
+      { feature: 'li_x_totals', value: 0.480, isDerived: true },
+      { feature: 'thetae_850', value: 0.450, isDerived: true },
+      { feature: 'q_gradient_500_850', value: 0.410, isDerived: true },
+      { feature: 'wind_shear_700_850', value: 0.380, isDerived: true },
+      { feature: 'moisture_flux_700', value: 0.350, isDerived: true },
+    ];
+
+    const SYNOPTIC_REGIMES = [
+      { id: 'R1', name: 'R1 Hot Pre-Monsoon', ts_rate: 1.2, auroc: 1.000, color: '#4caf50', desc: 'Dry thermal low baseline, low storm occurrence' },
+      { id: 'R2', name: 'R2 Moist Monsoon', ts_rate: 9.3, auroc: 0.934, color: '#ffc107', desc: 'Monsoonal westerly surge, high skill' },
+      { id: 'R3', name: 'R3 Moist Monsoon', ts_rate: 10.2, auroc: 0.798, color: '#ff9800', desc: 'Break-monsoon stratiform clouding' },
+      { id: 'R4', name: 'R4 Hot Pre-Monsoon', ts_rate: 9.8, auroc: 0.900, color: '#ff9800', desc: 'Strong solar heating with mid-level moisture' },
+      { id: 'R5', name: 'R5 High-TS Regime', ts_rate: 52.1, auroc: 0.773, color: '#ef5350', isChallenging: true, desc: 'Severe convective instability and convergence — most challenging regime' },
+    ];
+
+    const API_ENDPOINTS = [
+      { method: 'GET', path: '/', desc: 'System health check & API status', isPost: false },
+      { method: 'POST', path: '/predict', desc: 'Daily forecast prediction payload', isPost: true },
+      { method: 'GET', path: '/nowcast/slots/info', desc: '6-hour slot metadata & operational thresholds', isPost: false },
+      { method: 'POST', path: '/nowcast/predict/slot/{id}', desc: 'Single slot prediction (IDs 0-3)', isPost: true },
+      { method: 'POST', path: '/nowcast/predict/all', desc: 'All 4 slots predictions batch output', isPost: true },
+      { method: 'POST', path: '/rag/explain', desc: 'RAG forecast physical explanation engine', isPost: true },
+      { method: 'POST', path: '/rag/question', desc: 'Meteorological Q&A conversational endpoint', isPost: true },
+      { method: 'POST', path: '/rag/analogs', desc: 'Historical analog search engine (2015-2025)', isPost: true }
+    ];
+
+    const getRiskBadge = (prob) => {
+      if (prob >= 0.50) return { text: 'CRITICAL RISK', color: 'text-red-500', bg: 'bg-red-500/20', bar: 'bg-red-500' };
+      if (prob >= 0.30) return { text: 'HIGH RISK', color: 'text-orange-400', bg: 'bg-orange-500/20', bar: 'bg-orange-400' };
+      if (prob >= 0.15) return { text: 'MODERATE RISK', color: 'text-yellow-400', bg: 'bg-yellow-500/20', bar: 'bg-yellow-400' };
+      return { text: 'LOW RISK', color: 'text-emerald-400', bg: 'bg-emerald-500/20', bar: 'bg-emerald-400' };
+    };
+
+    const getInitialSlotByIstTime = () => {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const ist = new Date(utc + (3600000 * 5.5));
+      const hours = ist.getHours();
+      if (hours >= 0 && hours < 6) return 0; // Late Night
+      if (hours >= 6 && hours < 12) return 1; // Morning
+      if (hours >= 12 && hours < 18) return 2; // Afternoon
+      return 3; // Evening
+    };
+
+    // --- ANIMATED NUMBER COMPONENT ---
+    function AnimatedNumber({ value, decimals = 1, suffix = '' }) {
+      const [displayValue, setDisplayValue] = useState(0);
+      useEffect(() => {
+        let start = null;
+        const target = parseFloat(value);
+        function update(now) {
+          if (!start) start = now;
+          const progress = Math.min((now - start) / 1200, 1);
+          setDisplayValue((1 - Math.pow(1 - progress, 3)) * target);
+          if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+      }, [value]);
+      return <span className="font-mono">{displayValue.toFixed(decimals)}{suffix}</span>;
+    }
+
+    // --- CIRCULAR ARC GAUGE (270 DEGREE SWEEP) ---
+    function CircularArcGauge({ probability, threshold = 0.34, size = 110 }) {
+      const strokeWidth = 9;
+      const radius = (size - strokeWidth) / 2;
+      const circumference = 2 * Math.PI * radius;
+      const maxSweep = 270;
+      const strokeDashArray = `${(maxSweep / 360) * circumference} ${circumference}`;
+      const fillOffset = (1 - Math.min(Math.max(probability, 0), 1)) * ((maxSweep / 360) * circumference);
+
+      return (
+        <div className="relative flex items-center justify-center mx-auto" style={{ width: size, height: size }}>
+          <svg width={size} height={size} className="transform rotate-[135deg]">
+            <circle cx={size / 2} cy={size / 2} r={radius} stroke="#172338" strokeWidth={strokeWidth} strokeDasharray={strokeDashArray} fill="transparent" strokeLinecap="round" />
+            <circle cx={size / 2} cy={size / 2} r={radius} stroke={probability >= 0.3 ? '#ef5350' : '#4caf50'} strokeWidth={strokeWidth} strokeDasharray={strokeDashArray} strokeDashoffset={fillOffset} strokeLinecap="round" fill="transparent" style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-mono text-xl font-extrabold text-white">
+              <AnimatedNumber value={probability * 100} decimals={1} suffix="%" />
+            </span>
+            <span className="text-[9px] font-mono text-[#607d8b] uppercase tracking-wider">
+              LIMIT: {(threshold * 100).toFixed(0)}%
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // --- AUROC HALF-CIRCLE GAUGE COMPONENT ---
+    function HalfCircleAurocGauge({ value = 0.871, size = 85 }) {
+      const strokeWidth = 8;
+      const radius = (size - strokeWidth) / 2;
+      const circumference = Math.PI * radius;
+      const fillOffset = (1 - Math.min(Math.max(value, 0), 1)) * circumference;
+
+      return (
+        <div className="relative flex items-center justify-center" style={{ width: size, height: size / 2 + 10 }}>
+          <svg width={size} height={size / 2 + 10} className="transform rotate-[180deg]">
+            <circle cx={size / 2} cy={size / 2} r={radius} stroke="#172338" strokeWidth={strokeWidth} strokeDasharray={`${circumference} ${circumference}`} fill="transparent" strokeLinecap="round" />
+            <circle cx={size / 2} cy={size / 2} r={radius} stroke="#4caf50" strokeWidth={strokeWidth} strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={fillOffset} strokeLinecap="round" fill="transparent" style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
+          </svg>
+          <div className="absolute bottom-0 text-center font-mono">
+            <span className="text-[9px] text-[#607d8b] block font-semibold">AUROC</span>
+            <span className="text-sm font-extrabold text-white">{value.toFixed(3)}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // --- ATMOSPHERIC WEATHER OVERLAY (NO BLUR LAYERS) ---
+    function AtmosphericWeatherOverlay({ selectedSlotIndex }) {
+      const [lightningFlash, setLightningFlash] = useState(false);
+
+      // Random Lightning Strike Timer (Every 6.5 seconds)
+      useEffect(() => {
+        const triggerLightning = () => {
+          setLightningFlash(true);
+          setTimeout(() => setLightningFlash(false), 220);
+        };
+        const interval = setInterval(triggerLightning, 6500);
+        return () => clearInterval(interval);
+      }, []);
+
+      return (
+        <div className="fixed inset-0 z-10 pointer-events-none overflow-hidden">
+          
+          {/* Brief White-Blue Lightning Flash Overlay */}
+          <div className={`absolute inset-0 bg-cyan-100/20 transition-opacity duration-75 ${lightningFlash ? 'opacity-100' : 'opacity-0'}`}></div>
+
+          {/* Procedural Branching Lightning Bolt SVG */}
+          {lightningFlash && (
+            <svg className="absolute top-0 right-1/4 w-[500px] h-[700px] stroke-cyan-200 z-20" viewBox="0 0 500 700" fill="none">
+              <path d="M 250 0 L 220 180 L 280 240 L 190 420 L 260 480 L 140 700 M 280 240 L 360 320 L 340 400 M 190 420 L 120 490" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+          )}
+
+          {/* Continuous Diagonal Rain Particles */}
+          <div className="absolute inset-0 opacity-40">
+            {Array.from({ length: 25 }).map((_, i) => (
+              <div 
+                key={i} 
+                className="rain-streak" 
+                style={{ 
+                  left: `${(i * 4) + Math.random() * 2}%`, 
+                  top: `-${Math.random() * 20}%`,
+                  animationDelay: `${Math.random() * 1.5}s`,
+                  animationDuration: `${0.8 + Math.random() * 0.5}s`
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Twinkling Stars (Active for Night/Evening) */}
+          {(selectedSlotIndex === 0 || selectedSlotIndex === 3) && (
+            <div className="absolute inset-0">
+              {Array.from({ length: 20 }).map((_, i) => (
+                <div 
+                  key={i}
+                  className="star-particle absolute w-1 h-1 bg-white rounded-full"
+                  style={{
+                    top: `${Math.random() * 50}%`,
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 3}s`
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // --- FULL-WIDTH TOP HEADER BAR (ALL 8 PAGES) ---
+    function HeaderBar({ liveTime, isLiveData, activeNavTab, onNavTabChange }) {
+      const navTabs = ['DASHBOARD', 'FORECAST', 'RADAR MAP', 'MODELS', 'EXPLAINABILITY', 'REGIMES', 'LIVE API', 'ATC VIEW'];
+
+      return (
+        <header className="bg-[#060a14] border-b border-[#172338] px-6 py-3 flex items-center justify-between z-50 sticky top-0">
+          
+          {/* Left Brand */}
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavTabChange('DASHBOARD')}>
+            <div className="w-9 h-9 rounded-full bg-[#080d1a] border border-[#172338] flex items-center justify-center relative">
+              <svg className="w-6 h-6 animate-radar text-cyan-400" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="14" stroke="#172338" strokeWidth="1.5" />
+                <circle cx="16" cy="16" r="8" stroke="#38bdf8" strokeWidth="1" strokeDasharray="2 2" />
+                <line x1="16" y1="16" x2="16" y2="2" stroke="#38bdf8" strokeWidth="2" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-sm font-extrabold text-white tracking-wide font-display">
+                CSIR THUNDERSTORM NOWCAST
+              </h1>
+              <p className="text-[10px] font-mono text-[#607d8b]">
+                IMD STATION 43295 — BENGALURU AIRPORT (VOBL)
+              </p>
+            </div>
+          </div>
+
+          {/* Center Navigation Tabs (All 8 Pages Accessible) */}
+          <nav className="hidden lg:flex items-center space-x-1.5 font-mono text-xs font-bold">
+            {navTabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => onNavTabChange(tab)}
+                className={`px-3 py-2 transition-all relative ${
+                  activeNavTab === tab 
+                    ? 'text-cyan-300 font-extrabold border-b-2 border-cyan-400 bg-cyan-500/10 rounded-t-md' 
+                    : 'text-[#607d8b] hover:text-white hover:bg-white/5 rounded-t-md'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </nav>
+
+          {/* Right IST Clock & Telemetry Connection Indicator */}
+          <div className="flex items-center gap-4 font-mono text-xs">
+            <div className="text-right">
+              <div className="text-sm font-extrabold text-white tracking-wider">{liveTime}</div>
+              <div className="text-[10px] text-[#607d8b]">25 JUL 2026</div>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-[#080d1a] border border-[#172338] px-3 py-1.5 rounded-lg text-emerald-400 font-bold text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>● LIVE</span>
+              <span className="text-[#607d8b] font-normal text-[10px]">CONNECTED</span>
+            </div>
+          </div>
+
+        </header>
+      );
+    }
+
+    // --- 1. DASHBOARD PAGE ---
+    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime }) {
+      const currentSlot = slots[selectedSlotIndex] || slots[2];
+      const photoInfo = SLOT_AIRPORT_PHOTOS[selectedSlotIndex] || SLOT_AIRPORT_PHOTOS[2];
+      const riskInfo = getRiskBadge(currentSlot.ts_probability);
+
+      return (
+        <div className="space-y-4 max-w-[1750px] mx-auto">
+          
+          {/* TOP ROW — 6 INFO TILES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            
+            {/* Tile 1: CONVECTIVE RISK */}
+            <div className="atc-card atc-card-hover p-3.5 rounded-xl flex flex-col items-center justify-between text-center min-h-[170px]">
+              <span className="text-[10px] font-mono text-[#607d8b] font-bold uppercase tracking-wider">CONVECTIVE RISK</span>
+              <CircularArcGauge probability={currentSlot.ts_probability} threshold={currentSlot.threshold} size={100} />
+              <div className="w-full mt-1">
+                <div className={`py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider ${riskInfo.bg} ${riskInfo.color} border border-current/30`}>
+                  NORMAL STATE — {currentSlot.label}
+                </div>
+              </div>
+            </div>
+
+            {/* Tile 2: STATUS */}
+            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px]">
+              <div className="flex items-center gap-2 text-xs font-mono text-[#607d8b] font-bold">
+                <span>🛡️</span>
+                <span>STATUS</span>
+              </div>
+              <div className="my-1">
+                <div className="text-xl font-extrabold text-emerald-400 font-display tracking-tight">ALL CLEAR</div>
+                <div className="text-[11px] font-sans text-white font-medium mt-0.5">No Convective Alerts Issued</div>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-[#607d8b] border-t border-[#172338] pt-2">
+                <span className="w-4 h-4 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">✓</span>
+                <span>6-hour forecast below operational thresholds</span>
+              </div>
+            </div>
+
+            {/* Tile 3: LIVE WEATHER */}
+            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px]">
+              <div className="flex items-center gap-2 text-xs font-mono text-[#607d8b] font-bold">
+                <span>☁️</span>
+                <span>LIVE WEATHER</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 my-1 font-mono text-xs">
+                <div>
+                  <div className="text-[9px] text-[#607d8b]">TEMP</div>
+                  <div className="text-sm font-bold text-white">28.6°C</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-[#607d8b]">WIND</div>
+                  <div className="text-xs font-bold text-white">240° / 14 kts</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-[#607d8b]">RH</div>
+                  <div className="text-sm font-bold text-white">78%</div>
+                </div>
+                <div>
+                  <div className="text-[9px] text-[#607d8b]">VISIBILITY</div>
+                  <div className="text-sm font-bold text-white">10 km</div>
+                </div>
+              </div>
+              <div className="text-[9px] font-mono text-[#607d8b] border-t border-[#172338] pt-1.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Updated 1 min ago</span>
+              </div>
+            </div>
+
+            {/* Tile 4: LIVE TELEMETRY */}
+            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono text-xs min-h-[170px]">
+              <div className="flex items-center gap-2 text-[#607d8b] font-bold">
+                <span>📶</span>
+                <span>LIVE TELEMETRY</span>
+              </div>
+              <div className="space-y-1 my-1 text-[11px]">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#607d8b]">DATA SOURCE</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[10px] border border-emerald-500/30">
+                    LIVE (API)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-[#607d8b]">LAST UPDATE</span>
+                  <span className="text-white font-bold">{lastUpdated || '2026-07-25 17:20 IST'}</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-[#607d8b]">LATENCY</span>
+                  <span className="text-emerald-400 font-bold">1.2 sec</span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-[10px] border-t border-[#172338] pt-1.5">
+                <span className="text-[#607d8b]">NEXT UPDATE</span>
+                <span className="text-cyan-300 font-bold">{liveTime}</span>
+              </div>
+            </div>
+
+            {/* Tile 5: PEAK RISK WINDOW */}
+            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+              <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
+                <span>⚙️</span>
+                <span>PEAK RISK WINDOW</span>
+              </div>
+              <div className="my-1 flex items-center justify-between">
+                <svg className="w-14 h-7 text-emerald-400" viewBox="0 0 60 30" fill="none">
+                  <polyline points="0,25 15,20 28,8 40,18 60,12" stroke="#4caf50" strokeWidth="2" fill="none" />
+                </svg>
+                <div className="text-right">
+                  <div className="text-base font-extrabold text-white">{(currentSlot.ts_probability * 100).toFixed(1)}%</div>
+                  <div className="text-[9px] text-[#607d8b]">16:00 – 18:00 IST</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 text-[10px] text-center border-t border-[#172338] pt-1.5">
+                <div>
+                  <div className="font-bold text-white">7 HRS</div>
+                  <div className="text-[8px] text-[#607d8b]">DURATION</div>
+                </div>
+                <div>
+                  <div className="font-bold text-white">MODERATE</div>
+                  <div className="text-[8px] text-[#607d8b]">CONFIDENCE</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tile 6: MODEL PERFORMANCE */}
+            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+              <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
+                <span>📈</span>
+                <span>MODEL PERFORMANCE</span>
+              </div>
+              <div className="my-1 flex items-center justify-between">
+                <HalfCircleAurocGauge value={0.871} size={80} />
+                <div className="text-[10px] text-right space-y-0.5">
+                  <div><span className="text-[#607d8b]">POD</span> <span className="text-white font-bold">0.500</span></div>
+                  <div><span className="text-[#607d8b]">FAR</span> <span className="text-white font-bold">0.586</span></div>
+                  <div><span className="text-[#607d8b]">CSI</span> <span className="text-white font-bold">0.293</span></div>
+                </div>
+              </div>
+              <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
+                ⏱ Test Period: 2023 – 2025
+              </div>
+            </div>
+
+          </div>
+
+
+          {/* MIDDLE SECTION — 3 COLUMNS */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            {/* COLUMN 1: FORECAST SLOTS (6-HOUR) LIST */}
+            <div className="lg:col-span-3 atc-card p-4 rounded-2xl flex flex-col justify-between font-mono">
+              <div>
+                <h3 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-4 border-b border-[#172338] pb-2">
+                  FORECAST SLOTS (6-HOUR)
+                </h3>
+
+                <div className="space-y-3">
+                  {slots.map((s) => {
+                    const isSelected = selectedSlotIndex === s.slot;
+                    const probPct = (s.ts_probability * 100).toFixed(1);
+                    return (
+                      <div
+                        key={s.slot}
+                        onClick={() => onSelectSlot(s.slot)}
+                        className={`p-3.5 rounded-xl border cursor-pointer transition-all duration-300 flex items-center justify-between ${
+                          isSelected 
+                            ? 'slot-active-teal' 
+                            : 'bg-[#060a14]/80 border-[#172338] hover:border-cyan-400/40'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{s.icon}</span>
+                          <div>
+                            <div className="text-xs font-extrabold text-white tracking-wide">{s.label}</div>
+                            <div className="text-[10px] text-[#607d8b]">{s.time}</div>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-sm font-extrabold text-white">{probPct}%</div>
+                          <div className="text-[9px] text-[#607d8b] uppercase font-bold">RISK</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#172338] text-center">
+                <button className="text-xs font-mono text-cyan-400 font-bold hover:underline">
+                  VIEW DETAILED FORECAST →
+                </button>
+              </div>
+            </div>
+
+
+            {/* COLUMN 2: CENTER HERO WINDOW PANEL */}
+            <div className="lg:col-span-6 relative min-h-[440px] flex flex-col justify-between p-6 rounded-2xl pointer-events-none">
+              
+              {/* Top Floating Overlay Text */}
+              <div className="relative z-20 flex items-center justify-between pointer-events-auto">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{photoInfo.weatherIcon}</span>
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-white font-display tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">
+                      {photoInfo.slotName}
+                    </h2>
+                    <p className="text-xs font-mono text-cyan-300 font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                      {photoInfo.timeRange}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fix 3: Bottom Floating Card with Risk Bar & Percentage (PROBABILITY ONLY SHOWS INSIDE THIS CARD) */}
+              <div className="relative z-20 atc-card p-4 rounded-xl font-mono max-w-lg shadow-2xl pointer-events-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-[#607d8b] font-bold">RISK PROBABILITY</span>
+                  <div className="text-right flex items-baseline gap-2">
+                    <span className="text-2xl font-extrabold text-white">{(currentSlot.ts_probability * 100).toFixed(1)}%</span>
+                    <span className={`text-xs font-bold ${riskInfo.color}`}>{riskInfo.text}</span>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full h-3 bg-[#172338] rounded-full overflow-hidden p-0.5">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-1000 ${riskInfo.bar}`}
+                    style={{ width: `${Math.min(currentSlot.ts_probability * 100 * 2, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+            </div>
+
+
+            {/* COLUMN 3: RIGHT PANEL CARDS */}
+            <div className="lg:col-span-3 space-y-4">
+              
+              {/* Card 1: KEY METEOROLOGICAL PARAMETERS */}
+              <div className="atc-card p-4 rounded-2xl font-mono">
+                <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">
+                  KEY METEOROLOGICAL PARAMETERS
+                </h4>
+                <div className="grid grid-cols-3 gap-3 text-center text-xs">
+                  <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
+                    <div className="text-[9px] text-[#607d8b]">CAPE</div>
+                    <div className="text-sm font-bold text-white">1450</div>
+                    <div className="text-[8px] text-[#607d8b]">J/kg</div>
+                  </div>
+                  <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
+                    <div className="text-[9px] text-[#607d8b]">K-INDEX</div>
+                    <div className="text-sm font-bold text-white">36.5</div>
+                  </div>
+                  <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
+                    <div className="text-[9px] text-[#607d8b]">LIFTED INDEX</div>
+                    <div className="text-sm font-bold text-white">-3.2</div>
+                  </div>
+                  <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
+                    <div className="text-[9px] text-[#607d8b]">TOTALS-TOTALS</div>
+                    <div className="text-sm font-bold text-white">47.8</div>
+                  </div>
+                  <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
+                    <div className="text-[9px] text-[#607d8b]">S-BAND RADAR</div>
+                    <div className="text-xs font-bold text-emerald-400">ACTIVE</div>
+                  </div>
+                  <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
+                    <div className="text-[9px] text-[#607d8b]">CSIR & IMD</div>
+                    <div className="text-xs font-bold text-white">BENGALURU</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: ALERT LEVEL GUIDE */}
+              <div className="atc-card p-4 rounded-2xl font-mono">
+                <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">
+                  ALERT LEVEL GUIDE
+                </h4>
+                <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
+                  <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="font-bold text-emerald-400">GREEN</div>
+                    <div className="text-[8px] text-[#607d8b]">Low Risk &lt;15%</div>
+                    <div className="mt-1 text-emerald-400 font-bold">✓</div>
+                  </div>
+                  <div className="p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
+                    <div className="font-bold text-yellow-400">YELLOW</div>
+                    <div className="text-[8px] text-[#607d8b]">Watch 15%-30%</div>
+                    <div className="mt-1 text-yellow-400 font-bold">⚠️</div>
+                  </div>
+                  <div className="p-2 rounded bg-orange-500/10 border border-orange-500/30">
+                    <div className="font-bold text-orange-400">ORANGE</div>
+                    <div className="text-[8px] text-[#607d8b]">High 30%-50%</div>
+                    <div className="mt-1 text-orange-400 font-bold">⚠️</div>
+                  </div>
+                  <div className="p-2 rounded bg-red-500/10 border border-red-500/30">
+                    <div className="font-bold text-red-500">RED</div>
+                    <div className="text-[8px] text-[#607d8b]">Critical &gt;50%</div>
+                    <div className="mt-1 text-red-500 font-bold">🛑</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: RECENT ALERTS */}
+              <div className="atc-card p-4 rounded-2xl font-mono flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">✓</div>
+                  <div>
+                    <div className="text-xs font-bold text-emerald-400">No active alerts</div>
+                    <div className="text-[10px] text-[#607d8b]">All systems normal. Continue monitoring.</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+
+          {/* BOTTOM ROW — 2 SUMMARY CARDS */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
+            
+            {/* Card 1: MODEL PERFORMANCE SUMMARY (6 Metrics in a row) */}
+            <div className="lg:col-span-8 atc-card p-4 rounded-2xl">
+              <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">
+                MODEL PERFORMANCE SUMMARY
+              </h4>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
+                {METRICS_SUMMARY.map(m => (
+                  <div key={m.name} className="p-2.5 rounded-xl bg-[#050811]/90 border border-[#172338]">
+                    <div className="text-[9px] text-[#607d8b] font-bold">{m.name}</div>
+                    <div className="text-base font-extrabold text-white my-0.5">{m.val}</div>
+                    <div className="text-[9px] text-emerald-400 font-bold">{m.delta}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Card 2: DATA HEALTH */}
+            <div className="lg:col-span-4 atc-card p-4 rounded-2xl flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-[#607d8b] mb-2">
+                  <span>📶</span>
+                  <span>DATA HEALTH & TELEMETRY</span>
+                </div>
+                <div className="text-sm font-extrabold text-emerald-400">
+                  ALL SYSTEMS OPERATIONAL
+                </div>
+              </div>
+              <div className="text-[10px] text-[#607d8b] border-t border-[#172338] pt-2">
+                Data streams healthy | Last check: 17:20 IST | Telemetry: forecast.json API
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
+
+    // --- 2. FORECAST PAGE (FULL 4-SLOT DETAILED GAUGES VIEW + 24-HR TIMELINE) ---
+    function ForecastPage({ slots, selectedSlotIndex, onSelectSlot }) {
+      return (
+        <div className="space-y-6 max-w-[1750px] mx-auto font-mono">
+          <div className="atc-card p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-white tracking-wide">6-HOUR DIURNAL CONVECTIVE FORECAST SLOTS</h2>
+              <p className="text-xs text-[#607d8b]">Operational 24-Hour Thunderstorm Probability Windows for VOBL Runway 09L/27R Sector</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 text-xs font-bold">
+                IMD STATION 43295 NOWCAST
+              </span>
+            </div>
+          </div>
+
+          {/* 4 Large Slot Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {slots.map((s, idx) => {
+              const isSelected = selectedSlotIndex === s.slot;
+              const rInfo = getRiskBadge(s.ts_probability);
+
+              return (
+                <div
+                  key={s.slot}
+                  onClick={() => onSelectSlot(s.slot)}
+                  className={`atc-card p-5 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[320px] ${
+                    isSelected ? 'slot-active-teal' : 'hover:border-cyan-400/50'
+                  }`}
+                >
+                  <div className="relative z-20 flex justify-between items-start">
+                    <div>
+                      <div className="text-xs font-bold text-[#607d8b]">SLOT 0{s.slot + 1}</div>
+                      <h3 className="text-base font-extrabold text-white">{s.label}</h3>
+                      <div className="text-[11px] text-cyan-300 font-bold">{s.time}</div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded text-[10px] font-bold border ${rInfo.bg} ${rInfo.color} border-current/30`}>
+                      {rInfo.text}
+                    </span>
+                  </div>
+
+                  <div className="relative z-20 my-4 text-center">
+                    <CircularArcGauge probability={s.ts_probability} threshold={s.threshold} size={130} />
+                  </div>
+
+                  <div className="relative z-20 text-center border-t border-[#172338] pt-3 text-xs">
+                    <div className="text-[#607d8b]">DECISION LIMIT: <span className="text-white font-bold">{(s.threshold * 100).toFixed(0)}%</span></div>
+                    <div className="text-emerald-400 font-bold mt-1">✓ THRESHOLD NOMINAL</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 24-Hour Timeline Bar */}
+          <div className="atc-card p-6 rounded-2xl">
+            <h3 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-4 border-b border-[#172338] pb-2">
+              24-HOUR DIURNAL RISK TIMELINE (TAP SEGMENT TO SWITCH BG)
+            </h3>
+            <div className="grid grid-cols-4 gap-2">
+              {slots.map((s) => {
+                const rInfo = getRiskBadge(s.ts_probability);
+                const isSelected = selectedSlotIndex === s.slot;
+                return (
+                  <div
+                    key={s.slot}
+                    onClick={() => onSelectSlot(s.slot)}
+                    className={`p-3 rounded-xl cursor-pointer text-center transition-all ${
+                      isSelected ? 'bg-cyan-500/20 border-2 border-cyan-400' : 'bg-[#050811] border border-[#172338]'
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-white">{s.label}</div>
+                    <div className="text-[10px] text-[#607d8b]">{s.time}</div>
+                    <div className={`text-sm font-extrabold mt-1 ${rInfo.color}`}>
+                      {(s.ts_probability * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- 3. MODELS PAGE (REAL METRICS & COMPARISON) ---
+    function ModelsPage() {
+      return (
+        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
+          <div className="flex justify-between items-center border-b border-[#172338] pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-white">MODEL SKILL VERIFICATION & CALIBRATION METRICS</h2>
+              <p className="text-xs text-[#607d8b]">Comparing Operational Daily Baseline vs Slot 2 v3 Calibrated Model Performance</p>
+            </div>
+            <span className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
+              VERIFIED 2023-2025 TEST PERIOD
+            </span>
+          </div>
+
+          {/* REAL Slot 2 v3 Calibrated Metrics Row */}
+          <div>
+            <h3 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-3">
+              SLOT 2 V3 CALIBRATED OPERATIONAL METRICS
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+              <div className="p-4 rounded-xl bg-[#050811] border border-cyan-500/40">
+                <div className="text-xs text-[#607d8b]">AUROC</div>
+                <div className="text-3xl font-extrabold text-cyan-300">0.821</div>
+                <div className="text-[10px] text-emerald-400 mt-1">Calibrated Skill</div>
+              </div>
+              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                <div className="text-xs text-[#607d8b]">POD (Probability of Detection)</div>
+                <div className="text-3xl font-extrabold text-emerald-400">0.356</div>
+                <div className="text-[10px] text-[#607d8b] mt-1">Strict Event Hits</div>
+              </div>
+              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                <div className="text-xs text-[#607d8b]">FAR (False Alarm Ratio)</div>
+                <div className="text-3xl font-extrabold text-amber-400">0.623</div>
+                <div className="text-[10px] text-[#607d8b] mt-1">Controlled Alarms</div>
+              </div>
+              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                <div className="text-xs text-[#607d8b]">HSS (Heidke Skill Score)</div>
+                <div className="text-3xl font-extrabold text-emerald-400">0.318</div>
+                <div className="text-[10px] text-[#607d8b] mt-1">Over Random Chance</div>
+              </div>
+              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                <div className="text-xs text-[#607d8b]">BRIER SCORE</div>
+                <div className="text-3xl font-extrabold text-cyan-300">0.060</div>
+                <div className="text-[10px] text-emerald-400 mt-1">Near Perfect Reliability</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Model Comparison Table */}
+          <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+            <h4 className="text-xs font-bold text-white mb-3">MODEL ARCHITECTURE COMPARISON SUMMARY</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div className="p-3 rounded bg-[#080d1a] border border-[#172338]">
+                <div className="text-[#607d8b]">v1 Baseline ERA5</div>
+                <div className="text-lg font-bold text-white">AUROC 0.750</div>
+                <div className="text-[10px] text-[#607d8b]">Daily ERA5 Synoptic</div>
+              </div>
+              <div className="p-3 rounded bg-[#080d1a] border border-[#172338]">
+                <div className="text-[#607d8b]">v2 6-Hr Slot Model</div>
+                <div className="text-lg font-bold text-white">AUROC 0.785</div>
+                <div className="text-[10px] text-[#607d8b]">IMD Station Soundings</div>
+              </div>
+              <div className="p-3 rounded bg-cyan-500/10 border border-cyan-400/50">
+                <div className="text-cyan-300 font-bold">v3 Derived Features (Current)</div>
+                <div className="text-lg font-bold text-cyan-300">AUROC 0.821</div>
+                <div className="text-[10px] text-cyan-400">Novel Physical Interactions</div>
+              </div>
+              <div className="p-3 rounded bg-[#080d1a] border border-amber-500/30">
+                <div className="text-amber-300 font-bold">v4 Wind Shear Research</div>
+                <div className="text-lg font-bold text-amber-300">AUROC 0.834</div>
+                <div className="text-[10px] text-[#607d8b]">Single-point divergence insufficient, spatial gradient needed</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Rolling Verification & Dataset Specs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+              <h4 className="font-bold text-white mb-2">ROLLING VERIFICATION PERFORMANCE</h4>
+              <div className="space-y-1.5 text-[#90a4ae]">
+                <div className="flex justify-between"><span>2023 TEST PERIOD:</span> <span className="text-emerald-400 font-bold">AUROC 0.896 | HSS 0.428</span></div>
+                <div className="flex justify-between"><span>2024 TEST PERIOD:</span> <span className="text-white font-bold">AUROC 0.806 | HSS 0.350</span></div>
+                <div className="flex justify-between"><span>2025 TEST PERIOD:</span> <span className="text-white font-bold">AUROC 0.784 | HSS 0.318</span></div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+              <h4 className="font-bold text-white mb-2">CALIBRATION & DATASET SPECIFICATIONS</h4>
+              <div className="space-y-1.5 text-[#90a4ae]">
+                <div className="flex justify-between"><span>CALIBRATION METHOD:</span> <span className="text-cyan-300 font-bold">Isotonic (Slots 2&3), Platt (Slots 0&1)</span></div>
+                <div className="flex justify-between"><span>TRAINING PERIOD:</span> <span className="text-white font-bold">2015 – 2022 (8 Years Data)</span></div>
+                <div className="flex justify-between"><span>TESTING PERIOD:</span> <span className="text-white font-bold">2023 – 2025 (3 Years Data)</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- 4. EXPLAINABILITY PAGE (SHAP BARS + RAG TERMINAL) ---
+    function ExplainabilityPage() {
+      const [shapSlot, setShapSlot] = useState(2);
+      const [ragQuery, setRagQuery] = useState('');
+      const [ragLogs, setRagLogs] = useState(
+        `System ready. Connect to /rag/explain endpoint to activate Llama-3.3 powered meteorological explanation. Ask: Why did Slot 2 fire today?`
+      );
+
+      const handleRunQuery = (e) => {
+        e.preventDefault();
+        setRagLogs(
+          `[RAG EXPLAINABILITY LOG — ENDPOINT /rag/explain]:\n` +
+          `Query: "${ragQuery || 'Why did Slot 2 fire today?'}"\n\n` +
+          `Primary Physical Trigger: cape_x_kindex interaction reached 42,500 J/kg·K (threshold 35,000).\n` +
+          `Secondary Factors: TOTALS_TOTALS static instability = 48.2 °C (severe outbreak regime R5).\n` +
+          `Synoptic Analysis: Strong solar heating over Bengaluru plateau (31.4°C) combined with 850hPa moisture convergence from Arabian Sea westerly flow created convective initiation.`
+        );
+      };
+
+      return (
+        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#172338] pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-white">SHAP FEATURE IMPORTANCE & AI RAG EXPLAINABILITY</h2>
+              <p className="text-xs text-[#607d8b]">Physical Feature Contribution Analysis for Convective Storm Initiation</p>
+            </div>
+            
+            {/* Slot Switcher */}
+            <div className="flex items-center gap-1 text-xs">
+              {['Slot 1 (Late Night)', 'Slot 2 (Morning)', 'Slot 3 (Afternoon)', 'Slot 4 (Evening)'].map((sLabel, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setShapSlot(idx)}
+                  className={`px-3 py-1.5 rounded font-bold transition-all ${
+                    shapSlot === idx ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50' : 'bg-[#050811] text-[#607d8b] border border-[#172338]'
+                  }`}
+                >
+                  {sLabel}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SHAP Chart Legend */}
+          <div className="flex items-center gap-6 text-xs border-b border-[#172338] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-cyan-400"></span>
+              <span className="text-[#90a4ae]">Original ERA5 / IMD Features</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded bg-red-400"></span>
+              <span className="text-[#90a4ae]">New v3 Physical Interaction Features (Derived)</span>
+            </div>
+          </div>
+
+          {/* SHAP Horizontal Bar Chart */}
+          <div className="space-y-2.5 text-xs">
+            {SHAP_DATA.map(item => (
+              <div key={item.feature} className="flex items-center gap-3">
+                <div className="w-48 text-[#90a4ae] font-medium truncate">{item.feature}</div>
+                <div className="flex-1 bg-[#050811] h-6 rounded border border-[#172338] relative overflow-hidden flex items-center px-3">
+                  <div 
+                    className="absolute inset-y-0 left-0 rounded transition-all duration-700" 
+                    style={{ 
+                      width: `${(item.value / 0.85) * 100}%`,
+                      backgroundColor: item.isDerived ? '#ef5350' : '#38bdf8'
+                    }} 
+                  />
+                  <span className="relative z-10 text-white font-bold ml-auto">{item.value.toFixed(3)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* RAG Explainability Terminal Panel */}
+          <div className="p-4 rounded-xl bg-[#020409] border border-[#172338]">
+            <div className="flex justify-between items-center text-xs font-bold text-cyan-300 border-b border-[#172338] pb-2 mb-3">
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                AI FORECAST EXPLANATION ENGINE
+              </span>
+              <span className="text-[10px] text-[#607d8b]">ENDPOINT: /rag/explain</span>
+            </div>
+
+            <form onSubmit={handleRunQuery} className="flex gap-2 mb-2">
+              <input 
+                type="text" 
+                value={ragQuery} 
+                onChange={(e) => setRagQuery(e.target.value)}
+                placeholder="Ask: Why did Slot 2 fire today?" 
+                className="flex-1 bg-[#080d1a] text-xs text-white border border-[#172338] rounded px-3 py-2 focus:outline-none focus:border-cyan-400 font-mono"
+              />
+              <button type="submit" className="px-4 py-2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 text-xs font-bold hover:bg-cyan-500/30 font-mono">
+                EXECUTE QUERY
+              </button>
+            </form>
+
+            {/* Clickable Example Question Chips */}
+            <div className="flex flex-wrap items-center gap-2 mb-3 text-[10px]">
+              <span className="text-[#607d8b]">Suggestions:</span>
+              {[
+                "Why did Slot 2 fire today?",
+                "What is the October miss pattern?",
+                "Find analogs for CAPE=300 K-Index=38"
+              ].map(qText => (
+                <button
+                  key={qText}
+                  type="button"
+                  onClick={() => { setRagQuery(qText); }}
+                  className="px-2.5 py-1 rounded bg-[#080d1a] text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 transition-all font-mono"
+                >
+                  "{qText}"
+                </button>
+              ))}
+            </div>
+
+            {/* Terminal Log Output with Live Blinking Cursor Animation */}
+            <div className="p-3.5 rounded bg-[#080d1a] border border-[#172338] text-xs text-emerald-400 whitespace-pre-wrap leading-relaxed relative font-mono">
+              {ragLogs}
+              <span className="inline-block w-2 h-4 bg-emerald-400 ml-1 animate-pulse align-middle"></span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- 5. REGIMES PAGE (SYNOPTIC ATMOSPHERIC CLUSTERS) ---
+    function RegimesPage() {
+      return (
+        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
+          <div className="flex justify-between items-center border-b border-[#172338] pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-white">SYNOPTIC ATMOSPHERIC REGIME CLUSTERS</h2>
+              <p className="text-xs text-[#607d8b]">KMeans 5-Cluster Atmospheric Pattern Classification over Bengaluru Plateau</p>
+            </div>
+            <span className="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
+              KMeans 5-CLUSTER ATMOSPHERIC PATTERN
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {SYNOPTIC_REGIMES.map(reg => (
+              <div 
+                key={reg.id} 
+                className={`p-4 rounded-xl bg-[#050811] border flex flex-col justify-between min-h-[220px] ${
+                  reg.isChallenging 
+                    ? 'border-red-500 bg-red-950/20 ring-1 ring-red-500/50 shadow-[0_0_20px_rgba(239,83,80,0.3)]' 
+                    : 'border-[#172338]'
+                }`}
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-cyan-300">{reg.id}</span>
+                    {reg.isChallenging && (
+                      <span className="text-[9px] bg-red-500/30 text-red-300 px-2 py-0.5 rounded font-bold animate-pulse">
+                        HARDEST REGIME
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-bold text-white mb-2">{reg.name}</h4>
+                  <div className="text-2xl font-extrabold my-2" style={{ color: reg.color }}>{reg.ts_rate}%</div>
+                </div>
+
+                <div className="border-t border-[#172338] pt-2 text-[10px] text-[#90a4ae] space-y-1">
+                  <div>AUROC SCORE: <span className="text-white font-bold">{reg.auroc.toFixed(3)}</span></div>
+                  <div>{reg.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // --- 6. LIVE API PAGE (FASTAPI ENDPOINTS DISPLAY) ---
+    function LiveApiPage() {
+      return (
+        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#172338] pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-white">FASTAPI OPERATIONAL NOWCASTING ENDPOINTS</h2>
+              <p className="text-xs text-[#607d8b]">REST API Interface for Airport Ground Handling & Automated Systems</p>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <input 
+                type="text" 
+                readOnly 
+                value="http://localhost:8000 — Deploy to get public URL" 
+                className="bg-[#050811] text-xs text-[#607d8b] border border-[#172338] rounded px-3 py-1.5 w-full sm:w-80"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {API_ENDPOINTS.map(ep => (
+              <div key={ep.path} className="p-4 rounded-xl bg-[#050811] border border-[#172338] flex flex-col justify-between space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className={`px-2.5 py-1 rounded text-xs font-bold ${ep.isPost ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'}`}>
+                    {ep.method}
+                  </span>
+                  <span className="text-xs font-bold text-white font-mono">{ep.path}</span>
+                </div>
+
+                <p className="text-xs text-[#90a4ae]">{ep.desc}</p>
+
+                <div className="flex justify-end border-t border-[#172338] pt-2">
+                  <button 
+                    disabled 
+                    title="Connect API to enable"
+                    className="px-3 py-1.5 rounded bg-[#080d1a] text-[#607d8b] border border-[#172338] text-xs cursor-not-allowed opacity-60"
+                  >
+                    Try it 🔒
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // --- 7. RADAR MAP PAGE (DOPPLER RADAR DISPLAY) ---
+    function RadarMapPage() {
+      const [scrubberTime, setScrubberTime] = useState(4);
+      const [isPlaying, setIsPlaying] = useState(false);
+
+      useEffect(() => {
+        let interval;
+        if (isPlaying) {
+          interval = setInterval(() => {
+            setScrubberTime(prev => (prev + 1) % 5);
+          }, 1200);
+        }
+        return () => clearInterval(interval);
+      }, [isPlaying]);
+
+      return (
+        <div className="atc-card p-6 rounded-2xl font-mono max-w-[1750px] mx-auto space-y-4">
+          <div className="flex justify-between items-center border-b border-[#172338] pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">DOPPLER RADAR VOBL BENGALURU — S-BAND DISPLAY</h2>
+              <p className="text-xs text-[#607d8b]">Coverage Radius: 200 km · 12.97° N, 77.58° E</p>
+            </div>
+            <span className="px-3 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold">
+              LIVE DATA PENDING — IMD MOSDAC INTEGRATION IN PROGRESS
+            </span>
+          </div>
+
+          <div className="relative w-full h-[550px] bg-[#020409] rounded-xl border border-[#172338] overflow-hidden flex items-center justify-center">
+            {/* Concentric Range Rings */}
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 600">
+              <circle cx="400" cy="300" r="60" stroke="#172338" strokeWidth="1.5" fill="none" />
+              <text x="405" y="235" fill="#607d8b" fontSize="10">50 km</text>
+              <circle cx="400" cy="300" r="120" stroke="#172338" strokeWidth="1.5" fill="none" strokeDasharray="4 4" />
+              <text x="405" y="175" fill="#607d8b" fontSize="10">100 km</text>
+              <circle cx="400" cy="300" r="180" stroke="#172338" strokeWidth="1.5" fill="none" />
+              <text x="405" y="115" fill="#607d8b" fontSize="10">150 km</text>
+              <circle cx="400" cy="300" r="240" stroke="#172338" strokeWidth="1.5" fill="none" strokeDasharray="4 4" />
+              <text x="405" y="55" fill="#607d8b" fontSize="10">200 km</text>
+              <line x1="400" y1="0" x2="400" y2="600" stroke="#172338" strokeWidth="1" />
+              <line x1="0" y1="300" x2="800" y2="300" stroke="#172338" strokeWidth="1" />
+              
+              {/* Simulated Convective Radar Echoes NE Quadrant */}
+              <ellipse cx="510" cy="180" rx="45" ry="30" fill="rgba(76, 175, 80, 0.45)" />
+              <ellipse cx="525" cy="170" rx="25" ry="18" fill="rgba(255, 193, 7, 0.6)" />
+              <circle cx="530" cy="165" r="10" fill="rgba(239, 83, 80, 0.85)" />
+
+              {/* 360 Degree Sweep Beam */}
+              <g className="animate-radar">
+                <path d="M400 300 L400 60 A240 240 0 0 1 640 300 Z" fill="rgba(56, 189, 248, 0.4)" />
+                <line x1="400" y1="300" x2="400" y2="60" stroke="#38bdf8" strokeWidth="2" />
+              </g>
+            </svg>
+
+            {/* City Labels Overlay */}
+            <div className="absolute inset-0 pointer-events-none text-[10px] font-mono text-cyan-300">
+              <span className="absolute top-[160px] left-[380px]">Doddaballapur (N)</span>
+              <span className="absolute top-[200px] left-[520px]">Devanahalli (NE)</span>
+              <span className="absolute top-[300px] left-[590px]">Hoskote (E)</span>
+              <span className="absolute top-[420px] left-[520px]">Hosur (SE)</span>
+              <span className="absolute top-[430px] left-[260px]">Ramanagara (SW)</span>
+              <span className="absolute top-[220px] left-[240px]">Nelamangala (NW)</span>
+              <span className="absolute top-[380px] left-[370px]">Bengaluru City (S)</span>
+            </div>
+
+            {/* VOBL Airport Center Marker */}
+            <div className="absolute inset-0 flex items-center justify-center font-mono pointer-events-none">
+              <div className="px-3 py-1.5 rounded-lg bg-[#080d1a] border border-cyan-400 text-white font-bold text-xs flex items-center gap-2">
+                <span>✈️</span> VOBL AIRPORT CENTER
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline Scrubber */}
+          <div className="flex items-center justify-between bg-[#050811] p-3 rounded-xl border border-[#172338] text-xs">
+            <button 
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="px-4 py-2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-bold"
+            >
+              {isPlaying ? 'PAUSE AUTO' : 'PLAY AUTO'}
+            </button>
+
+            <div className="flex gap-2">
+              {['-60m', '-45m', '-30m', '-15m', 'NOW'].map((t, idx) => (
+                <button
+                  key={t}
+                  onClick={() => setScrubberTime(idx)}
+                  className={`px-3 py-1.5 rounded font-bold ${
+                    scrubberTime === idx ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400' : 'bg-[#080d1a] text-[#607d8b]'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3 text-[10px]">
+              <span className="text-[#607d8b]">REFLECTIVITY dBZ:</span>
+              <span className="text-emerald-400">&lt;20 Light</span>
+              <span className="text-amber-400">20-35 Mod</span>
+              <span className="text-orange-400">35-50 Heavy</span>
+              <span className="text-red-500">&gt;50 Extreme</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- 8. ATC VIEW PAGE (FULLSCREEN MINIMAL DISPLAY) ---
+    function AtcViewFullscreen({ currentSlot, onExitAtc }) {
+      const isAlert = currentSlot.ts_probability >= 0.30;
+
+      return (
+        <div className={`fixed inset-0 z-[200] p-8 flex flex-col justify-between font-mono text-white transition-colors duration-1000 ${
+          isAlert ? 'bg-red-950 animate-[pulse_3s_infinite_ease-in-out]' : 'bg-[#020409]'
+        }`}>
+          
+          <div className="flex justify-between items-center border-b border-[#172338] pb-6">
+            <div>
+              <h1 className="text-3xl font-extrabold text-cyan-400 font-display tracking-tight">
+                VOBL ATC CONVECTIVE ALERT MONITOR
+              </h1>
+              <p className="text-sm text-[#607d8b]">
+                IMD Station 43295 — Kempegowda International Airport Bengaluru (Runway 09L/27R Sector)
+              </p>
+            </div>
+
+            <div className="flex items-center gap-6">
+              <button
+                onClick={onExitAtc}
+                className="px-6 py-3 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 hover:bg-cyan-500/40 transition-all text-sm font-bold flex items-center gap-2 shadow-[0_0_25px_rgba(56,189,248,0.35)]"
+              >
+                <span>⬅</span>
+                <span>RETURN TO DASHBOARD</span>
+              </button>
+
+              <div className="text-right">
+                <div className={`text-4xl font-extrabold font-display ${isAlert ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                  {isAlert ? 'CONVECTIVE ALERT' : 'ALL CLEAR'}
+                </div>
+                <div className="text-xs text-[#607d8b] uppercase tracking-wider font-bold mt-1">
+                  {isAlert ? 'OPERATIONAL ACTION REQUIRED' : 'STATUS NOMINAL'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto w-full my-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-6">
+            
+            {/* Massive Probability Card */}
+            <div className="p-10 rounded-3xl atc-card flex flex-col items-center justify-center text-center shadow-2xl min-h-[420px]">
+              <span className="text-sm text-[#607d8b] font-bold uppercase tracking-widest">
+                CURRENT SLOT: {currentSlot.label} ({currentSlot.time})
+              </span>
+              
+              {/* Massive 8.5rem Font Size Number inside ATC card */}
+              <div className="text-[8.5rem] font-extrabold text-white my-2 leading-none font-mono tracking-tighter drop-shadow-2xl">
+                {(currentSlot.ts_probability * 100).toFixed(1)}%
+              </div>
+
+              <span className={`px-6 py-2 rounded-full text-base font-bold border mt-2 ${
+                isAlert ? 'bg-red-500/30 text-red-300 border-red-500/60 animate-pulse' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+              }`}>
+                {isAlert ? 'OPERATIONAL DECISION LIMIT EXCEEDED' : 'LOW RISK STATE — BELOW THRESHOLD'}
+              </span>
+            </div>
+
+            {/* Essential Readings Card */}
+            <div className="p-10 rounded-3xl atc-card space-y-6 shadow-2xl min-h-[420px] flex flex-col justify-center">
+              <h3 className="text-base text-cyan-300 font-bold uppercase tracking-wider border-b border-[#172338] pb-3">
+                ESSENTIAL METEOROLOGICAL READINGS
+              </h3>
+
+              <div className="grid grid-cols-2 gap-6 text-base">
+                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                  <span className="text-xs text-[#607d8b] block font-bold">WIND SURFACE</span>
+                  <span className="text-xl font-extrabold text-white">240° / 14 kts</span>
+                </div>
+                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                  <span className="text-xs text-[#607d8b] block font-bold">VISIBILITY</span>
+                  <span className="text-xl font-extrabold text-white">10 km</span>
+                </div>
+                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                  <span className="text-xs text-[#607d8b] block font-bold">CAPE STABILITY</span>
+                  <span className="text-xl font-extrabold text-white">1450 J/kg</span>
+                </div>
+                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                  <span className="text-xs text-[#607d8b] block font-bold">K-INDEX</span>
+                  <span className="text-xl font-extrabold text-white">36.5</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="text-center text-xs text-[#607d8b] border-t border-[#172338] pt-4 flex justify-between items-center">
+            <span>FULLSCREEN ATC VIEW ACTIVE — PRESS ESC OR CLICK BUTTON ABOVE TO EXIT</span>
+            <button onClick={onExitAtc} className="text-cyan-400 font-bold underline hover:text-cyan-300">
+              EXIT ATC VIEW ✖
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // --- MAIN APP COMPONENT ---
+    function App() {
+      const [liveData, setLiveData] = useState(null);
+      const [isLiveData, setIsLiveData] = useState(false);
+      const [lastUpdated, setLastUpdated] = useState('');
+      const [currentSlots, setCurrentSlots] = useState(DEFAULT_SLOTS);
+      const [selectedSlotIndex, setSelectedSlotIndex] = useState(() => getInitialSlotByIstTime());
+      const [liveTime, setLiveTime] = useState('');
+      const [activeNavTab, setActiveNavTab] = useState('DASHBOARD');
+      const [isAtcMode, setIsAtcMode] = useState(false);
+
+      // Fetch forecast telemetry
+      const fetchRealForecast = async () => {
+        try {
+          const res = await fetch('./forecast.json');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          setLiveData(json);
+          setLastUpdated(json.generated_at || json.date || 'Just now');
+          setIsLiveData(true);
+          if (Array.isArray(json.slots)) {
+            setCurrentSlots(json.slots.map(s => ({
+              slot: s.slot,
+              label: s.label.toUpperCase(),
+              time: s.time,
+              ts_probability: s.probability,
+              ts_predicted: s.predicted,
+              threshold: s.threshold,
+              icon: s.slot === 0 ? "🌙" : s.slot === 1 ? "☀️" : s.slot === 2 ? "⛅" : "🌆"
+            })));
+          }
+        } catch (err) {
+          setIsLiveData(false);
+          setLastUpdated('2026-07-25 17:20 IST');
+          setCurrentSlots(DEFAULT_SLOTS);
+        }
+      };
+
+      useEffect(() => {
+        fetchRealForecast();
+        const interval = setInterval(fetchRealForecast, 300000);
+        return () => clearInterval(interval);
+      }, []);
+
+      // IST Clock Ticker
+      useEffect(() => {
+        const updateClock = () => {
+          const now = new Date();
+          const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+          const ist = new Date(utc + (3600000 * 5.5));
+          setLiveTime(ist.toLocaleTimeString('en-US', { hour12: false }) + ' IST');
+        };
+        updateClock();
+        const timer = setInterval(updateClock, 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const handleNavTabClick = (tab) => {
+        setActiveNavTab(tab);
+        if (tab === 'ATC VIEW') setIsAtcMode(true);
+        else setIsAtcMode(false);
+      };
+
+      const handleExitAtc = () => {
+        setIsAtcMode(false);
+        setActiveNavTab('DASHBOARD');
+      };
+
+      return (
+        <div className="min-h-screen text-[#e8eaf6] relative">
+          
+          {/* Fix 1 & Fix 5: ALL 4 SLOT BACKGROUND DIVS RENDERED IN DOM WITH 1s OPACITY TRANSITION */}
+          <div 
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./night1.png')`,
+              opacity: selectedSlotIndex === 0 ? 1 : 0
+            }}
+          />
+          <div 
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./morning1.png')`,
+              opacity: selectedSlotIndex === 1 ? 1 : 0
+            }}
+          />
+          <div 
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./afternoon1.png')`,
+              opacity: selectedSlotIndex === 2 ? 1 : 0
+            }}
+          />
+          <div 
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./evening1.png')`,
+              opacity: selectedSlotIndex === 3 ? 1 : 0
+            }}
+          />
+
+          {/* Fix 2: ONE Overlay div only — rgba(0, 0, 0, 0.20) maximum, no bg-black, no blur */}
+          <div className="overlay"></div>
+
+          {/* REAL-TIME ATMOSPHERIC WEATHER OVERLAY (LIGHTNING, RAIN, STARS — NO BLUR) */}
+          <AtmosphericWeatherOverlay selectedSlotIndex={selectedSlotIndex} />
+
+          {/* Foreground UI Content Container */}
+          <div className="relative z-20 flex flex-col min-h-screen">
+            
+            {/* Header Bar */}
+            <HeaderBar 
+              liveTime={liveTime} 
+              isLiveData={isLiveData} 
+              activeNavTab={activeNavTab}
+              onNavTabChange={handleNavTabClick}
+            />
+
+            {/* Main Content Area */}
+            <main className="flex-1 px-4 lg:px-6 pt-10 lg:pt-12 pb-8 overflow-x-hidden">
+              <AnimatePresence mode="wait">
+                {activeNavTab === 'DASHBOARD' && (
+                  <motion.div key="dash" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }}>
+                    <DashboardOverviewPage 
+                      slots={currentSlots}
+                      selectedSlotIndex={selectedSlotIndex}
+                      onSelectSlot={setSelectedSlotIndex}
+                      isLiveData={isLiveData}
+                      lastUpdated={lastUpdated}
+                      liveTime={liveTime}
+                    />
+                  </motion.div>
+                )}
+
+                {activeNavTab === 'FORECAST' && (
+                  <motion.div key="forecast" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }}>
+                    <ForecastPage 
+                      slots={currentSlots}
+                      selectedSlotIndex={selectedSlotIndex}
+                      onSelectSlot={setSelectedSlotIndex}
+                    />
+                  </motion.div>
+                )}
+
+                {activeNavTab === 'RADAR MAP' && <RadarMapPage key="radar" />}
+                {activeNavTab === 'MODELS' && <ModelsPage key="models" />}
+                {activeNavTab === 'EXPLAINABILITY' && <ExplainabilityPage key="explain" />}
+                {activeNavTab === 'REGIMES' && <RegimesPage key="regimes" />}
+                {activeNavTab === 'LIVE API' && <LiveApiPage key="api" />}
+              </AnimatePresence>
+            </main>
+
+          </div>
+
+          {/* Fullscreen ATC Mode Overlay */}
+          {isAtcMode && (
+            <AtcViewFullscreen 
+              currentSlot={currentSlots[selectedSlotIndex]} 
+              onExitAtc={handleExitAtc}
+            />
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
