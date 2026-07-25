@@ -978,15 +978,32 @@
         `System ready. Connect to /rag/explain endpoint to activate Llama-3.3 powered meteorological explanation. Ask: Why did Slot 2 fire today?`
       );
 
-      const handleRunQuery = (e) => {
+      const handleRunQuery = async (e) => {
         e.preventDefault();
-        setRagLogs(
-          `[RAG EXPLAINABILITY LOG — ENDPOINT /rag/explain]:\n` +
-          `Query: "${ragQuery || 'Why did Slot 2 fire today?'}"\n\n` +
-          `Primary Physical Trigger: cape_x_kindex interaction reached 42,500 J/kg·K (threshold 35,000).\n` +
-          `Secondary Factors: TOTALS_TOTALS static instability = 48.2 °C (severe outbreak regime R5).\n` +
-          `Synoptic Analysis: Strong solar heating over Bengaluru plateau (31.4°C) combined with 850hPa moisture convergence from Arabian Sea westerly flow created convective initiation.`
-        );
+        const query = ragQuery || 'Why did Slot 2 fire today?';
+        const today = new Date().toISOString().split('T')[0];
+        setRagLogs(`[RAG EXPLAINABILITY LOG — ENDPOINT /rag/explain]:\nQuery: "${query}"\n\nConnecting to Llama-3.3 engine...`);
+        try {
+          const res = await fetch('https://csir-thunderstorm-api.onrender.com/rag/explain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query, date: today })
+          });
+          if (!res.ok) throw new Error(`API error: ${res.status}`);
+          const data = await res.json();
+          setRagLogs(
+            `[RAG EXPLAINABILITY LOG — ENDPOINT /rag/explain]:\n` +
+            `Query: "${query}"\n\n` +
+            `${data.explanation || data.response || data.answer || JSON.stringify(data, null, 2)}`
+          );
+        } catch (err) {
+          setRagLogs(
+            `[RAG EXPLAINABILITY LOG — ENDPOINT /rag/explain]:\n` +
+            `Query: "${query}"\n\n` +
+            `[ERROR] Could not reach API: ${err.message}\n` +
+            `Check: https://csir-thunderstorm-api.onrender.com/docs`
+          );
+        }
       };
 
       return (
@@ -1157,7 +1174,7 @@
               <input 
                 type="text" 
                 readOnly 
-                value="http://localhost:8000 — Deploy to get public URL" 
+                value= "https://csir-thunderstorm-api.onrender.com"
                 className="bg-[#050811] text-xs text-[#607d8b] border border-[#172338] rounded px-3 py-1.5 w-full sm:w-80"
               />
             </div>
