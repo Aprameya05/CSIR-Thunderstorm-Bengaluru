@@ -187,14 +187,7 @@
       { name: 'BIAS', val: '1.208', delta: '▲ 0.05' },
     ];
 
-    const SHAP_DATA = isRealtime ? realtimeShap.top_features.map(f => ({
-          feature: f.feature,
-          value: Math.abs(f.shap),
-          raw_shap: f.shap,
-          isDerived: DERIVED_FEATURES_RT.has(f.feature),
-          direction: f.direction,
-          actual_value: f.value,
-        })) : [
+    const SHAP_DATA_FALLBACK = [
           { feature: 'TOTALS_TOTALS', value: 0.823, isDerived: false },
           { feature: 'cape_x_kindex', value: 0.755, isDerived: true },
           { feature: 'K_INDEX', value: 0.707, isDerived: false },
