@@ -872,7 +872,7 @@
     }
 
     // --- 3. MODELS PAGE (REAL METRICS & COMPARISON) ---
-    function ModelsPage() {
+    function ModelsPage({ liveData }) {
       return (
         <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
           <div className="flex justify-between items-center border-b border-[#172338] pb-4">
@@ -954,6 +954,15 @@
                 <div className="flex justify-between"><span>2023 TEST PERIOD:</span> <span className="text-emerald-400 font-bold">AUROC 0.896 | HSS 0.428</span></div>
                 <div className="flex justify-between"><span>2024 TEST PERIOD:</span> <span className="text-white font-bold">AUROC 0.806 | HSS 0.350</span></div>
                 <div className="flex justify-between"><span>2025 TEST PERIOD:</span> <span className="text-white font-bold">AUROC 0.784 | HSS 0.318</span></div>
+                {liveData?.verification && (
+                  <div className="mt-2 pt-2 border-t border-[#172338]">
+                    <div className="flex justify-between"><span>ROLLING 30-DAY POD:</span> <span className="text-cyan-300 font-bold">{liveData.verification.pod ?? '—'}</span></div>
+                    <div className="flex justify-between"><span>ROLLING 30-DAY FAR:</span> <span className="text-cyan-300 font-bold">{liveData.verification.far ?? '—'}</span></div>
+                    <div className="flex justify-between"><span>ROLLING 30-DAY HSS:</span> <span className="text-cyan-300 font-bold">{liveData.verification.hss ?? '—'}</span></div>
+                    <div className="flex justify-between"><span>BRIER SCORE:</span> <span className="text-cyan-300 font-bold">{liveData.verification.brier ?? '—'}</span></div>
+                    <div className="text-[9px] text-[#607d8b] mt-1">Last verified: {liveData.verification.date_verified ?? '—'}</div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1622,7 +1631,7 @@
                 )}
 
                 {activeNavTab === 'RADAR MAP' && <RadarMapPage key="radar" liveData={liveData} />}
-                {activeNavTab === 'MODELS' && <ModelsPage key="models" />}
+                {activeNavTab === 'MODELS' && <ModelsPage key="models" liveData={liveData} />}
                 {activeNavTab === 'EXPLAINABILITY' && <ExplainabilityPage key="explain" />}
                 {activeNavTab === 'REGIMES' && <RegimesPage key="regimes" />}
                 {activeNavTab === 'LIVE API' && <LiveApiPage key="api" />}
