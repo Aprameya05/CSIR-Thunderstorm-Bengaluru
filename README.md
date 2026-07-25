@@ -109,70 +109,11 @@ cron trigger
 
 ## System Architecture
 
-```
-╔══════════════════════════════════════════════════════════════════╗
-║                     DATA INGESTION LAYER                         ║
-║                                                                  ║
-║  GFS NOMADS f012/f024/f048    Himawari-9 NOAA S3                 ║
-║  (auto cycle discovery)        Band 13 10.4μm IR                 ║
-║  CAPE, K-Index, LI, TT, PW    50km VOBL bounding box             ║
-║  ERA5 T/q/u/v 500/700/850hPa  BT → storm proximity signal        ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║                     PROCESSING LAYER                             ║
-║                                                                  ║
-║  gfs_fetcher.py               compute_realtime_shap.py           ║
-║  • Smart cycle auto-discovery  • TreeExplainer per slot          ║
-║  • Stability index derivation  • Top-10 features + direction     ║
-║  • f024/f048 multiday outlook  • Actual GFS input values         ║ 
-║                                                                  ║
-║  forecast_action.py                                              ║
-║  • 54-feature vector per slot  • Convective initiation timer     ║
-║  • XGBoost v3 inference        • Trend vs previous run           ║
-║  • Verification metrics        • Himawari + multiday assembly    ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║                     ML INFERENCE LAYER                           ║
-║                                                                  ║
-║  nowcast_slot{0-3}_xgb_v3_calibrated.pkl                         ║
-║  Slot 0: t=0.24 Platt  │  Slot 1: t=0.38 Platt                   ║
-║  Slot 2: t=0.16 Isotonic│  Slot 3: t=0.39 Isotonic               ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║              forecast.json — Single Source of Truth              ║
-║                                                                  ║
-║  slots[]          met_parameters      satellite.himawari9        ║
-║  multiday_outlook convective_initiation realtime_shap{}          ║
-║  verification     trend arrows         gfs_cycle metadata        ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║         CI/CD: GitHub Actions → Cloudflare Pages (58s)           ║
-║         FastAPI on Render: /nowcast + /rag endpoints             ║
-╚══════════╦═══════════════════════════════════════════════════════╝
-           ║
-           ▼
-╔══════════════════════════════════════════════════════════════════╗
-║              LIVE DASHBOARD — 8 Pages                            ║
-║                                                                  ║
-║  Dashboard  — Risk gauge, trend arrows, convective timer         ║
-║  Forecast   — 4-slot gauges, multiday extended outlook           ║
-║  Radar Map  — Himawari-9 BT visualization, history scrubber      ║
-║  Models     — Skill metrics, rolling verification, v1-v4 arch    ║
-║  Explainability — Real-time SHAP per slot, RAG chatbox           ║
-║  Regimes    — 5 synoptic regimes, R5 52.1% TS rate               ║
-║  Live API   — Interactive endpoint explorer                      ║
-║  ATC View   — High-contrast operational display                  ║
-╚══════════════════════════════════════════════════════════════════╝
-```
-
+<p align="center">
+  <img src="assets/system_architecture_v3.png"
+       alt="CSIR Thunderstorm Prediction System Architecture"
+       width="100%">
+</p>
 ---
 
 ## Model Performance
