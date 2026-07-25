@@ -179,7 +179,7 @@ for slot_id in range(4):
     })
     print(f"Slot {slot_id}: {cal*100:.1f}%")
 
-alert_active     = any(s['predicted'] for s in slots_output)
+alert_active     = any(s['ts_predicted'] for s in slots_output)
 peak_slot        = max(results, key=results.get)
 peak_probability = results[peak_slot]
 met_slot         = next((s for s in slots_output if s['slot'] == 2), slots_output[0])
