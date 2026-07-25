@@ -1054,6 +1054,14 @@
       const realtimeShap = liveData?.realtime_shap?.[String(shapSlot)];
       const isRealtime = !!realtimeShap?.top_features;
       const maxShap = isRealtime ? Math.max(...realtimeShap.top_features.map(f => Math.abs(f.shap)), 0.01) : 0.85;
+      const SHAP_DATA = isRealtime ? realtimeShap.top_features.map(f => ({
+          feature: f.feature,
+          value: Math.abs(f.shap),
+          raw_shap: f.shap,
+          isDerived: DERIVED_FEATURES_RT.has(f.feature),
+          direction: f.direction,
+          actual_value: f.value,
+        })) : SHAP_DATA_FALLBACK;
 
       const handleRunQuery = async (e) => {
         e.preventDefault();
