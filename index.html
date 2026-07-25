@@ -803,7 +803,7 @@
     }
 
     // --- 2. FORECAST PAGE (FULL 4-SLOT DETAILED GAUGES VIEW + 24-HR TIMELINE) ---
-    function ForecastPage({ slots, selectedSlotIndex, onSelectSlot }) {
+    function ForecastPage({ slots, selectedSlotIndex, onSelectSlot, liveData }) {
       return (
         <div className="space-y-6 max-w-[1750px] mx-auto font-mono">
           <div className="atc-card p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -883,6 +883,51 @@
               })}
             </div>
           </div>
+
+          {/* Multi-Day Outlook Panel */}
+          {liveData?.multiday_outlook?.length > 0 && (
+            <div className="atc-card p-6 rounded-2xl">
+              <h3 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-4 border-b border-[#172338] pb-2">
+                EXTENDED OUTLOOK — GFS PROBABILISTIC FORECAST
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {liveData.multiday_outlook.map((day, idx) => {
+                  const riskColor = day.risk_level === 'HIGH' ? 'text-red-400' : day.risk_level === 'MODERATE' ? 'text-orange-400' : day.risk_level === 'LOW' ? 'text-yellow-400' : 'text-emerald-400';
+                  const riskBg = day.risk_level === 'HIGH' ? 'bg-red-500/10 border-red-500/30' : day.risk_level === 'MODERATE' ? 'bg-orange-500/10 border-orange-500/30' : 'bg-[#050811] border-[#172338]';
+                  return (
+                    <div key={idx} className={`p-4 rounded-xl border ${riskBg}`}>
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <div className="text-xs font-bold text-white capitalize">{day.day_label?.replace('_', ' ') ?? 'Future'}</div>
+                          <div className="text-[10px] text-[#607d8b]">{day.date}</div>
+                        </div>
+                        <span className={`text-sm font-extrabold ${riskColor}`}>{day.risk_level}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center text-[10px] mb-3">
+                        <div className="p-1.5 rounded bg-[#020409] border border-[#172338]">
+                          <div className="text-[8px] text-[#607d8b]">CAPE</div>
+                          <div className="font-bold text-white">{day.cape}</div>
+                        </div>
+                        <div className="p-1.5 rounded bg-[#020409] border border-[#172338]">
+                          <div className="text-[8px] text-[#607d8b]">K-INDEX</div>
+                          <div className="font-bold text-white">{day.k_index}</div>
+                        </div>
+                        <div className="p-1.5 rounded bg-[#020409] border border-[#172338]">
+                          <div className="text-[8px] text-[#607d8b]">LI</div>
+                          <div className="font-bold text-white">{day.lifted_index}</div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center text-xs border-t border-[#172338] pt-2">
+                        <span className="text-[#607d8b]">Slot 2 TS Probability</span>
+                        <span className={`font-extrabold ${riskColor}`}>{(day.ts_probability_slot2 * 100).toFixed(1)}%</span>
+                      </div>
+                      <div className="text-[9px] text-[#607d8b] mt-1">Peak window: {day.peak_window}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -1642,6 +1687,7 @@
                       slots={currentSlots}
                       selectedSlotIndex={selectedSlotIndex}
                       onSelectSlot={setSelectedSlotIndex}
+                      liveData={liveData}
                     />
                   </motion.div>
                 )}
