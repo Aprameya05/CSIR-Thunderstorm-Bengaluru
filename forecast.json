@@ -1,6 +1,6 @@
 {
-  "date": "2026-07-25",
-  "generated_at": "2026-07-25 20:20 IST",
+  "date": "2026-07-26",
+  "generated_at": "2026-07-26 02:00 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0231,
@@ -122,5 +122,44 @@
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3"
       }
     ]
+  },
+  "verification": {
+    "pod": 0.0,
+    "far": 0.0,
+    "hss": 0.0,
+    "brier": 0.0365,
+    "csi": 0.0,
+    "n_days": 30,
+    "n_ts": 0,
+    "date_verified": "2026-07-25 19:10 IST",
+    "slot": 2,
+    "window": "30-day",
+    "available": true,
+    "all_slots_30d": {
+      "0": {
+        "pod": 0.0,
+        "far": 0.0,
+        "hss": 0.0,
+        "brier": 0.0136
+      },
+      "1": {
+        "pod": 0.0,
+        "far": 0.0,
+        "hss": 0.0,
+        "brier": 0.0063
+      },
+      "2": {
+        "pod": 0.0,
+        "far": 0.0,
+        "hss": 0.0,
+        "brier": 0.0365
+      },
+      "3": {
+        "pod": 0.0,
+        "far": 0.0,
+        "hss": 0.0,
+        "brier": 0.0408
+      }
+    }
   }
 }

@@ -249,6 +249,42 @@ forecast["satellite"] = {
     "history": himawari_history[-6:] if himawari_history else [],
 }
 
+# Load verification report if available
+verification = {}
+verif_path = BASE / 'results' / 'verification_report.json'
+if verif_path.exists():
+    try:
+        with open(verif_path) as f:
+            verification = json.load(f)
+        print(f"Verification loaded: POD={verification.get('pod')} HSS={verification.get('hss')}")
+    except Exception as e:
+        print(f"Verification load error: {e}")
+
+# Extract Slot 2 30-day metrics (primary operational slot)
+slot2_30d = verification.get("metrics_30day", {}).get("2", {})
+forecast["verification"] = {
+    "pod":           round(float(slot2_30d.get("POD", 0)), 3) if slot2_30d else None,
+    "far":           round(float(slot2_30d.get("FAR", 0)), 3) if slot2_30d else None,
+    "hss":           round(float(slot2_30d.get("HSS", 0)), 3) if slot2_30d else None,
+    "brier":         round(float(slot2_30d.get("Brier", 0)), 4) if slot2_30d else None,
+    "csi":           round(float(slot2_30d.get("CSI", 0)), 3) if slot2_30d else None,
+    "n_days":        slot2_30d.get("n_days"),
+    "n_ts":          slot2_30d.get("n_ts"),
+    "date_verified": verification.get("generated_at"),
+    "slot":          2,
+    "window":        "30-day",
+    "available":     bool(slot2_30d),
+    "all_slots_30d": {
+        str(k): {
+            "pod":   round(float(v.get("POD", 0)), 3),
+            "far":   round(float(v.get("FAR", 0)), 3),
+            "hss":   round(float(v.get("HSS", 0)), 3),
+            "brier": round(float(v.get("Brier", 0)), 4),
+        }
+        for k, v in verification.get("metrics_30day", {}).items()
+    }
+}
+
 with open('forecast.json', 'w') as f:
     json.dump(forecast, f, indent=2)
 
