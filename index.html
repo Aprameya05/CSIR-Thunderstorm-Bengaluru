@@ -1165,13 +1165,43 @@
     }
 
     // --- SKEW-T SOUNDING DIAGRAM COMPONENT ---
-    function SkewTDiagram() {
+    function SkewTDiagram({ liveData }) {
       const [sounding, setSounding] = useState(null);
-      const [soundingStatus, setSoundingStatus] = useState('idle'); // idle|loading|ok|error
-      const [soundingTime, setSoundingTime] = useState('12'); // '00' or '12' UTC
+      const [soundingStatus, setSoundingStatus] = useState('idle');
+      const [soundingTime, setSoundingTime] = useState('12');
 
-      // University of Wyoming Sounding API — Bengaluru station 43295
-      // CORS-friendly via allorigins proxy
+      // Build synthetic sounding from GFS met params already in forecast.json
+      const buildGFSSounding = () => {
+        const mp = liveData?.met_parameters;
+        if (!mp) return null;
+        // GFS gives us T at 500/700/850 hPa and surface
+        // Build a plausible 6-level sounding
+        const t2m  = (mp.ERA5_T2M ?? mp.t2m ?? 300) - 273.15;
+        const t850 = (mp.ERA5_t_850hPa ?? mp.t_850) ? (mp.ERA5_t_850hPa ?? mp.t_850) - 273.15 : t2m - 5;
+        const t700 = (mp.ERA5_t_700hPa ?? mp.t_700) ? (mp.ERA5_t_700hPa ?? mp.t_700) - 273.15 : t2m - 12;
+        const t500 = (mp.ERA5_t_500hPa ?? mp.t_500) ? (mp.ERA5_t_500hPa ?? mp.t_500) - 273.15 : t2m - 25;
+        const d2m  = (mp.ERA5_D2M ?? mp.d2m ?? 295) - 273.15;
+        const cape = mp.ERA5_CAPE ?? mp.CAPE ?? 0;
+        // Dewpoint depression widens with height
+        const levels = [
+          { p: 1000, t: t2m,       td: d2m },
+          { p: 925,  t: t2m - 3,   td: d2m - 4 },
+          { p: 850,  t: t850,      td: d2m - 8 },
+          { p: 700,  t: t700,      td: d2m - 18 },
+          { p: 500,  t: t500,      td: t500 - 20 },
+          { p: 300,  t: t500 - 15, td: t500 - 40 },
+          { p: 200,  t: t500 - 25, td: t500 - 55 },
+        ];
+        const now = new Date();
+        return {
+          levels,
+          station: '43295',
+          time: `GFS-derived · ${now.toISOString().slice(0,10)}`,
+          isFallback: true,
+          cape,
+        };
+      };
+
       const fetchSounding = async (hour) => {
         setSoundingStatus('loading');
         setSounding(null);
@@ -1182,29 +1212,30 @@
         const url  = `https://weather.uwyo.edu/cgi-bin/bufrraob.py?datetime=${yyyy}-${mm}-${dd}+${hour}%3A00%3A00&id=43295&type=json`;
         const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         try {
-          const res = await fetch(proxy, { timeout: 20000 });
+          const res = await fetch(proxy);
+          if (!res.ok) throw new Error('proxy error');
           const outer = await res.json();
           const data = JSON.parse(outer.contents);
-          // Parse pressure, temp, dewpoint, height levels
           const levels = [];
           if (data && data.mandatory) {
             for (const lvl of data.mandatory) {
               if (lvl.pressure && lvl.temperature !== null && lvl.dewpoint !== null) {
-                levels.push({
-                  p: lvl.pressure,
-                  t: lvl.temperature,
-                  td: lvl.dewpoint,
-                  h: lvl.height || null,
-                });
+                levels.push({ p: lvl.pressure, t: lvl.temperature, td: lvl.dewpoint, h: lvl.height || null });
               }
             }
           }
-          if (levels.length < 3) throw new Error('Insufficient sounding levels');
+          if (levels.length < 3) throw new Error('no data');
           setSounding({ levels, station: '43295', time: `${yyyy}-${mm}-${dd} ${hour}Z` });
           setSoundingStatus('ok');
         } catch(e) {
-          // Fallback: build synthetic sounding from liveData GFS met params
-          setSoundingStatus('gfs-fallback');
+          // Use GFS fallback from forecast.json
+          const fallback = buildGFSSounding();
+          if (fallback) {
+            setSounding(fallback);
+            setSoundingStatus('gfs-fallback');
+          } else {
+            setSoundingStatus('error');
+          }
         }
       };
 
@@ -1257,6 +1288,8 @@
             <span className="text-xs font-bold text-cyan-300 flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${soundingStatus==='ok' ? 'bg-emerald-400' : soundingStatus==='loading' ? 'bg-amber-400 animate-pulse' : soundingStatus==='gfs-fallback' ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
               SKEW-T LOG-P ATMOSPHERIC SOUNDING — BENGALURU 43295
+              {soundingStatus==='gfs-fallback' && <span className="text-orange-400 text-[9px] ml-2">(GFS SYNTHETIC — RADIOSONDE UNAVAILABLE)</span>}
+              {soundingStatus==='ok' && <span className="text-emerald-400 text-[9px] ml-2">(LIVE RADIOSONDE)</span>}
             </span>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-[#607d8b]">Univ. of Wyoming · BUFR Radiosonde</span>
@@ -1403,13 +1436,7 @@
 
           {soundingStatus === 'error' && (
             <div className="h-24 flex items-center justify-center text-red-400 text-xs">
-              Could not fetch sounding. Radiosonde may not be available yet for this time. Try 00Z or 12Z.
-            </div>
-          )}
-
-          {soundingStatus === 'gfs-fallback' && !sounding && (
-            <div className="h-24 flex items-center justify-center text-amber-400 text-xs">
-              Radiosonde unavailable — GFS profile fallback not yet loaded.
+              Could not fetch sounding or build GFS fallback. Try refreshing.
             </div>
           )}
         </div>
@@ -1491,7 +1518,7 @@
           </div>
 
           {/* SKEW-T SOUNDING DIAGRAM */}
-          <SkewTDiagram />
+          <SkewTDiagram liveData={liveData} />
 
           {/* SHAP Chart Legend */}
           <div className="flex items-center gap-6 text-xs border-b border-[#172338] pb-3">
