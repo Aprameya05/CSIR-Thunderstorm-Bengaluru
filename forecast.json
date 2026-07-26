@@ -1,6 +1,6 @@
 {
   "date": "2026-07-26",
-  "generated_at": "2026-07-26 05:21 IST",
+  "generated_at": "2026-07-26 06:25 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0232,
@@ -54,8 +54,8 @@
       "lifted_index": -1.06,
       "totals_totals": 41.0,
       "trend": "stable",
-      "trend_diff": 0.003,
-      "prev_probability": 0
+      "trend_diff": 0.0,
+      "prev_probability": 0.003
     },
     {
       "slot": 3,
@@ -174,15 +174,15 @@
   "convective_initiation": {
     "instability_score": 27.2,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 7.7h (1300-1800 IST)",
+    "initiation_message": "Peak convective window in 6.6h (1300-1800 IST)",
     "initiation_risk": "LOW",
-    "hours_to_peak": 7.7,
+    "hours_to_peak": 6.6,
     "cape_now": 70.0,
     "ki_now": 34.17,
     "li_now": -1.06,
     "tt_now": 41.0,
     "peak_window_ist": "1300-1800 IST",
-    "computed_at": "2026-07-26 05:21 IST"
+    "computed_at": "2026-07-26 06:25 IST"
   },
   "multiday_outlook": [
     {
@@ -257,7 +257,7 @@
     "query_cape": 70.0,
     "query_ki": 34.17,
     "query_li": -1.06,
-    "computed_at": "2026-07-26 05:21 IST"
+    "computed_at": "2026-07-26 06:25 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -299,7 +299,7 @@
         "impact_pct": 0.0
       }
     ],
-    "computed_at": "2026-07-26 05:21 IST"
+    "computed_at": "2026-07-26 06:25 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -312,7 +312,7 @@
     "ki_used": 34.17,
     "t2m_c": 26.5,
     "month": 7,
-    "computed_at": "2026-07-26 05:21 IST"
+    "computed_at": "2026-07-26 06:25 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -421,7 +421,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:51 IST"
+      "computed_at": "2026-07-26 11:56 IST"
     },
     "1": {
       "slot": 1,
@@ -490,7 +490,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:51 IST"
+      "computed_at": "2026-07-26 11:56 IST"
     },
     "2": {
       "slot": 2,
@@ -559,7 +559,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:51 IST"
+      "computed_at": "2026-07-26 11:56 IST"
     },
     "3": {
       "slot": 3,
@@ -628,7 +628,35 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:51 IST"
+      "computed_at": "2026-07-26 11:56 IST"
     }
+  },
+  "metar": {
+    "station": "VOBL",
+    "obs_time": "2026-07-26T06:00:00.000Z",
+    "temp_c": 27,
+    "dewpoint_c": 19,
+    "rh_pct": 61.6,
+    "wind_dir": 260,
+    "wind_speed_kt": 13,
+    "wind_gust_kt": null,
+    "visibility_sm": 4.97,
+    "visibility_km": 8.0,
+    "altimeter_hpa": 1013,
+    "flight_category": "MVFR",
+    "wx_string": "",
+    "sky_cover": [
+      {
+        "cover": "SCT",
+        "base_ft": 1200
+      },
+      {
+        "cover": "SCT",
+        "base_ft": 2000
+      }
+    ],
+    "thunderstorm_present": false,
+    "raw": "METAR VOBL 260600Z 26013KT 8000 SCT012 SCT020 27/19 Q1013 NOSIG",
+    "fetched_utc": "2026-07-26T06:26:02Z"
   }
 }
