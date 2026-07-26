@@ -1335,6 +1335,9 @@
 
     // --- 5. REGIMES PAGE (SYNOPTIC ATMOSPHERIC CLUSTERS) ---
     function RegimesPage() {
+      const todayRegimeId = liveData?.synoptic_regime?.regime_id || null;
+      const todayRegime = liveData?.synoptic_regime || null;
+
       return (
         <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
           <div className="flex justify-between items-center border-b border-[#172338] pb-4">
@@ -1342,40 +1345,91 @@
               <h2 className="text-xl font-bold text-white">SYNOPTIC ATMOSPHERIC REGIME CLUSTERS</h2>
               <p className="text-xs text-[#607d8b]">KMeans 5-Cluster Atmospheric Pattern Classification over Bengaluru Plateau</p>
             </div>
-            <span className="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
-              KMeans 5-CLUSTER ATMOSPHERIC PATTERN
-            </span>
+            <div className="flex items-center gap-2">
+              {todayRegimeId && (
+                <span className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold animate-pulse">
+                  TODAY: {todayRegimeId}
+                </span>
+              )}
+              <span className="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
+                KMeans 5-CLUSTER ATMOSPHERIC PATTERN
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            {SYNOPTIC_REGIMES.map(reg => (
-              <div 
-                key={reg.id} 
-                className={`p-4 rounded-xl bg-[#050811] border flex flex-col justify-between min-h-[220px] ${
-                  reg.isChallenging 
-                    ? 'border-red-500 bg-red-950/20 ring-1 ring-red-500/50 shadow-[0_0_20px_rgba(239,83,80,0.3)]' 
-                    : 'border-[#172338]'
-                }`}
-              >
+          {/* Today's regime detail banner */}
+          {todayRegime && (
+            <div className="p-4 rounded-xl border border-cyan-500/40 bg-cyan-500/5 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-extrabold text-cyan-300">{todayRegime.regime_id}</span>
                 <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-cyan-300">{reg.id}</span>
-                    {reg.isChallenging && (
-                      <span className="text-[9px] bg-red-500/30 text-red-300 px-2 py-0.5 rounded font-bold animate-pulse">
-                        HARDEST REGIME
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-xs font-bold text-white mb-2">{reg.name}</h4>
-                  <div className="text-2xl font-extrabold my-2" style={{ color: reg.color }}>{reg.ts_rate}%</div>
-                </div>
-
-                <div className="border-t border-[#172338] pt-2 text-[10px] text-[#90a4ae] space-y-1">
-                  <div>AUROC SCORE: <span className="text-white font-bold">{reg.auroc.toFixed(3)}</span></div>
-                  <div>{reg.desc}</div>
+                  <div className="text-xs font-bold text-white">{todayRegime.regime_name}</div>
+                  <div className="text-[10px] text-[#607d8b]">{todayRegime.description}</div>
                 </div>
               </div>
-            ))}
+              <div className="flex gap-4 sm:ml-auto text-[10px] font-mono">
+                <div className="text-center">
+                  <div className="text-[#607d8b]">AUROC</div>
+                  <div className="text-white font-bold">{todayRegime.auroc}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[#607d8b]">TS RATE</div>
+                  <div className="text-white font-bold">{todayRegime.ts_rate}%</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[#607d8b]">CAPE</div>
+                  <div className="text-white font-bold">{todayRegime.cape_used ?? '—'}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-[#607d8b]">K-INDEX</div>
+                  <div className="text-white font-bold">{todayRegime.ki_used ?? '—'}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {SYNOPTIC_REGIMES.map(reg => {
+              const isToday = todayRegimeId === reg.id;
+              return (
+                <div
+                  key={reg.id}
+                  className={`p-4 rounded-xl bg-[#050811] border flex flex-col justify-between min-h-[220px] transition-all duration-300 ${
+                    isToday
+                      ? 'border-cyan-400 ring-2 ring-cyan-400/50 shadow-[0_0_24px_rgba(34,211,238,0.25)] bg-cyan-950/10'
+                      : reg.isChallenging
+                        ? 'border-red-500 bg-red-950/20 ring-1 ring-red-500/50 shadow-[0_0_20px_rgba(239,83,80,0.3)]'
+                        : 'border-[#172338] opacity-70'
+                  }`}
+                >
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-xs font-bold ${isToday ? 'text-cyan-300' : 'text-cyan-300'}`}>{reg.id}</span>
+                      <div className="flex gap-1">
+                        {isToday && (
+                          <span className="text-[9px] bg-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded font-bold animate-pulse">
+                            TODAY ◉
+                          </span>
+                        )}
+                        {reg.isChallenging && (
+                          <span className="text-[9px] bg-red-500/30 text-red-300 px-2 py-0.5 rounded font-bold animate-pulse">
+                            HARDEST
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <h4 className="text-xs font-bold text-white mb-2">{reg.name}</h4>
+                    <div className="text-2xl font-extrabold my-2" style={{ color: reg.color }}>{reg.ts_rate}%</div>
+                    <div className="text-[9px] text-[#607d8b]">Historical TS rate</div>
+                  </div>
+
+                  <div className="border-t border-[#172338] pt-2 text-[10px] text-[#90a4ae] space-y-1">
+                    <div>AUROC SCORE: <span className="text-white font-bold">{reg.auroc.toFixed(3)}</span></div>
+                    <div>{reg.desc}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       );
@@ -1383,6 +1437,26 @@
 
     // --- 6. LIVE API PAGE (FASTAPI ENDPOINTS DISPLAY) ---
     function LiveApiPage() {
+      const [responses, setResponses] = useState({});
+      const [loading, setLoading] = useState({});
+      const API_BASE = 'https://csir-thunderstorm-api.onrender.com';
+
+      const handleTryIt = async (ep) => {
+        if (ep.isPost) return; // skip POST for now — needs body
+        const key = ep.path;
+        setLoading(prev => ({ ...prev, [key]: true }));
+        setResponses(prev => ({ ...prev, [key]: null }));
+        try {
+          const res = await fetch(`${API_BASE}${ep.path}`, { method: 'GET' });
+          const data = await res.json();
+          setResponses(prev => ({ ...prev, [key]: { ok: true, data } }));
+        } catch (err) {
+          setResponses(prev => ({ ...prev, [key]: { ok: false, data: { error: err.message } } }));
+        } finally {
+          setLoading(prev => ({ ...prev, [key]: false }));
+        }
+      };
+
       return (
         <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#172338] pb-4">
@@ -1391,38 +1465,60 @@
               <p className="text-xs text-[#607d8b]">REST API Interface for Airport Ground Handling & Automated Systems</p>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input 
-                type="text" 
-                readOnly 
-                value= "https://csir-thunderstorm-api.onrender.com"
+              <input
+                type="text"
+                readOnly
+                value="https://csir-thunderstorm-api.onrender.com"
                 className="bg-[#050811] text-xs text-[#607d8b] border border-[#172338] rounded px-3 py-1.5 w-full sm:w-80"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {API_ENDPOINTS.map(ep => (
-              <div key={ep.path} className="p-4 rounded-xl bg-[#050811] border border-[#172338] flex flex-col justify-between space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className={`px-2.5 py-1 rounded text-xs font-bold ${ep.isPost ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'}`}>
-                    {ep.method}
-                  </span>
-                  <span className="text-xs font-bold text-white font-mono">{ep.path}</span>
-                </div>
+            {API_ENDPOINTS.map(ep => {
+              const key = ep.path;
+              const resp = responses[key];
+              const isLoading = loading[key];
+              const canTry = !ep.isPost;
+              return (
+                <div key={key} className="p-4 rounded-xl bg-[#050811] border border-[#172338] flex flex-col space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2.5 py-1 rounded text-xs font-bold ${ep.isPost ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-sky-500/20 text-sky-300 border border-sky-500/40'}`}>
+                      {ep.method}
+                    </span>
+                    <span className="text-xs font-bold text-white font-mono">{ep.path}</span>
+                  </div>
 
-                <p className="text-xs text-[#90a4ae]">{ep.desc}</p>
+                  <p className="text-xs text-[#90a4ae]">{ep.desc}</p>
 
-                <div className="flex justify-end border-t border-[#172338] pt-2">
-                  <button 
-                    disabled 
-                    title="Connect API to enable"
-                    className="px-3 py-1.5 rounded bg-[#080d1a] text-[#607d8b] border border-[#172338] text-xs cursor-not-allowed opacity-60"
-                  >
-                    Try it 🔒
-                  </button>
+                  <div className="flex justify-end border-t border-[#172338] pt-2">
+                    <button
+                      onClick={() => handleTryIt(ep)}
+                      disabled={!canTry || isLoading}
+                      className={`px-3 py-1.5 rounded text-xs font-bold border transition-all ${
+                        !canTry
+                          ? 'bg-[#080d1a] text-[#607d8b] border-[#172338] cursor-not-allowed opacity-50'
+                          : isLoading
+                            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/40 cursor-wait'
+                            : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30 cursor-pointer'
+                      }`}
+                    >
+                      {!canTry ? 'POST — needs body' : isLoading ? '⟳ Calling...' : '▶ Try it'}
+                    </button>
+                  </div>
+
+                  {/* Response panel */}
+                  {resp && (
+                    <div className={`rounded-lg p-3 text-[10px] font-mono border max-h-48 overflow-y-auto ${
+                      resp.ok ? 'bg-emerald-950/30 border-emerald-500/30 text-emerald-300' : 'bg-red-950/30 border-red-500/30 text-red-300'
+                    }`}>
+                      <div className="text-[9px] text-[#607d8b] mb-1">{resp.ok ? '200 OK' : 'ERROR'} · {new Date().toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata'})} IST</div>
+                      <pre className="whitespace-pre-wrap break-all">{JSON.stringify(resp.data, null, 2).slice(0, 1200)}{JSON.stringify(resp.data).length > 1200 ? '\n… (truncated)' : ''}</pre>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       );
