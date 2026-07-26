@@ -749,6 +749,49 @@
                 </div>
               )}
 
+              {/* Card 1.7: AIRPORT IMPACT SCORE */}
+              {liveData?.airport_impact && (
+                <div className="atc-card p-4 rounded-2xl font-mono">
+                  <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">
+                    VOBL AIRPORT IMPACT SCORE
+                  </h4>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className={`text-lg font-extrabold ${
+                        liveData.airport_impact.overall_risk === 'HIGH' ? 'text-red-400' :
+                        liveData.airport_impact.overall_risk === 'MODERATE' ? 'text-orange-400' :
+                        liveData.airport_impact.overall_risk === 'LOW' ? 'text-yellow-400' :
+                        'text-emerald-400'
+                      }`}>{liveData.airport_impact.overall_risk}</div>
+                      <div className="text-[9px] text-[#607d8b]">Disruption Risk</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-extrabold text-white">{liveData.airport_impact.total_disrupted_est}</div>
+                      <div className="text-[9px] text-[#607d8b]">Est. flights affected</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-extrabold text-white">{liveData.airport_impact.total_departures_today}</div>
+                      <div className="text-[9px] text-[#607d8b]">Total departures</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-extrabold text-white">{liveData.airport_impact.disruption_pct}%</div>
+                      <div className="text-[9px] text-[#607d8b]">Disruption rate</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 text-[9px] text-center">
+                    {liveData.airport_impact.slots.map(s => (
+                      <div key={s.slot} className={`p-1.5 rounded border ${s.disrupted_est > 0 ? 'bg-orange-500/10 border-orange-500/30' : 'bg-[#050811] border-[#172338]'}`}>
+                        <div className="text-[#607d8b]">{s.label}</div>
+                        <div className="font-bold text-white">{s.departures} dep</div>
+                        <div className={`font-bold ${s.disrupted_est > 0 ? 'text-orange-400' : 'text-emerald-400'}`}>
+                          {s.disrupted_est} aff.
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Card 2: ALERT LEVEL GUIDE */}
               <div className="atc-card p-4 rounded-2xl font-mono">
                 <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">

@@ -1,6 +1,6 @@
 {
   "date": "2026-07-26",
-  "generated_at": "2026-07-26 10:07 IST",
+  "generated_at": "2026-07-26 10:16 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0231,
@@ -84,11 +84,11 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-07-25T16:30:00",
-      "timestamp_ist": "2026-07-25T22:00:00",
-      "vobl_bt_celsius": null,
-      "min_bt_50km": null,
-      "mean_bt_50km": null,
+      "timestamp_utc": "2026-07-26T03:50:00",
+      "timestamp_ist": "2026-07-26T09:20:00",
+      "vobl_bt_celsius": -5.56,
+      "min_bt_50km": -30.77,
+      "mean_bt_50km": -4.88,
       "cold_pixels_count": 0,
       "storm_detected": false,
       "nearest_pixel_dist_km": null,
@@ -132,21 +132,33 @@
         "nearest_pixel_dist_km": null,
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3"
+      },
+      {
+        "timestamp_utc": "2026-07-26T03:50:00",
+        "timestamp_ist": "2026-07-26T09:20:00",
+        "vobl_bt_celsius": -5.56,
+        "min_bt_50km": -30.77,
+        "mean_bt_50km": -4.88,
+        "cold_pixels_count": 0,
+        "storm_detected": false,
+        "nearest_pixel_dist_km": null,
+        "threshold_celsius": -40.0,
+        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3"
       }
     ]
   },
   "convective_initiation": {
     "instability_score": 13.0,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 2.9h (1300-1800 IST)",
+    "initiation_message": "Peak convective window in 2.7h (1300-1800 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 2.9,
+    "hours_to_peak": 2.7,
     "cape_now": 0.0,
     "ki_now": 28.7,
     "li_now": 0.23,
     "tt_now": 38.41,
     "peak_window_ist": "1300-1800 IST",
-    "computed_at": "2026-07-26 10:07 IST"
+    "computed_at": "2026-07-26 10:16 IST"
   },
   "multiday_outlook": [
     {
@@ -221,7 +233,49 @@
     "query_cape": 0.0,
     "query_ki": 28.7,
     "query_li": 0.23,
-    "computed_at": "2026-07-26 10:07 IST"
+    "computed_at": "2026-07-26 10:16 IST"
+  },
+  "airport_impact": {
+    "total_departures_today": 143,
+    "total_disrupted_est": 0,
+    "disruption_pct": 0.0,
+    "overall_risk": "MINIMAL",
+    "disruption_factor": 0.6,
+    "slots": [
+      {
+        "slot": 0,
+        "label": "Late Night",
+        "ts_probability": 0.0231,
+        "departures": 8,
+        "disrupted_est": 0,
+        "impact_pct": 1.4
+      },
+      {
+        "slot": 1,
+        "label": "Morning",
+        "ts_probability": 0.0077,
+        "departures": 45,
+        "disrupted_est": 0,
+        "impact_pct": 0.5
+      },
+      {
+        "slot": 2,
+        "label": "Afternoon",
+        "ts_probability": 0,
+        "departures": 52,
+        "disrupted_est": 0,
+        "impact_pct": 0.0
+      },
+      {
+        "slot": 3,
+        "label": "Evening",
+        "ts_probability": 0,
+        "departures": 38,
+        "disrupted_est": 0,
+        "impact_pct": 0.0
+      }
+    ],
+    "computed_at": "2026-07-26 10:16 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -330,7 +384,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:07 IST"
+      "computed_at": "2026-07-26 10:17 IST"
     },
     "1": {
       "slot": 1,
@@ -399,7 +453,7 @@
           "direction": "increases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:07 IST"
+      "computed_at": "2026-07-26 10:17 IST"
     },
     "2": {
       "slot": 2,
@@ -468,7 +522,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:07 IST"
+      "computed_at": "2026-07-26 10:17 IST"
     },
     "3": {
       "slot": 3,
@@ -537,7 +591,7 @@
           "direction": "increases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:07 IST"
+      "computed_at": "2026-07-26 10:17 IST"
     }
   }
 }

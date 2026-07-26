@@ -427,6 +427,44 @@ forecast["analogs"] = {
     "computed_at":    now.strftime('%Y-%m-%d %H:%M IST'),
 }
 
+# Airport Impact Score
+SLOT_DEPARTURES   = {0: 8, 1: 45, 2: 52, 3: 38}
+DISRUPTION_FACTOR = 0.60  # 60% of flights affected when TS occurs
+
+impact_slots = []
+total_disrupted = 0
+total_departures = 0
+
+for s in slots_output:
+    slot_id  = s['slot']
+    prob     = s.get('ts_probability', 0) or 0
+    deps     = SLOT_DEPARTURES.get(slot_id, 0)
+    disrupted = round(prob * deps * DISRUPTION_FACTOR)
+    total_disrupted  += disrupted
+    total_departures += deps
+
+    impact_slots.append({
+        'slot':            slot_id,
+        'label':           s.get('label', ''),
+        'ts_probability':  round(prob, 4),
+        'departures':      deps,
+        'disrupted_est':   disrupted,
+        'impact_pct':      round(prob * DISRUPTION_FACTOR * 100, 1),
+    })
+
+overall_risk = 'HIGH' if total_disrupted >= 20 else 'MODERATE' if total_disrupted >= 8 else 'LOW' if total_disrupted >= 2 else 'MINIMAL'
+
+forecast["airport_impact"] = {
+    "total_departures_today":  total_departures,
+    "total_disrupted_est":     total_disrupted,
+    "disruption_pct":          round(total_disrupted / total_departures * 100, 1) if total_departures else 0,
+    "overall_risk":            overall_risk,
+    "disruption_factor":       DISRUPTION_FACTOR,
+    "slots":                   impact_slots,
+    "computed_at":             now.strftime('%Y-%m-%d %H:%M IST'),
+}
+print(f"Airport impact: {total_disrupted} disrupted of {total_departures} departures ({overall_risk})")
+
 # Extract Slot 2 30-day metrics (primary operational slot)
 slot2_30d = verification.get("metrics_30day", {}).get("2", {})
 forecast["verification"] = {
