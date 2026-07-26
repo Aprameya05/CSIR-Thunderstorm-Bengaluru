@@ -187,12 +187,18 @@ peak_probability = results[peak_slot]
 met_slot         = next((s for s in slots_output if s['slot'] == 2), slots_output[0])
 
 # ── Pull wind values for met_parameters ──────────────────────────────────────
-# Prefer Slot 2 upper_air row (most relevant for afternoon peak window).
-# Fall back to obs defaults if Slot 2 hasn't been fetched yet.
-_ua2 = upper_air.get(2, {})
-def _wind(key, default):
-    v = _ua2.get(key)
-    return float(v) if (v is not None and not (isinstance(v, float) and math.isnan(v))) else default
+# Try Slot 2 first (afternoon peak), fall back through 3→1→0 so real values
+# are used whenever any slot has been fetched today (Aprameya 2026-07-26).
+_ua_wind = (upper_air.get(2) or upper_air.get(3) or
+            upper_air.get(1) or upper_air.get(0) or {})
+
+def _wind(key):
+    v = _ua_wind.get(key)
+    try:
+        f = float(v)
+        return 0.0 if math.isnan(f) else f
+    except (TypeError, ValueError):
+        return 0.0
 
 forecast = {
     "date":             date_str,
@@ -204,16 +210,15 @@ forecast = {
     "slots":            slots_output,
     "met_parameters": {
         "ua_cape_jkg":       met_slot.get('cape', 0),
-        "ua_cape_raw":       met_slot.get('cape', 0),           # raw CAPE J/kg — added 2026-07-26
+        "ua_cape_raw":       met_slot.get('cape', 0),
         "ua_k_index":        met_slot.get('k_index', 0),
         "ua_lifted_index":   met_slot.get('lifted_index', 0),
         "ua_totals_totals":  met_slot.get('totals_totals', 0),
-        # GFS wind components at 500/850 hPa (m/s) — added 2026-07-26
-        # Named ERA5_* to match training feature schema
-        "ERA5_u_500hPa":     _wind('ERA5_u_500hPa', 5.0),
-        "ERA5_v_500hPa":     _wind('ERA5_v_500hPa', 2.0),
-        "ERA5_u_850hPa":     _wind('ERA5_u_850hPa', -3.0),
-        "ERA5_v_850hPa":     _wind('ERA5_v_850hPa', 2.0),
+        # GFS wind components at 500/850 hPa (m/s) — named ERA5_* to match training schema
+        "ERA5_u_500hPa":     _wind('ERA5_u_500hPa'),
+        "ERA5_v_500hPa":     _wind('ERA5_v_500hPa'),
+        "ERA5_u_850hPa":     _wind('ERA5_u_850hPa'),
+        "ERA5_v_850hPa":     _wind('ERA5_v_850hPa'),
         "instability_level": (
             "Extreme" if met_slot.get('cape', 0) >= 3000 else
             "High"    if met_slot.get('cape', 0) >= 1500 else
