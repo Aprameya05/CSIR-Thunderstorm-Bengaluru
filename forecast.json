@@ -1,6 +1,6 @@
 {
   "date": "2026-07-26",
-  "generated_at": "2026-07-26 06:36 IST",
+  "generated_at": "2026-07-26 06:44 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0232,
@@ -174,15 +174,15 @@
   "convective_initiation": {
     "instability_score": 27.2,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 6.4h (1300-1800 IST)",
+    "initiation_message": "Peak convective window in 6.3h (1300-1800 IST)",
     "initiation_risk": "LOW",
-    "hours_to_peak": 6.4,
+    "hours_to_peak": 6.3,
     "cape_now": 70.0,
     "ki_now": 34.17,
     "li_now": -1.06,
     "tt_now": 41.0,
     "peak_window_ist": "1300-1800 IST",
-    "computed_at": "2026-07-26 06:36 IST"
+    "computed_at": "2026-07-26 06:44 IST"
   },
   "multiday_outlook": [
     {
@@ -257,7 +257,7 @@
     "query_cape": 70.0,
     "query_ki": 34.17,
     "query_li": -1.06,
-    "computed_at": "2026-07-26 06:36 IST"
+    "computed_at": "2026-07-26 06:44 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -299,7 +299,7 @@
         "impact_pct": 0.0
       }
     ],
-    "computed_at": "2026-07-26 06:36 IST"
+    "computed_at": "2026-07-26 06:44 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -312,7 +312,7 @@
     "ki_used": 34.17,
     "t2m_c": 26.5,
     "month": 7,
-    "computed_at": "2026-07-26 06:36 IST"
+    "computed_at": "2026-07-26 06:44 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -322,7 +322,7 @@
     "csi": 0.0,
     "n_days": 30,
     "n_ts": 0,
-    "date_verified": "2026-07-24 17:47 IST",
+    "date_verified": "2026-07-25 19:10 IST",
     "slot": 2,
     "window": "30-day",
     "available": true,
@@ -421,7 +421,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 12:06 IST"
+      "computed_at": "2026-07-26 12:14 IST"
     },
     "1": {
       "slot": 1,
@@ -490,7 +490,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 12:06 IST"
+      "computed_at": "2026-07-26 12:14 IST"
     },
     "2": {
       "slot": 2,
@@ -559,7 +559,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 12:06 IST"
+      "computed_at": "2026-07-26 12:14 IST"
     },
     "3": {
       "slot": 3,
@@ -628,7 +628,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 12:06 IST"
+      "computed_at": "2026-07-26 12:14 IST"
     }
   },
   "metar": {
@@ -657,6 +657,6 @@
     ],
     "thunderstorm_present": false,
     "raw": "METAR VOBL 260630Z 26014KT 8000 SCT012 SCT020 27/19 Q1013 NOSIG",
-    "fetched_utc": "2026-07-26T06:36:57Z"
+    "fetched_utc": "2026-07-26T06:44:12Z"
   }
 }

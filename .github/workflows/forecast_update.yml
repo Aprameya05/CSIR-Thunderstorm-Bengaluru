@@ -34,11 +34,14 @@ jobs:
       - name: Compute real-time SHAP
         run: python compute_realtime_shap.py
 
+      - name: Run daily verification
+        run: python verify_today.py
+
       - name: Commit and push forecast.json
         run: |
           git config --global user.name "CSIR Forecast Bot"
           git config --global user.email "bot@csir-thunderstorm.in"
-          git add forecast.json
+          git add forecast.json data/verification_today.json
           git diff --staged --quiet || (git commit -m "auto: forecast update $(date -u '+%Y-%m-%d %H:%M UTC')" && git push)
 
       - name: Deploy to Cloudflare Pages
