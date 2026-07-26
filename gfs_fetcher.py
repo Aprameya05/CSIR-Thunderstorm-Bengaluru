@@ -1,397 +1,492 @@
 """
 gfs_fetcher.py
-==============
-Smart GFS fetcher — auto-discovers latest available cycle on NOMADS.
-Fetches CAPE, T, q, u, v at 500/700/850hPa for Bengaluru Airport.
-Saves to data/gfs_realtime_43295.csv (single-row latest values).
+-------------------
+Atul's deliverable -- CSIR Thunderstorm Prediction, real-time pipeline
+Station: 43295 (Bengaluru Airport), lat=12.97, lon=77.58
+
+Pulls a single-point GFS 0.25 deg forecast from NOAA NOMADS and computes
+the same six upper-air stability indices used in training -- CAPE, CIN,
+K, LI, TT, PW -- so the live feature vector matches the schema
+merge_features.py already expects (see igra_scraper.py and
+era5_stability_indices.py for the historical/training equivalents).
+
+Cycle-selection logic comes straight out of pipeline_scoping_findings.md:
+GFS posts to NOMADS ~3.5-4h after its cycle time, which makes the
+original brief's "same-hour cycle at t+6" pairing infeasible -- the
+cycle isn't even posted yet by the time its own slot starts. This uses
+the corrected t+12 rule instead: always reach back to the cycle 12h
+before the target valid time, which leaves a safe ~6.5h buffer before
+every slot.
+
+    Slot 0  (0001-0600 IST)  -> prev-day 06Z, f012 (valid 18Z prev day)
+    Slot 1  (0601-1200 IST)  -> prev-day 12Z, f012 (valid 00Z)
+    Slot 2  (1201-1800 IST)  -> prev-day 18Z, f012 (valid 06Z)
+    Slot 3  (1801-2400 IST)  -> same-day 00Z, f012 (valid 12Z)
+
+The script doesn't hardcode that table -- it derives the source cycle
+directly from the target slot's start time (floor to the nearest
+standard cycle hour, then step back 12h), so it stays correct even if
+the slot boundaries ever change.
+
+CAPE/CIN/PW are taken directly from GFS's own native surface fields
+(CAPE, CIN, PWAT) -- same principle era5_stability_indices.py uses:
+trust the source model's own full-resolution CAPE/CIN over a hand-
+derived 4-level estimate. K-Index, Totals Totals, and Lifted Index are
+computed from the surface + 850/700/500 hPa profile via MetPy, using
+the same formulas as era5_stability_indices.py, so live and training
+features are computed identically.
+
+Wind components (ERA5_u/v_500hPa, ERA5_u/v_850hPa) added 2026-07-26:
+fetched via var_UGRD/var_VGRD from the same isobaricInhPa group already
+used for T/RH, written to the CSV and available for forecast.json
+met_parameters. Keys named ERA5_* to match the training feature schema.
+
+IMPORTANT -- not testable from this sandbox: NOMADS is reachable from a
+browser and from web_fetch (confirmed), but this sandbox's own outbound
+proxy blocks direct downloads from nomads.ncep.noaa.gov for curl/requests
+(403 from the sandbox's allowlist, not from NOAA). Run and sanity-check
+this from your own machine or Colab, not from here -- the URL-building
+and cycle-selection logic below was checked with synthetic timestamps,
+but the actual download+parse has not been run against a live file.
+
+Requirements:
+    pip install requests cfgrib xarray metpy pandas numpy eccodes pygrib
 
 Usage:
-  python gfs_fetcher.py
-  python gfs_fetcher.py --slot 2
+    python gfs_fetcher.py                              # fetch data for the next upcoming slot
+    python gfs_fetcher.py --slot 2                     # force a specific slot (0-3), next occurrence
+    python gfs_fetcher.py --now "2026-07-15 14:00"     # simulate a different current IST time (testing)
+    python gfs_fetcher.py --verify                     # also print a full manual pygrib cross-check
+
+Automatic QC (added 2026-07-24, after a real case: Slot 3 read CAPE=0 with
+K-Index=35.5, which is inconsistent enough to need a second opinion): every
+run now checks CAPE against K-Index/Totals-Totals on its own, no --verify
+flag required. If CAPE reads ~0 while K-Index/TT say the profile is unstable,
+the script automatically pulls an independent pygrib CAPE value at the same
+point and records both the flag and the cross-check value in the CSV --
+see assess_cape_consistency() below. This applies to every slot, not just
+Slot 3 -- the check runs in compute_indices()'s call path regardless of
+which slot triggered the fetch.
+
+Output: appends one row to data/upperair_realtime_43295.csv
+        Columns: date, slot, ist_window, valid_time_utc, source_cycle_utc,
+                 source_fhour, fetched_at_utc, CAPE, CIN, K, LI, TT, PW,
+                 ERA5_u_500hPa, ERA5_v_500hPa, ERA5_u_850hPa, ERA5_v_850hPa,
+                 CAPE_QC_FLAG, CAPE_PYGRIB_CROSSCHECK
 """
 
-import requests
-import tempfile
-import os
-import re
 import argparse
-import pandas as pd
-import numpy as np
-import cfgrib
+import os
 import warnings
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from urllib.parse import urlencode
 
-warnings.filterwarnings('ignore')
+import numpy as np
+import pandas as pd
+import requests
 
-LAT = 12.97
-LON = 77.58
-OUT_DIR = Path('data')
-OUT_DIR.mkdir(exist_ok=True)
-OUT_FILE      = OUT_DIR / 'gfs_realtime_43295.csv'
-OUT_HIST_FILE = OUT_DIR / 'gfs_history_43295.json'
-KEEP_CYCLES   = 6
+warnings.filterwarnings("ignore")
 
-NOMADS_BASE = 'https://nomads.ncep.noaa.gov'
+LAT, LON = 12.97, 77.58            # Bengaluru Airport, station 43295
+BOX = 0.5                          # subset box half-width in degrees around the point
+DATA_DIR = "data"
+OUT_PATH = f"{DATA_DIR}/upperair_realtime_43295.csv"
+GRIB_TMP = f"{DATA_DIR}/_gfs_tmp.grib2"
+
+NOMADS_BASE = "https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl"
+
+FORECAST_HOUR = 12                 # t+12, per pipeline_scoping_findings.md
+POST_LATENCY_HOURS = 4             # confirmed via research: ~3.5-4h from cycle time to NOMADS posting
+SLOT_START_HOURS = [0, 6, 12, 18]  # IST hours each slot begins
+SLOT_WINDOWS = {0: "0001-0600", 1: "0601-1200", 2: "1201-1800", 3: "1801-2400"}
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+CAPE_NEAR_ZERO = 1.0
+CAPE_SUSPECT_KINDEX = 30.0
+CAPE_SUSPECT_TT = 44.0
 
 
-def get_latest_available_cycle():
-    """Find the most recent GFS cycle available on NOMADS."""
+# ─── Slot / cycle resolution ────────────────────────────────────────────────
+
+def next_slot(now_ist: datetime):
+    for h in SLOT_START_HOURS:
+        candidate = now_ist.replace(hour=h, minute=0, second=0, microsecond=0)
+        if candidate > now_ist:
+            return SLOT_START_HOURS.index(h), candidate
+    tomorrow = now_ist + timedelta(days=1)
+    return 0, tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def resolve_source(slot_start_ist_dt: datetime):
+    slot_start_utc = slot_start_ist_dt.astimezone(timezone.utc)
+    nominal_valid = slot_start_utc.replace(minute=0, second=0, microsecond=0)
+    cycle_utc = nominal_valid - timedelta(hours=FORECAST_HOUR)
+    return cycle_utc, FORECAST_HOUR, nominal_valid, slot_start_utc
+
+
+# ─── NOMADS download ─────────────────────────────────────────────────────────
+
+def build_nomads_url(cycle_utc: datetime, fhour: int) -> str:
+    date_str = cycle_utc.strftime("%Y%m%d")
+    cc = f"{cycle_utc.hour:02d}"
+    fff = f"{fhour:03d}"
+    filename = f"gfs.t{cc}z.pgrb2.0p25.f{fff}"
+    params = {
+        "file": filename,
+        "lev_surface": "on",
+        "lev_2_m_above_ground": "on",
+        "lev_850_mb": "on",
+        "lev_700_mb": "on",
+        "lev_500_mb": "on",
+        "lev_entire_atmosphere_(considered_as_a_single_layer)": "on",
+        "var_TMP": "on",
+        "var_RH": "on",
+        "var_PRES": "on",
+        "var_CAPE": "on",
+        "var_CIN": "on",
+        "var_PWAT": "on",
+        "var_UGRD": "on",   # u wind component (m/s) — added 2026-07-26
+        "var_VGRD": "on",   # v wind component (m/s) — added 2026-07-26
+        "subregion": "on",
+        "leftlon": f"{LON - BOX:.2f}",
+        "rightlon": f"{LON + BOX:.2f}",
+        "toplat": f"{LAT + BOX:.2f}",
+        "bottomlat": f"{LAT - BOX:.2f}",
+        "dir": f"/gfs.{date_str}/{cc}/atmos",
+    }
+    return NOMADS_BASE + "?" + urlencode(params)
+
+
+def download_grib(url: str, out_path: str):
+    print(f"Downloading: {url}")
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+    }
+    r = requests.get(url, headers=headers, timeout=120)
+    r.raise_for_status()
+    if len(r.content) < 1000:
+        raise RuntimeError(
+            f"Response too small ({len(r.content)} bytes) -- almost "
+            "certainly an HTML error page, not a GRIB2 file. Most likely "
+            "cause: this cycle/forecast hour isn't posted yet. "
+            "Open the URL in a browser to see NOAA's actual response."
+        )
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "wb") as f:
+        f.write(r.content)
+    print(f"Saved {len(r.content)} bytes -> {out_path}")
+
+
+# ─── GRIB2 parsing (cfgrib) ──────────────────────────────────────────────────
+
+def _open_group(grib_path, type_of_level):
+    import xarray as xr
     try:
-        r = requests.get(f'{NOMADS_BASE}/pub/data/nccf/com/gfs/prod/', timeout=15)
-        dates = sorted(set(re.findall(r'gfs\.(\d{8})', r.text)))
-        if not dates:
-            return None, None
-        latest_date = dates[-1]
-
-        # Try cycles in reverse order: 18Z, 12Z, 06Z, 00Z
-        for cycle_hour in [18, 12, 6, 0]:
-            url = (
-                f'{NOMADS_BASE}/cgi-bin/filter_gfs_0p25.pl'
-                f'?dir=%2Fgfs.{latest_date}%2F{cycle_hour:02d}%2Fatmos'
-                f'&file=gfs.t{cycle_hour:02d}z.pgrb2.0p25.f012'
-                f'&var_TMP=on&lev_850_mb=on'
-                f'&subregion=&toplat=13.25&leftlon=77.25&rightlon=77.75&bottomlat=12.75'
-            )
-            r2 = requests.get(url, timeout=15)
-            if r2.status_code == 200 and len(r2.content) > 100:
-                print(f'  Latest available: {latest_date} {cycle_hour:02d}Z')
-                return latest_date, cycle_hour
-
-        # Try previous date if today's cycles aren't ready
-        if len(dates) >= 2:
-            prev_date = dates[-2]
-            for cycle_hour in [18, 12, 6, 0]:
-                url = (
-                    f'{NOMADS_BASE}/cgi-bin/filter_gfs_0p25.pl'
-                    f'?dir=%2Fgfs.{prev_date}%2F{cycle_hour:02d}%2Fatmos'
-                    f'&file=gfs.t{cycle_hour:02d}z.pgrb2.0p25.f012'
-                    f'&var_TMP=on&lev_850_mb=on'
-                    f'&subregion=&toplat=13.25&leftlon=77.25&rightlon=77.75&bottomlat=12.75'
-                )
-                r2 = requests.get(url, timeout=15)
-                if r2.status_code == 200 and len(r2.content) > 100:
-                    print(f'  Latest available: {prev_date} {cycle_hour:02d}Z')
-                    return prev_date, cycle_hour
-        return None, None
+        ds = xr.open_dataset(
+            grib_path, engine="cfgrib",
+            backend_kwargs={"filter_by_keys": {"typeOfLevel": type_of_level}, "indexpath": ""},
+        )
     except Exception as e:
-        print(f'  Error finding latest cycle: {e}')
-        return None, None
+        print(f"  (no '{type_of_level}' group in this file: {e})")
+        return None
+    if len(ds.data_vars) == 0:
+        print(f"  (no '{type_of_level}' group in this file: 0 matching messages)")
+        ds.close()
+        return None
+    return ds
 
 
-def fetch_grib_data(date_str, cycle_hour):
-    """Fetch all required variables in one GRIB request."""
-    url = (
-        f'{NOMADS_BASE}/cgi-bin/filter_gfs_0p25.pl'
-        f'?dir=%2Fgfs.{date_str}%2F{cycle_hour:02d}%2Fatmos'
-        f'&file=gfs.t{cycle_hour:02d}z.pgrb2.0p25.f012'
-        f'&var_TMP=on&var_RH=on&var_UGRD=on&var_VGRD=on'
-        f'&var_CAPE=on&var_CIN=on&var_SPFH=on&var_PRES=on'
-        f'&lev_2_m_above_ground=on'
-        f'&lev_10_m_above_ground=on'
-        f'&lev_surface=on'
-        f'&lev_500_mb=on&lev_700_mb=on&lev_850_mb=on'
-        f'&lev_255-0_mb_above_ground=on'
-        f'&lev_90-0_mb_above_ground=on'
-        f'&subregion=&toplat=13.25&leftlon=77.25&rightlon=77.75&bottomlat=12.75'
+def extract_fields(grib_path: str):
+    """Returns (surface_fields dict, profile dict keyed by pressure level).
+    Profile now includes u and v wind components at each level."""
+    surface_fields = {}
+
+    for type_of_level in ("surface", "atmosphereSingleLayer"):
+        ds_sfc = _open_group(grib_path, type_of_level)
+        if ds_sfc is None:
+            continue
+        pt = ds_sfc.sel(latitude=LAT, longitude=LON % 360, method="nearest")
+        for src_name, out_name in (("cape", "cape"), ("cin", "cin"), ("pwat", "pwat"), ("sp", "sp_pa")):
+            if src_name in pt and out_name not in surface_fields:
+                surface_fields[out_name] = float(pt[src_name].values)
+        ds_sfc.close()
+
+    ds_2m = _open_group(grib_path, "heightAboveGround")
+    if ds_2m is not None:
+        pt = ds_2m.sel(latitude=LAT, longitude=LON % 360, method="nearest")
+        try:
+            pt = pt.sel(heightAboveGround=2)
+        except Exception:
+            pass
+        if "t2m" in pt:
+            surface_fields["t2m_C"] = float(pt["t2m"].values) - 273.15
+        elif "t" in pt:
+            surface_fields["t2m_C"] = float(pt["t"].values) - 273.15
+        if "r2" in pt:
+            surface_fields["rh2"] = float(pt["r2"].values)
+        elif "r" in pt:
+            surface_fields["rh2"] = float(pt["r"].values)
+        ds_2m.close()
+
+    profile = {}
+    ds_iso = _open_group(grib_path, "isobaricInhPa")
+    if ds_iso is not None:
+        pt = ds_iso.sel(latitude=LAT, longitude=LON % 360, method="nearest")
+        for lvl in (850, 700, 500):
+            try:
+                sub = pt.sel(isobaricInhPa=lvl)
+                profile[lvl] = {
+                    "t_C": float(sub["t"].values) - 273.15,
+                    "rh":  float(sub["r"].values),
+                    "u":   float(sub["u"].values) if "u" in sub else np.nan,  # m/s
+                    "v":   float(sub["v"].values) if "v" in sub else np.nan,  # m/s
+                }
+            except Exception as e:
+                print(f"  Warning: missing {lvl} hPa level: {e}")
+        ds_iso.close()
+
+    return surface_fields, profile
+
+
+# ─── Stability index computation (mirrors era5_stability_indices.py) ────────
+
+def compute_indices(surface_fields: dict, profile: dict):
+    import metpy.calc as mpcalc
+    from metpy.units import units
+
+    have_profile = all(lvl in profile for lvl in (850, 700, 500))
+    have_surface = "sp_pa" in surface_fields and "t2m_C" in surface_fields and "rh2" in surface_fields
+
+    if not (have_profile and have_surface):
+        print("  Warning: incomplete profile/surface data -- K_INDEX/LIFTED_INDEX/TOTALS_TOTALS will be NaN.")
+        return {
+            "CAPE":           surface_fields.get("cape", np.nan),
+            "CIN":            surface_fields.get("cin", np.nan),
+            "K_INDEX":        np.nan,
+            "LIFTED_INDEX":   np.nan,
+            "TOTALS_TOTALS":  np.nan,
+            "PRECIP_WATER":   surface_fields.get("pwat", np.nan),
+            "ERA5_u_500hPa":  profile.get(500, {}).get("u", np.nan),
+            "ERA5_v_500hPa":  profile.get(500, {}).get("v", np.nan),
+            "ERA5_u_850hPa":  profile.get(850, {}).get("u", np.nan),
+            "ERA5_v_850hPa":  profile.get(850, {}).get("v", np.nan),
+        }
+
+    try:
+        sp_hpa = surface_fields["sp_pa"] / 100.0
+        td2m_C = float(mpcalc.dewpoint_from_relative_humidity(
+            surface_fields["t2m_C"] * units.degC, surface_fields["rh2"] * units.percent
+        ).magnitude)
+
+        p_levels = np.array([sp_hpa, 850, 700, 500])
+        t_levels = np.array([surface_fields["t2m_C"], profile[850]["t_C"], profile[700]["t_C"], profile[500]["t_C"]])
+        td_levels = [td2m_C]
+        for lvl in (850, 700, 500):
+            td = mpcalc.dewpoint_from_relative_humidity(
+                profile[lvl]["t_C"] * units.degC, profile[lvl]["rh"] * units.percent
+            )
+            td_levels.append(float(td.magnitude))
+        td_levels = np.array(td_levels)
+
+        p = p_levels * units.hPa
+        t = t_levels * units.degC
+        td = td_levels * units.degC
+
+        k = mpcalc.k_index(p, t, td)
+        tt = mpcalc.total_totals_index(p, t, td)
+        parcel = mpcalc.parcel_profile(p, t[0], td[0])
+        li = mpcalc.lifted_index(p, t, parcel)
+
+        return {
+            "CAPE":           surface_fields.get("cape", np.nan),
+            "CIN":            surface_fields.get("cin", np.nan),
+            "K_INDEX":        float(k.magnitude),
+            "LIFTED_INDEX":   float(np.atleast_1d(li.magnitude)[0]),
+            "TOTALS_TOTALS":  float(tt.magnitude),
+            "PRECIP_WATER":   surface_fields.get("pwat", np.nan),
+            "ERA5_u_500hPa":  profile[500].get("u", np.nan),   # m/s — named ERA5_* to match training schema
+            "ERA5_v_500hPa":  profile[500].get("v", np.nan),
+            "ERA5_u_850hPa":  profile[850].get("u", np.nan),
+            "ERA5_v_850hPa":  profile[850].get("v", np.nan),
+        }
+    except Exception as e:
+        print(f"  Warning: index computation failed: {e}")
+        return {
+            "CAPE":           surface_fields.get("cape", np.nan),
+            "CIN":            surface_fields.get("cin", np.nan),
+            "K_INDEX":        np.nan,
+            "LIFTED_INDEX":   np.nan,
+            "TOTALS_TOTALS":  np.nan,
+            "PRECIP_WATER":   surface_fields.get("pwat", np.nan),
+            "ERA5_u_500hPa":  profile.get(500, {}).get("u", np.nan),
+            "ERA5_v_500hPa":  profile.get(500, {}).get("v", np.nan),
+            "ERA5_u_850hPa":  profile.get(850, {}).get("u", np.nan),
+            "ERA5_v_850hPa":  profile.get(850, {}).get("v", np.nan),
+        }
+
+
+# ─── Optional pygrib cross-check ─────────────────────────────────────────────
+
+def _pygrib_point_value(grib_path: str, name: str, lat: float, lon: float):
+    try:
+        import pygrib
+    except ImportError:
+        return None
+    try:
+        grbs = pygrib.open(grib_path)
+        matches = grbs.select(name=name)
+        if not matches:
+            grbs.close()
+            return None
+        grb = matches[0]
+        val, lats, lons = grb.data(lat1=lat - 0.1, lat2=lat + 0.1, lon1=lon - 0.1, lon2=lon + 0.1)
+        grbs.close()
+        return float(np.nanmean(val))
+    except Exception:
+        return None
+
+
+def verify_with_pygrib(grib_path: str):
+    print("\n--- pygrib cross-check ---")
+    for name in ("Convective available potential energy", "Convective inhibition", "Precipitable water"):
+        val = _pygrib_point_value(grib_path, name, LAT, LON)
+        if val is None:
+            print(f"  {name}: not found in file (or pygrib not installed)")
+        else:
+            print(f"  {name}: {val:.2f} (nearest-box mean)")
+
+
+def assess_cape_consistency(indices: dict, grib_path: str):
+    cape = indices.get("CAPE", np.nan)
+    k = indices.get("K_INDEX", np.nan)
+    tt = indices.get("TOTALS_TOTALS", np.nan)
+
+    cape_reads_zero = not np.isnan(cape) and cape < CAPE_NEAR_ZERO
+    instability_says_otherwise = (
+        (not np.isnan(k) and k >= CAPE_SUSPECT_KINDEX)
+        or (not np.isnan(tt) and tt >= CAPE_SUSPECT_TT)
     )
 
-    print(f'  Fetching from NOMADS...')
-    r = requests.get(url, timeout=120, stream=True)
-    if r.status_code != 200:
-        raise RuntimeError(f'HTTP {r.status_code}')
+    if not (cape_reads_zero and instability_says_otherwise):
+        return "OK", None
 
-    with tempfile.NamedTemporaryFile(suffix='.grib2', delete=False) as f:
-        for chunk in r.iter_content(chunk_size=1024*1024):
-            f.write(chunk)
-        tmp = f.name
-
-    size_kb = os.path.getsize(tmp) / 1024
-    print(f'  Downloaded: {size_kb:.1f} KB')
-    return tmp
+    crosscheck = _pygrib_point_value(grib_path, "Convective available potential energy", LAT, LON)
+    if crosscheck is None:
+        return "SUSPECT_NO_CROSSCHECK", None
+    if crosscheck < CAPE_NEAR_ZERO:
+        return "SUSPECT_CONFIRMED_ZERO", crosscheck
+    return "SUSPECT_MISMATCH", crosscheck
 
 
-def parse_grib(grib_path):
-    """Extract Bengaluru point values from GRIB file."""
-    row = {}
-    try:
-        datasets = cfgrib.open_datasets(grib_path, errors='ignore')
-    except Exception as e:
-        raise RuntimeError(f'cfgrib error: {e}')
-
-    def nearest(ds, var, level=None, level_dim=None):
-        try:
-            if level is not None and level_dim is not None:
-                ds = ds.sel({level_dim: level})
-            pt = ds.sel(latitude=LAT, longitude=LON, method='nearest')
-            v = float(pt[var].values)
-            return v if np.isfinite(v) else np.nan
-        except Exception:
-            return np.nan
-
-    for ds in datasets:
-        dims = list(ds.dims)
-        dvars = list(ds.data_vars)
-
-        # Pressure level data
-        if 'isobaricInhPa' in dims:
-            for lev in [500, 700, 850]:
-                for v in dvars:
-                    vl = v.lower()
-                    if vl in ('t', 'tmp') and f'ERA5_t_{lev}hPa' not in row:
-                        val = nearest(ds, v, lev, 'isobaricInhPa')
-                        if not np.isnan(val):
-                            row[f'ERA5_t_{lev}hPa'] = val
-                    elif vl in ('q', 'spfh', 'r', 'rh') and f'ERA5_q_{lev}hPa' not in row:
-                        val = nearest(ds, v, lev, 'isobaricInhPa')
-                        if not np.isnan(val):
-                            # Convert RH to specific humidity if needed
-                            if vl in ('r', 'rh') and val > 2:
-                                val = val / 100.0 * 0.02  # rough conversion
-                            row[f'ERA5_q_{lev}hPa'] = val
-                    elif vl in ('u', 'ugrd') and f'ERA5_u_{lev}hPa' not in row:
-                        val = nearest(ds, v, lev, 'isobaricInhPa')
-                        if not np.isnan(val):
-                            row[f'ERA5_u_{lev}hPa'] = val
-                    elif vl in ('v', 'vgrd') and f'ERA5_v_{lev}hPa' not in row:
-                        val = nearest(ds, v, lev, 'isobaricInhPa')
-                        if not np.isnan(val):
-                            row[f'ERA5_v_{lev}hPa'] = val
-
-        # Surface/near-surface
-        elif 'pressureFromGroundLayer' not in dims:
-            for v in dvars:
-                vl = v.lower()
-                if vl in ('t2m', 'tmp') and 'ERA5_T2M' not in row:
-                    val = nearest(ds, v)
-                    if not np.isnan(val):
-                        row['ERA5_T2M'] = val
-                elif vl in ('d2m',) and 'ERA5_D2M' not in row:
-                    val = nearest(ds, v)
-                    if not np.isnan(val):
-                        row['ERA5_D2M'] = val
-                elif vl in ('u10', 'ugrd') and 'ERA5_U10' not in row:
-                    val = nearest(ds, v)
-                    if not np.isnan(val):
-                        row['ERA5_U10'] = val
-                elif vl in ('v10', 'vgrd') and 'ERA5_V10' not in row:
-                    val = nearest(ds, v)
-                    if not np.isnan(val):
-                        row['ERA5_V10'] = val
-                elif vl in ('cape',) and 'ERA5_CAPE' not in row:
-                    val = nearest(ds, v)
-                    if not np.isnan(val):
-                        row['ERA5_CAPE'] = val
-                elif vl in ('sp', 'pres') and 'ERA5_SP' not in row:
-                    val = nearest(ds, v)
-                    if not np.isnan(val):
-                        row['ERA5_SP'] = val
-
-        # CAPE from pressureFromGroundLayer
-        elif 'pressureFromGroundLayer' in dims:
-            if 'cape' in dvars and 'ERA5_CAPE' not in row:
-                try:
-                    pt = ds.sel(latitude=LAT, longitude=LON, method='nearest')
-                    cape_vals = pt['cape'].values
-                    max_cape = float(np.nanmax(cape_vals))
-                    if max_cape > 0:
-                        row['ERA5_CAPE'] = max_cape
-                except Exception:
-                    pass
-
-    return row
-
-
-def compute_stability_indices(row):
-    """Compute K-Index, Lifted Index, Totals-Totals from GFS T/q profiles."""
-    try:
-        T850 = row.get('ERA5_t_850hPa', np.nan) - 273.15  # K to C
-        T700 = row.get('ERA5_t_700hPa', np.nan) - 273.15
-        T500 = row.get('ERA5_t_500hPa', np.nan) - 273.15
-        q850 = row.get('ERA5_q_850hPa', np.nan)
-        q700 = row.get('ERA5_q_700hPa', np.nan)
-
-        # Dewpoint from specific humidity (approximate)
-        def Td(q, p_hPa):
-            if np.isnan(q) or q <= 0:
-                return np.nan
-            e = q * p_hPa / (0.622 + q)
-            return 243.5 * np.log(e / 6.112) / (17.67 - np.log(e / 6.112))
-
-        Td850 = Td(q850, 850)
-        Td700 = Td(q700, 700)
-
-        if not any(np.isnan(x) for x in [T850, T700, T500, Td850, Td700]):
-            row['K_INDEX'] = (T850 - T500) + Td850 - (T700 - Td700)
-            row['TOTALS_TOTALS'] = (T850 + Td850) - (2 * T500)
-
-            # Lifted Index using moist adiabatic approximation
-            # LCL temperature from surface parcel (850hPa as proxy for surface)
-            # Moist adiabatic lapse rate ~6 C/km, pressure scale ~8km/decade
-            # Simple Bolton (1980) approximation
-            try:
-                import metpy.calc as mpcalc
-                from metpy.units import units
-                p   = [850, 700, 500] * units.hPa
-                T_k = [(T850+273.15), (T700+273.15), (T500+273.15)] * units.kelvin
-                Td_k= [(Td850+273.15), (Td700+273.15), (Td700+273.15)] * units.kelvin
-                li  = mpcalc.lifted_index(p, T_k, Td_k)
-                row['LIFTED_INDEX'] = float(li.magnitude)
-            except Exception:
-                # Simple empirical LI approximation (George 1960)
-                # LI = T500 - Tp500 where Tp500 estimated from surface dewpoint
-                # Empirical: LI ≈ 2*(T500+20) - (Td850+T850)  (simplified)
-                # More reliable: use Showalter-style from 850hPa
-                # Showalter Index = T500 - T_parcel lifted from 850hPa
-                # Moist adiabatic lapse rate ~5.5 C/km, 850->500hPa ~ 3.5 km
-                spread = T850 - Td850  # dewpoint depression
-                # Parcel cools at dry adiabatic to LCL, then moist adiabatic
-                # LCL height approx: (T850 - Td850) / 8 km per C (rule of thumb)
-                lcl_C_above_850 = spread / 8.0  # km above 850hPa level
-                # Moist adiabatic from LCL to 500hPa (~3.5km total, minus LCL height)
-                moist_distance = max(0, 3.5 - lcl_C_above_850)
-                dry_distance = min(3.5, lcl_C_above_850)
-                T_parcel_500 = T850 - (dry_distance * 9.8) - (moist_distance * 5.5)
-                row['LIFTED_INDEX'] = round(T500 - T_parcel_500, 2)
-
-            row['CAPE'] = row.get('ERA5_CAPE', 0.0)
-            row['PRECIP_WATER'] = float(
-                q850 * 850 * 100 / 9.81 + q700 * 150 * 100 / 9.81
-            ) if not np.isnan(q850) else np.nan
-
-            print(f'  K-Index:       {row["K_INDEX"]:.2f}')
-            print(f'  Totals-Totals: {row["TOTALS_TOTALS"]:.2f}')
-            print(f'  Lifted Index:  {row["LIFTED_INDEX"]:.2f}')
-            print(f'  CAPE:          {row["CAPE"]:.2f}')
-        else:
-            print('  Could not compute stability indices — missing T/q profiles')
-
-    except Exception as e:
-        print(f'  Stability index error: {e}')
-
-    return row
-
+# ─── Main ─────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--slot', type=int, choices=[0, 1, 2, 3])
-    parser.add_argument('--date', type=str)
-    args = parser.parse_args()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--slot", type=int, choices=[0, 1, 2, 3], default=None)
+    ap.add_argument("--now", type=str, default=None)
+    ap.add_argument("--verify", action="store_true")
+    ap.add_argument("--keep-grib", action="store_true")
+    args = ap.parse_args()
 
-    print('=' * 60)
-    print('  gfs_fetcher.py — Smart GFS Real-Time Fetcher')
-    print('=' * 60)
+    # Always derive time from UTC -- never local time -- per Aprameya 2026-07-26.
+    # IST is used only for display and slot-window labelling.
+    utc_now = datetime.now(timezone.utc)
+    now_ist = (utc_now.astimezone(IST) if args.now is None
+               else datetime.strptime(args.now, "%Y-%m-%d %H:%M").replace(tzinfo=IST))
 
-    now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-    date_str = args.date or now_ist.strftime('%Y-%m-%d')
-    print(f'  IST date: {date_str}')
+    if args.slot is not None:
+        slot = args.slot
+        slot_start = now_ist.replace(
+            hour=SLOT_START_HOURS[args.slot], minute=0, second=0, microsecond=0)
+        # When --slot is given explicitly, use the CURRENT occurrence of that
+        # slot (even if it started earlier today) -- don't push to tomorrow
+        # just because the slot window is already in progress. Only advance to
+        # tomorrow if slot_start fell on a prior date (shouldn't happen, guard).
+        if slot_start.date() < now_ist.date():
+            slot_start += timedelta(days=1)
+    else:
+        slot, slot_start = next_slot(now_ist)
 
-    # Auto-discover latest available cycle
-    print('\n  Finding latest available GFS cycle...')
-    avail_date, avail_cycle = get_latest_available_cycle()
+    cycle_utc, fhour, valid_utc, slot_start_utc = resolve_source(slot_start)
+    posting_estimate = cycle_utc + timedelta(hours=POST_LATENCY_HOURS)
+    buffer_hours = (slot_start_utc - posting_estimate) / timedelta(hours=1)
 
-    if avail_date is None:
-        print('  ERROR: No GFS cycle available on NOMADS')
-        return 1
+    print(f"Now (IST):        {now_ist:%Y-%m-%d %H:%M}")
+    print(f"Target slot:      {slot} ({SLOT_WINDOWS[slot]} IST), starts {slot_start:%Y-%m-%d %H:%M} IST")
+    print(f"Source cycle:     GFS {cycle_utc:%Y-%m-%d %H}Z, forecast hour f{fhour:03d} (valid {valid_utc:%Y-%m-%d %H}Z)")
+    print(f"Est. posting time: {posting_estimate:%Y-%m-%d %H:%M} UTC (~{POST_LATENCY_HOURS}h after cycle, per pipeline_scoping_findings.md)")
+    print(f"Buffer before slot starts: ~{buffer_hours:.1f}h")
+    if buffer_hours < 1:
+        print("WARNING: buffer under 1h -- this cron job should run right at the posting "
+              "estimate, not earlier, or it will hit a 404/empty response.")
 
-    # Fetch and parse — today (f012)
-    try:
-        grib_path = fetch_grib_data(avail_date, avail_cycle)
-        row = parse_grib(grib_path)
-        os.unlink(grib_path)
-    except Exception as e:
-        print(f'  ERROR: {e}')
-        return 1
+    url = build_nomads_url(cycle_utc, fhour)
+    download_grib(url, GRIB_TMP)
 
-    # Compute stability indices
-    row = compute_stability_indices(row)
+    print("\nParsing GRIB2 with cfgrib...")
+    surface_fields, profile = extract_fields(GRIB_TMP)
+    print(f"  Surface fields found: {list(surface_fields.keys())}")
+    print(f"  Profile levels found: {list(profile.keys())}")
 
-    # Add metadata
-    row['date'] = date_str
-    row['gfs_cycle'] = f'{avail_date} {avail_cycle:02d}Z'
-    row['fetched_at'] = now_ist.strftime('%Y-%m-%d %H:%M IST')
+    if args.verify:
+        verify_with_pygrib(GRIB_TMP)
 
-    # Fetch tomorrow (f024) and day after (f036)
-    multiday = []
-    for fhour, day_offset, day_label in [(24, 1, 'tomorrow'), (48, 2, 'day_after')]:
-        try:
-            print(f'\n  Fetching {day_label} (f{fhour:03d})...')
-            url = (
-                f'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl'
-                f'?dir=%2Fgfs.{avail_date}%2F{avail_cycle:02d}%2Fatmos'
-                f'&file=gfs.t{avail_cycle:02d}z.pgrb2.0p25.f{fhour:03d}'
-                f'&var_TMP=on&var_RH=on&var_UGRD=on&var_VGRD=on'
-                f'&var_CAPE=on&var_CIN=on&var_SPFH=on&var_PRES=on'
-                f'&lev_2_m_above_ground=on&lev_10_m_above_ground=on'
-                f'&lev_surface=on&lev_500_mb=on&lev_700_mb=on&lev_850_mb=on'
-                f'&lev_255-0_mb_above_ground=on&lev_90-0_mb_above_ground=on'
-                f'&subregion=&toplat=13.25&leftlon=77.25&rightlon=77.75&bottomlat=12.75'
-            )
-            r = requests.get(url, timeout=120, stream=True)
-            if r.status_code == 200 and len(r.content) > 500:
-                with tempfile.NamedTemporaryFile(suffix='.grib2', delete=False) as f:
-                    f.write(r.content)
-                    tmp = f.name
-                day_row = parse_grib(tmp)
-                os.unlink(tmp)
-                day_row = compute_stability_indices(day_row)
-                future_date = (now_ist + timedelta(days=day_offset)).strftime('%Y-%m-%d')
-                day_row['date'] = future_date
-                day_row['day_label'] = day_label
-                day_row['fhour'] = fhour
-                day_row['gfs_cycle'] = f'{avail_date} {avail_cycle:02d}Z f{fhour:03d}'
-                multiday.append(day_row)
-                print(f'  ✓ {day_label}: CAPE={day_row.get("CAPE",0):.0f} K={day_row.get("K_INDEX",0):.1f} LI={day_row.get("LIFTED_INDEX",0):.2f}')
-            else:
-                print(f'  ⚠ {day_label}: HTTP {r.status_code} or empty')
-        except Exception as e:
-            print(f'  ⚠ {day_label} failed: {e}')
+    indices = compute_indices(surface_fields, profile)
 
-    # Save multiday forecast
-    multiday_path = OUT_DIR / 'gfs_multiday_43295.json'
-    import json as _json2
-    with open(multiday_path, 'w') as f:
-        _json2.dump(multiday, f, indent=2, default=str)
-    print(f'\n  Saved → {multiday_path} ({len(multiday)} days)')
+    qc_flag, qc_crosscheck = assess_cape_consistency(indices, GRIB_TMP)
+    if qc_flag == "OK":
+        print("\nCAPE consistency check: OK (no conflict with K-Index/Totals-Totals)")
+    elif qc_flag == "SUSPECT_NO_CROSSCHECK":
+        print(f"\nQC FLAG: {qc_flag} -- CAPE={indices.get('CAPE')} but K-Index/TT suggest an "
+              f"unstable profile, and pygrib isn't installed to independently confirm.")
+    elif qc_flag == "SUSPECT_CONFIRMED_ZERO":
+        print(f"\nQC FLAG: {qc_flag} -- pygrib independently agrees CAPE reads ~0 "
+              f"({qc_crosscheck:.2f}). Likely a genuine capped airmass (check CIN).")
+    elif qc_flag == "SUSPECT_MISMATCH":
+        print(f"\nQC FLAG: {qc_flag} -- cfgrib parsed CAPE={indices.get('CAPE')} but pygrib's "
+              f"independent read is {qc_crosscheck:.2f}. Real retrieval bug -- investigate.")
 
-    # Save latest
-    df = pd.DataFrame([row])
-    df.to_csv(OUT_FILE, index=False)
-    print(f'\n  Saved → {OUT_FILE}')
-    print(f'  Variables: {[c for c in df.columns if not c.startswith("date") and not c.startswith("gfs") and not c.startswith("fetched")]}')
-
-    # Save to rolling history (last 6 cycles)
-    import json as _json
-    history = []
-    if OUT_HIST_FILE.exists():
-        try:
-            with open(OUT_HIST_FILE) as f:
-                history = _json.load(f)
-        except Exception:
-            history = []
-
-    # Build history record with key met params only
-    hist_record = {
-        'fetched_at':    row.get('fetched_at'),
-        'gfs_cycle':     row.get('gfs_cycle'),
-        'date':          row.get('date'),
-        'CAPE':          row.get('CAPE', 0),
-        'K_INDEX':       row.get('K_INDEX'),
-        'LIFTED_INDEX':  row.get('LIFTED_INDEX'),
-        'TOTALS_TOTALS': row.get('TOTALS_TOTALS'),
-        'PRECIP_WATER':  row.get('PRECIP_WATER'),
-        'ERA5_T2M':      row.get('ERA5_T2M'),
+    row = {
+        "date": slot_start.strftime("%Y-%m-%d"),
+        "slot": slot,
+        "ist_window": SLOT_WINDOWS[slot],
+        "valid_time_utc": valid_utc.strftime("%Y-%m-%d %H:%M"),
+        "source_cycle_utc": cycle_utc.strftime("%Y-%m-%d %H:%M"),
+        "source_fhour": fhour,
+        "fetched_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+        **indices,
+        "CAPE_QC_FLAG": qc_flag,
+        "CAPE_PYGRIB_CROSSCHECK": qc_crosscheck if qc_crosscheck is not None else "",
     }
-    history.append(hist_record)
-    history = history[-KEEP_CYCLES:]
 
-    with open(OUT_HIST_FILE, 'w') as f:
-        _json.dump(history, f, indent=2)
-    print(f'  Saved → {OUT_HIST_FILE} ({len(history)} cycles)')
+    os.makedirs(DATA_DIR, exist_ok=True)
+    if os.path.exists(OUT_PATH):
+        existing = pd.read_csv(OUT_PATH)
+        existing = existing[~((existing["date"] == row["date"]) & (existing["slot"] == row["slot"]))]
+        out = pd.concat([existing, pd.DataFrame([row])], ignore_index=True)
+    else:
+        out = pd.DataFrame([row])
 
-    return 0
+    out.to_csv(OUT_PATH, index=False)
+    print(f"\nSaved: {OUT_PATH} (slot {slot}, {row['date']})")
+    for k in ("CAPE", "CIN", "K_INDEX", "LIFTED_INDEX", "TOTALS_TOTALS", "PRECIP_WATER",
+              "ERA5_u_500hPa", "ERA5_v_500hPa", "ERA5_u_850hPa", "ERA5_v_850hPa",
+              "CAPE_QC_FLAG"):
+        print(f"  {k}: {row[k]}")
+
+    if args.keep_grib:
+        print(f"(--keep-grib set, leaving {GRIB_TMP} in place)")
+    else:
+        try:
+            os.remove(GRIB_TMP)
+        except OSError:
+            pass
 
 
-if __name__ == '__main__':
-    import sys
-    sys.exit(main())
+if __name__ == "__main__":
+    main()

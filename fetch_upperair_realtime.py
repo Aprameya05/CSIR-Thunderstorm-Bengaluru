@@ -180,18 +180,6 @@ def download_grib(url: str, out_path: str):
         )
     }
     r = requests.get(url, headers=headers, timeout=120)
-    r.raise_for_status()
-    if len(r.content) < 1000:
-        raise RuntimeError(
-            f"Response too small ({len(r.content)} bytes) -- almost "
-            "certainly an HTML error page, not a GRIB2 file. Most likely "
-            "cause: this cycle/forecast hour isn't posted yet. "
-            "Open the URL in a browser to see NOAA's actual response."
-        )
-    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-    with open(out_path, "wb") as f:
-        f.write(r.content)
-    print(f"Saved {len(r.content)} bytes -> {out_path}")
 
 
 # ─── GRIB2 parsing (cfgrib) ──────────────────────────────────────────────────

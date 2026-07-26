@@ -141,8 +141,6 @@ for slot_id in range(4):
     }
 
     if len(gfs_df) > 0:
-        # gfs_realtime_43295.csv is a single-row file (latest cycle)
-        # apply same GFS values to all slots
         row = gfs_df.iloc[0]
         for col in ['ERA5_T2M','ERA5_D2M','ERA5_U10','ERA5_V10','ERA5_CAPE','ERA5_SP',
                     'ERA5_t_500hPa','ERA5_t_700hPa','ERA5_t_850hPa',
@@ -151,14 +149,14 @@ for slot_id in range(4):
                     'ERA5_v_500hPa','ERA5_v_700hPa','ERA5_v_850hPa']:
             if col in row.index and pd.notna(row[col]):
                 obs[col] = float(row[col])
-        # Also load derived stability indices if available
         for col in ['K_INDEX','TOTALS_TOTALS','LIFTED_INDEX','CAPE','PRECIP_WATER']:
             if col in row.index and pd.notna(row[col]):
                 obs[col] = float(row[col])
 
     if slot_id in upper_air:
         ua = upper_air[slot_id]
-        for col in ['CAPE','CIN','K_INDEX','LIFTED_INDEX','TOTALS_TOTALS','PRECIP_WATER']:
+        for col in ['CAPE','CIN','K_INDEX','LIFTED_INDEX','TOTALS_TOTALS','PRECIP_WATER',
+                    'ERA5_u_500hPa','ERA5_v_500hPa','ERA5_u_850hPa','ERA5_v_850hPa']:
             if col in ua and pd.notna(ua[col]):
                 obs[col] = float(ua[col])
 
@@ -188,6 +186,14 @@ peak_slot        = max(results, key=results.get)
 peak_probability = results[peak_slot]
 met_slot         = next((s for s in slots_output if s['slot'] == 2), slots_output[0])
 
+# ── Pull wind values for met_parameters ──────────────────────────────────────
+# Prefer Slot 2 upper_air row (most relevant for afternoon peak window).
+# Fall back to obs defaults if Slot 2 hasn't been fetched yet.
+_ua2 = upper_air.get(2, {})
+def _wind(key, default):
+    v = _ua2.get(key)
+    return float(v) if (v is not None and not (isinstance(v, float) and math.isnan(v))) else default
+
 forecast = {
     "date":             date_str,
     "generated_at":     now.strftime('%Y-%m-%d %H:%M IST'),
@@ -198,9 +204,16 @@ forecast = {
     "slots":            slots_output,
     "met_parameters": {
         "ua_cape_jkg":       met_slot.get('cape', 0),
+        "ua_cape_raw":       met_slot.get('cape', 0),           # raw CAPE J/kg — added 2026-07-26
         "ua_k_index":        met_slot.get('k_index', 0),
         "ua_lifted_index":   met_slot.get('lifted_index', 0),
         "ua_totals_totals":  met_slot.get('totals_totals', 0),
+        # GFS wind components at 500/850 hPa (m/s) — added 2026-07-26
+        # Named ERA5_* to match training feature schema
+        "ERA5_u_500hPa":     _wind('ERA5_u_500hPa', 5.0),
+        "ERA5_v_500hPa":     _wind('ERA5_v_500hPa', 2.0),
+        "ERA5_u_850hPa":     _wind('ERA5_u_850hPa', -3.0),
+        "ERA5_v_850hPa":     _wind('ERA5_v_850hPa', 2.0),
         "instability_level": (
             "Extreme" if met_slot.get('cape', 0) >= 3000 else
             "High"    if met_slot.get('cape', 0) >= 1500 else
@@ -264,21 +277,18 @@ if verif_path.exists():
 import math as _math
 now_hour_ist = now.hour + now.minute / 60.0
 
-# Current atmospheric state
 gfs_row = gfs_df.iloc[0] if len(gfs_df) > 0 else {}
 cape_now = float(gfs_row.get('CAPE', 0)) if len(gfs_df) > 0 else 0
 ki_now   = float(gfs_row.get('K_INDEX', 30)) if len(gfs_df) > 0 else 30
 li_now   = float(gfs_row.get('LIFTED_INDEX', 0)) if len(gfs_df) > 0 else 0
 tt_now   = float(gfs_row.get('TOTALS_TOTALS', 44)) if len(gfs_df) > 0 else 44
 
-# Instability score (0-100)
 cape_score = min(cape_now / 2000.0 * 40, 40)
 ki_score   = max(0, min((ki_now - 20) / 20.0 * 30, 30))
 li_score   = max(0, min((-li_now) / 6.0 * 20, 20))
 tt_score   = max(0, min((tt_now - 40) / 10.0 * 10, 10))
 instability_score = round(cape_score + ki_score + li_score + tt_score, 1)
 
-# Peak convective window for Bengaluru: 13:00-18:00 IST
 PEAK_START = 13.0
 PEAK_END   = 18.0
 
@@ -295,7 +305,6 @@ else:
     initiation_status = "POST-CONVECTIVE"
     initiation_message = f"Next peak window in {hours_to_peak:.1f}h (tomorrow 1300 IST)"
 
-# Risk level based on instability score
 if instability_score >= 70:
     initiation_risk = "HIGH"
 elif instability_score >= 45:
@@ -320,7 +329,7 @@ forecast["convective_initiation"] = {
 }
 print(f"Convective initiation: {initiation_status} | Score: {instability_score} | Risk: {initiation_risk}")
 
-# Multi-day outlook using GFS f024/f048
+# Multi-day outlook
 multiday_path = DATA / 'gfs_multiday_43295.json'
 multiday_outlook = []
 
@@ -335,19 +344,12 @@ if multiday_path.exists():
             day_li   = float(day_row.get('LIFTED_INDEX', 0))
             day_tt   = float(day_row.get('TOTALS_TOTALS', 44))
 
-            # Run Slot 2 model (afternoon — highest climatological TS rate)
-            slot2_artifact = nowcast_slot_artifacts.get(2) if 'nowcast_slot_artifacts' in dir() else None
-
-            # Compute instability score for future day
             d_cape_score = min(day_cape / 2000.0 * 40, 40)
             d_ki_score   = max(0, min((day_ki - 20) / 20.0 * 30, 30))
             d_li_score   = max(0, min((-day_li) / 6.0 * 20, 20))
             d_tt_score   = max(0, min((day_tt - 40) / 10.0 * 10, 10))
             d_score      = round(d_cape_score + d_ki_score + d_li_score + d_tt_score, 1)
-
-            # Simple probability estimate from instability score
-            d_prob = min(round(d_score / 100.0 * 0.6, 3), 0.95)
-
+            d_prob       = min(round(d_score / 100.0 * 0.6, 3), 0.95)
             risk = "HIGH" if d_score >= 70 else "MODERATE" if d_score >= 45 else "LOW" if d_score >= 25 else "MINIMAL"
 
             multiday_outlook.append({
@@ -369,7 +371,7 @@ if multiday_path.exists():
 
 forecast["multiday_outlook"] = multiday_outlook
 
-# Historical analogs — find most similar days from training record
+# Historical analogs
 analogs = []
 try:
     features_path = BASE / 'data' / 'bengaluru_thunderstorm_features_merged.csv'
@@ -378,19 +380,15 @@ try:
     if features_path.exists():
         import pandas as pd_ana
         df_ana = pd_ana.read_csv(features_path, parse_dates=['date'])
-        
-        # Get today's values
-        today_cape = cape_now
-        today_ki   = ki_now
-        today_li   = li_now
-        today_tt   = tt_now
+
+        today_cape  = cape_now
+        today_ki    = ki_now
+        today_li    = li_now
         today_month = month
 
-        # Filter to same month ± 1
         months = [(today_month - 1) % 12 or 12, today_month, (today_month % 12) + 1]
         df_filtered = df_ana[df_ana['date'].dt.month.isin(months)].copy()
 
-        # Score by atmospheric similarity
         if 'CAPE' in df_filtered.columns and 'K_INDEX' in df_filtered.columns:
             df_filtered = df_filtered.dropna(subset=['CAPE', 'K_INDEX'])
             cape_rng = df_filtered['CAPE'].max() - df_filtered['CAPE'].min() + 1e-9
@@ -406,12 +404,12 @@ try:
             top_analogs = df_filtered.nsmallest(5, '_score')
             for _, row_a in top_analogs.iterrows():
                 analogs.append({
-                    'date':               str(row_a['date'])[:10],
-                    'cape':               round(float(row_a.get('CAPE', 0)), 1),
-                    'k_index':            round(float(row_a.get('K_INDEX', 0)), 1),
-                    'lifted_index':       round(float(row_a.get('LIFTED_INDEX', 0)), 2) if 'LIFTED_INDEX' in row_a.index else None,
-                    'thunderstorm':       bool(row_a.get('LABEL', 0)),
-                    'month':              int(row_a['date'].month),
+                    'date':         str(row_a['date'])[:10],
+                    'cape':         round(float(row_a.get('CAPE', 0)), 1),
+                    'k_index':      round(float(row_a.get('K_INDEX', 0)), 1),
+                    'lifted_index': round(float(row_a.get('LIFTED_INDEX', 0)), 2) if 'LIFTED_INDEX' in row_a.index else None,
+                    'thunderstorm': bool(row_a.get('LABEL', 0)),
+                    'month':        int(row_a['date'].month),
                 })
             ts_count = sum(1 for a in analogs if a['thunderstorm'])
             print(f"Analogs found: {len(analogs)} days, {ts_count} with TS")
@@ -419,119 +417,95 @@ except Exception as e:
     print(f"Analog search error: {e}")
 
 forecast["analogs"] = {
-    "top_5":          analogs,
-    "ts_rate":        round(sum(1 for a in analogs if a['thunderstorm']) / len(analogs), 2) if analogs else None,
-    "query_cape":     round(cape_now, 1),
-    "query_ki":       round(ki_now, 2),
-    "query_li":       round(li_now, 2),
-    "computed_at":    now.strftime('%Y-%m-%d %H:%M IST'),
+    "top_5":       analogs,
+    "ts_rate":     round(sum(1 for a in analogs if a['thunderstorm']) / len(analogs), 2) if analogs else None,
+    "query_cape":  round(cape_now, 1),
+    "query_ki":    round(ki_now, 2),
+    "query_li":    round(li_now, 2),
+    "computed_at": now.strftime('%Y-%m-%d %H:%M IST'),
 }
 
 # Airport Impact Score
 SLOT_DEPARTURES   = {0: 8, 1: 45, 2: 52, 3: 38}
-DISRUPTION_FACTOR = 0.60  # 60% of flights affected when TS occurs
+DISRUPTION_FACTOR = 0.60
 
-impact_slots = []
-total_disrupted = 0
+impact_slots     = []
+total_disrupted  = 0
 total_departures = 0
 
 for s in slots_output:
-    slot_id  = s['slot']
-    prob     = s.get('ts_probability', 0) or 0
-    deps     = SLOT_DEPARTURES.get(slot_id, 0)
+    slot_id   = s['slot']
+    prob      = s.get('ts_probability', 0) or 0
+    deps      = SLOT_DEPARTURES.get(slot_id, 0)
     disrupted = round(prob * deps * DISRUPTION_FACTOR)
     total_disrupted  += disrupted
     total_departures += deps
-
     impact_slots.append({
-        'slot':            slot_id,
-        'label':           s.get('label', ''),
-        'ts_probability':  round(prob, 4),
-        'departures':      deps,
-        'disrupted_est':   disrupted,
-        'impact_pct':      round(prob * DISRUPTION_FACTOR * 100, 1),
+        'slot':           slot_id,
+        'label':          s.get('label', ''),
+        'ts_probability': round(prob, 4),
+        'departures':     deps,
+        'disrupted_est':  disrupted,
+        'impact_pct':     round(prob * DISRUPTION_FACTOR * 100, 1),
     })
 
 overall_risk = 'HIGH' if total_disrupted >= 20 else 'MODERATE' if total_disrupted >= 8 else 'LOW' if total_disrupted >= 2 else 'MINIMAL'
 
 forecast["airport_impact"] = {
-    "total_departures_today":  total_departures,
-    "total_disrupted_est":     total_disrupted,
-    "disruption_pct":          round(total_disrupted / total_departures * 100, 1) if total_departures else 0,
-    "overall_risk":            overall_risk,
-    "disruption_factor":       DISRUPTION_FACTOR,
-    "slots":                   impact_slots,
-    "computed_at":             now.strftime('%Y-%m-%d %H:%M IST'),
+    "total_departures_today": total_departures,
+    "total_disrupted_est":    total_disrupted,
+    "disruption_pct":         round(total_disrupted / total_departures * 100, 1) if total_departures else 0,
+    "overall_risk":           overall_risk,
+    "disruption_factor":      DISRUPTION_FACTOR,
+    "slots":                  impact_slots,
+    "computed_at":            now.strftime('%Y-%m-%d %H:%M IST'),
 }
 print(f"Airport impact: {total_disrupted} disrupted of {total_departures} departures ({overall_risk})")
 
 # Synoptic Regime Auto-Detection
-# Based on CAPE, K-Index, T2M, month — classify into R1-R5
 try:
     t2m_c = (float(gfs_row.get('ERA5_T2M', 302)) - 273.15) if len(gfs_df) > 0 else 28.0
-    
-    # Regime classification rules (derived from cluster analysis)
-    # R1: Hot dry pre-monsoon — low CAPE, low K, high T
-    # R2: Moist monsoon onset — moderate CAPE, high K, moderate T
-    # R3: Break monsoon — low CAPE, moderate K, cloudy
-    # R4: Strong heating — moderate CAPE, moderate K, very high T
-    # R5: Pre-monsoon convective burst — high CAPE, very high K
 
     if ki_now >= 38 and cape_now >= 800:
-        regime_id = 'R5'
-        regime_name = 'Pre-Monsoon Convective Burst'
-        regime_ts_rate = 52.1
-        regime_auroc = 0.773
+        regime_id = 'R5'; regime_name = 'Pre-Monsoon Convective Burst'
+        regime_ts_rate = 52.1; regime_auroc = 0.773; regime_color = 'red'
         regime_desc = 'Severe convective instability — most challenging and highest TS rate regime'
-        regime_color = 'red'
     elif ki_now >= 35 and cape_now >= 300 and month in [5,6,7,8,9]:
-        regime_id = 'R2'
-        regime_name = 'Moist Monsoon'
-        regime_ts_rate = 9.3
-        regime_auroc = 0.934
+        regime_id = 'R2'; regime_name = 'Moist Monsoon'
+        regime_ts_rate = 9.3; regime_auroc = 0.934; regime_color = 'yellow'
         regime_desc = 'Monsoonal westerly surge with high skill forecast'
-        regime_color = 'yellow'
     elif ki_now >= 32 and cape_now >= 100 and t2m_c >= 28:
-        regime_id = 'R4'
-        regime_name = 'Strong Solar Heating'
-        regime_ts_rate = 9.8
-        regime_auroc = 0.900
+        regime_id = 'R4'; regime_name = 'Strong Solar Heating'
+        regime_ts_rate = 9.8; regime_auroc = 0.900; regime_color = 'orange'
         regime_desc = 'Strong surface heating with mid-level moisture'
-        regime_color = 'orange'
     elif cape_now < 100 and ki_now < 30 and month in [6,7,8,9]:
-        regime_id = 'R3'
-        regime_name = 'Break Monsoon'
-        regime_ts_rate = 10.2
-        regime_auroc = 0.798
+        regime_id = 'R3'; regime_name = 'Break Monsoon'
+        regime_ts_rate = 10.2; regime_auroc = 0.798; regime_color = 'blue'
         regime_desc = 'Break-monsoon stratiform clouding, suppressed convection'
-        regime_color = 'blue'
     else:
-        regime_id = 'R1'
-        regime_name = 'Hot Pre-Monsoon / Stable'
-        regime_ts_rate = 1.2
-        regime_auroc = 1.000
+        regime_id = 'R1'; regime_name = 'Hot Pre-Monsoon / Stable'
+        regime_ts_rate = 1.2; regime_auroc = 1.000; regime_color = 'green'
         regime_desc = 'Dry thermal low baseline, low storm occurrence'
-        regime_color = 'green'
 
     forecast["synoptic_regime"] = {
-        "regime_id":      regime_id,
-        "regime_name":    regime_name,
-        "ts_rate":        regime_ts_rate,
-        "auroc":          regime_auroc,
-        "description":    regime_desc,
-        "color":          regime_color,
-        "cape_used":      round(cape_now, 1),
-        "ki_used":        round(ki_now, 2),
-        "t2m_c":          round(t2m_c, 1),
-        "month":          month,
-        "computed_at":    now.strftime('%Y-%m-%d %H:%M IST'),
+        "regime_id":   regime_id,
+        "regime_name": regime_name,
+        "ts_rate":     regime_ts_rate,
+        "auroc":       regime_auroc,
+        "description": regime_desc,
+        "color":       regime_color,
+        "cape_used":   round(cape_now, 1),
+        "ki_used":     round(ki_now, 2),
+        "t2m_c":       round(t2m_c, 1),
+        "month":       month,
+        "computed_at": now.strftime('%Y-%m-%d %H:%M IST'),
     }
     print(f"Synoptic regime: {regime_id} — {regime_name} (TS rate: {regime_ts_rate}%)")
 except Exception as e:
     print(f"Regime detection error: {e}")
     forecast["synoptic_regime"] = {}
 
-# Extract Slot 2 30-day metrics (primary operational slot)
+# Verification metrics
 slot2_30d = verification.get("metrics_30day", {}).get("2", {})
 forecast["verification"] = {
     "pod":           round(float(slot2_30d.get("POD", 0)), 3) if slot2_30d else None,
@@ -556,7 +530,7 @@ forecast["verification"] = {
     }
 }
 
-# Load previous forecast for trend comparison
+# Trend comparison with previous forecast
 prev_probs = {}
 if Path('forecast.json').exists():
     try:
@@ -567,23 +541,16 @@ if Path('forecast.json').exists():
     except Exception:
         pass
 
-# Add trend arrows to each slot
 for s in forecast['slots']:
     slot_id = s['slot']
-    curr = s.get('ts_probability') or 0
-    prev_p = prev_probs.get(slot_id, curr)
-    diff = round(curr - prev_p, 3)
-    if diff > 0.01:
-        trend = 'up'
-    elif diff < -0.01:
-        trend = 'down'
-    else:
-        trend = 'stable'
-    s['trend'] = trend
-    s['trend_diff'] = diff
+    curr    = s.get('ts_probability') or 0
+    prev_p  = prev_probs.get(slot_id, curr)
+    diff    = round(curr - prev_p, 3)
+    s['trend']            = 'up' if diff > 0.01 else 'down' if diff < -0.01 else 'stable'
+    s['trend_diff']       = diff
     s['prev_probability'] = round(prev_p, 3)
 
-# Compute real-time SHAP
+# Real-time SHAP
 try:
     import subprocess
     subprocess.run(['python', 'compute_realtime_shap.py'], check=True, timeout=120)
@@ -600,3 +567,4 @@ with open('forecast.json', 'w') as f:
     json.dump(forecast, f, indent=2)
 
 print(f"forecast.json updated: alert={alert_active} peak=Slot{peak_slot} {peak_probability*100:.1f}%")
+print(f"met_parameters wind keys: u500={forecast['met_parameters']['ERA5_u_500hPa']} v500={forecast['met_parameters']['ERA5_v_500hPa']} u850={forecast['met_parameters']['ERA5_u_850hPa']} v850={forecast['met_parameters']['ERA5_v_850hPa']}")
