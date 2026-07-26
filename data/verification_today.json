@@ -1,0 +1,12 @@
+{
+  "date_verified": "2026-07-25",
+  "slots_verified": 0,
+  "thunderstorm_observed": null,
+  "slot_results": [],
+  "rolling_30d": {
+    "POD": 0.0,
+    "FAR": 0.0,
+    "HSS": 0.0,
+    "Brier": 0.0
+  }
+}
