@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-24 17:47 IST",
+  "generated_at": "2026-07-25 19:10 IST",
   "station": "Bengaluru Airport \u2014 IMD 43295",
   "model_version": "v3_calibrated",
   "metrics_30day": {
@@ -19,7 +19,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 30,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     },
     "1": {
       "slot": 1,
@@ -37,7 +37,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 30,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     },
     "2": {
       "slot": 2,
@@ -55,7 +55,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 30,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     },
     "3": {
       "slot": 3,
@@ -73,7 +73,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 30,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     }
   },
   "metrics_7day": {
@@ -93,7 +93,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 7,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     },
     "1": {
       "slot": 1,
@@ -111,7 +111,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 7,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     },
     "2": {
       "slot": 2,
@@ -129,7 +129,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 7,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     },
     "3": {
       "slot": 3,
@@ -147,7 +147,7 @@
       "FP": 0,
       "FN": 0,
       "TN": 7,
-      "computed_at": "2026-07-24 17:47 IST"
+      "computed_at": "2026-07-25 19:10 IST"
     }
   },
   "alerts": []

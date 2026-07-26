@@ -657,6 +657,10 @@
     ],
     "thunderstorm_present": false,
     "raw": "METAR VOBL 260600Z 26013KT 8000 SCT012 SCT020 27/19 Q1013 NOSIG",
+<<<<<<< Updated upstream
     "fetched_utc": "2026-07-26T06:26:02Z"
+=======
+    "fetched_utc": "2026-07-26T06:17:51Z"
+>>>>>>> Stashed changes
   }
 }

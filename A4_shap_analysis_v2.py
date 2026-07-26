@@ -30,7 +30,7 @@ warnings.filterwarnings('ignore')
 
 # ── PATHS ─────────────────────────────────────────────────────────────────────
 BASE    = Path(r"C:\Users\Aprameya\OneDrive\Pictures\Desktop\CSIR_Thunderstorm")
-DATA    = BASE / "data"    / "bengaluru_6hr_training_dataset_v2.csv"
+DATA    = BASE / "data"    / "bengaluru_6hr_training_dataset_v3.csv"
 MODELS  = BASE / "models"
 RESULTS = BASE / "results"
 FIGS    = BASE / "results" / "shap_figures_v2"

@@ -45,7 +45,7 @@ warnings.filterwarnings('ignore')
 
 # ── PATHS ─────────────────────────────────────────────────────────────────────
 BASE    = Path(r"C:\Users\Aprameya\OneDrive\Pictures\Desktop\CSIR_Thunderstorm")
-DATA    = BASE / "data"    / "bengaluru_6hr_training_dataset_v2.csv"
+DATA    = BASE / "data"    / "bengaluru_6hr_training_dataset_v3.csv"
 MODELS  = BASE / "models"
 RESULTS = BASE / "results"
 FIGS    = BASE / "results" / "shap_figures_v2"
@@ -84,7 +84,7 @@ for slot_id in range(4):
     print(f"{'='*60}")
 
     # Load v2 model
-    artifact     = joblib.load(MODELS / f"nowcast_slot{slot_id}_xgb_v2.pkl")
+    artifact     = joblib.load(MODELS / f"nowcast_slot{slot_id}_xgb_v3.pkl")
     model        = artifact['model']
     feature_cols = artifact['feature_cols']
     threshold    = artifact['threshold']
@@ -196,7 +196,7 @@ for slot_id in range(4):
         'slot_name':    slot_name,
         'era5_version': '6hourly',
     }
-    out_path = MODELS / f"nowcast_slot{slot_id}_xgb_v2_calibrated.pkl"
+    out_path = MODELS / f"nowcast_slot{slot_id}_xgb_v3_calibrated.pkl"
     joblib.dump(calibrated_artifact, out_path)
     print(f"  Saved → {out_path}")
 
@@ -216,14 +216,14 @@ plt.suptitle("Reliability Diagrams — Before vs After Calibration\n"
              "Top row: Raw XGBoost | Bottom row: Calibrated",
              fontsize=12, y=1.01)
 plt.tight_layout()
-fig_path = FIGS / "calibration_reliability_diagrams.png"
+fig_path = FIGS / "calibration_reliability_diagrams_v3.png"
 fig.savefig(fig_path, dpi=150, bbox_inches='tight')
 plt.close()
 print(f"\nReliability diagrams saved → {fig_path}")
 
 # ── SUMMARY ───────────────────────────────────────────────────────────────────
 results_df = pd.DataFrame(all_results)
-results_df.to_csv(RESULTS / "calibration_results.csv", index=False)
+results_df.to_csv(RESULTS / "calibration_results_v3.csv", index=False)
 
 print("\n" + "="*60)
 print("CALIBRATION SUMMARY")

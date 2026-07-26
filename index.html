@@ -1334,7 +1334,7 @@
     }
 
     // --- 5. REGIMES PAGE (SYNOPTIC ATMOSPHERIC CLUSTERS) ---
-    function RegimesPage() {
+    function RegimesPage({ liveData }) {
       const todayRegimeId = liveData?.synoptic_regime?.regime_id || null;
       const todayRegime = liveData?.synoptic_regime || null;
 
@@ -1436,7 +1436,7 @@
     }
 
     // --- 6. LIVE API PAGE (FASTAPI ENDPOINTS DISPLAY) ---
-    function LiveApiPage() {
+    function LiveApiPage({ liveData }) {
       const [responses, setResponses] = useState({});
       const [loading, setLoading] = useState({});
       const API_BASE = 'https://csir-thunderstorm-api.onrender.com';
@@ -2038,8 +2038,8 @@
                 {activeNavTab === 'RADAR MAP' && <RadarMapPage key="radar" liveData={liveData} />}
                 {activeNavTab === 'MODELS' && <ModelsPage key="models" liveData={liveData} />}
                 {activeNavTab === 'EXPLAINABILITY' && <ExplainabilityPage key="explain" liveData={liveData} />}
-                {activeNavTab === 'REGIMES' && <RegimesPage key="regimes" />}
-                {activeNavTab === 'LIVE API' && <LiveApiPage key="api" />}
+                {activeNavTab === 'REGIMES' && <RegimesPage key="regimes" liveData={liveData} />}
+                {activeNavTab === 'LIVE API' && <LiveApiPage key="api" liveData={liveData} />}
               </AnimatePresence>
             </main>
 
