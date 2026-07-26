@@ -1612,24 +1612,16 @@
       useEffect(() => {
         let ws;
         let reconnectTimer;
-        const RADIUS_DEG = 2.5; // ~280km bounding box
 
         const connect = () => {
           // Blitzortung public WebSocket servers (server 9 covers Asia)
-          const servers = ['ws://ws.blitzortung.org:8079', 'ws://ws.blitzortung.org:8080', 'ws://ws.blitzortung.org:8078'];
-          const url = servers[Math.floor(Math.random() * servers.length)];
+          // Use our Render proxy — wss:// so it works from https pages
+          const url = 'wss://csir-thunderstorm-api.onrender.com/ws/lightning';
           try {
             ws = new WebSocket(url);
             ws.onopen = () => {
               setWsStatus('LIVE');
-              // Subscribe to bounding box around VOBL
-              const bbox = {
-                west:  VOBL_LON - RADIUS_DEG,
-                east:  VOBL_LON + RADIUS_DEG,
-                south: VOBL_LAT - RADIUS_DEG,
-                north: VOBL_LAT + RADIUS_DEG,
-              };
-              ws.send(JSON.stringify({ west: bbox.west, east: bbox.east, south: bbox.south, north: bbox.north }));
+              // Proxy handles bbox subscription and filtering server-side
             };
             ws.onmessage = (evt) => {
               try {

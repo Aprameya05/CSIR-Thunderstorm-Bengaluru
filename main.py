@@ -12,6 +12,7 @@ Endpoints:
   GET  /nowcast/slots/info        — slot metadata
   POST /rag/explain               — Llama-3.3 forecast explanation
   POST /rag/analogs               — historical analog retrieval
+  WS   /ws/lightning              — real-time Blitzortung lightning proxy (wss://)
 
 Run:
   uvicorn main:app --reload
@@ -27,10 +28,14 @@ import joblib
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
+import asyncio
+import websockets
+import json
+import math
 
 # ── APP SETUP ─────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -568,3 +573,90 @@ def rag_analogs(payload: RAGAnalogsInput):
         slot=payload.slot,
         analogs=analogs,
     )
+
+# ── LIGHTNING WEBSOCKET PROXY ──────────────────────────────────────────────────
+
+VOBL_LAT = 13.1986
+VOBL_LON = 77.7066
+LIGHTNING_RADIUS_KM = 250
+# Blitzortung bounding box (~2.5° around VOBL)
+BBOX = {
+    "west":  VOBL_LON - 2.5,
+    "east":  VOBL_LON + 2.5,
+    "south": VOBL_LAT - 2.5,
+    "north": VOBL_LAT + 2.5,
+}
+BLITZORTUNG_SERVERS = [
+    "ws://ws.blitzortung.org:8079",
+    "ws://ws.blitzortung.org:8080",
+    "ws://ws.blitzortung.org:8078",
+]
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
+@app.websocket("/ws/lightning")
+async def lightning_proxy(client_ws: WebSocket):
+    """
+    WebSocket proxy: connects to Blitzortung (ws://), filters strikes within
+    250 km of VOBL, and forwards them to the browser over wss://.
+
+    Message format sent to client:
+    {"lat": 13.45, "lng": 77.80, "dist_km": 42, "time_ms": 1234567890123}
+    """
+    await client_ws.accept()
+    server_ix = 0
+
+    while True:
+        url = BLITZORTUNG_SERVERS[server_ix % len(BLITZORTUNG_SERVERS)]
+        server_ix += 1
+        try:
+            async with websockets.connect(
+                url,
+                ping_interval=20,
+                ping_timeout=30,
+                close_timeout=10,
+            ) as blitz_ws:
+                # Subscribe to bounding box
+                await blitz_ws.send(json.dumps(BBOX))
+
+                async for raw in blitz_ws:
+                    try:
+                        d = json.loads(raw)
+                        if "lat" not in d or "lon" not in d:
+                            continue
+
+                        # Blitzortung sends microdegrees
+                        lat = d["lat"] / 1_000_000
+                        lng = d["lon"] / 1_000_000
+                        dist = _haversine_km(VOBL_LAT, VOBL_LON, lat, lng)
+
+                        if dist > LIGHTNING_RADIUS_KM:
+                            continue
+
+                        await client_ws.send_json({
+                            "lat":     round(lat, 5),
+                            "lng":     round(lng, 5),
+                            "dist_km": round(dist, 1),
+                            "time_ms": d.get("time", 0) // 1_000_000,  # nanoseconds → ms
+                        })
+
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+                    except WebSocketDisconnect:
+                        return
+
+        except WebSocketDisconnect:
+            return
+        except Exception:
+            # Blitzortung dropped us — wait and try next server
+            try:
+                await asyncio.sleep(5)
+            except asyncio.CancelledError:
+                return
