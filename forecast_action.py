@@ -369,6 +369,64 @@ if multiday_path.exists():
 
 forecast["multiday_outlook"] = multiday_outlook
 
+# Historical analogs — find most similar days from training record
+analogs = []
+try:
+    features_path = BASE / 'data' / 'bengaluru_thunderstorm_features_merged.csv'
+    if not features_path.exists():
+        features_path = BASE / 'bengaluru_thunderstorm_features_merged.csv'
+    if features_path.exists():
+        import pandas as pd_ana
+        df_ana = pd_ana.read_csv(features_path, parse_dates=['date'])
+        
+        # Get today's values
+        today_cape = cape_now
+        today_ki   = ki_now
+        today_li   = li_now
+        today_tt   = tt_now
+        today_month = month
+
+        # Filter to same month ± 1
+        months = [(today_month - 1) % 12 or 12, today_month, (today_month % 12) + 1]
+        df_filtered = df_ana[df_ana['date'].dt.month.isin(months)].copy()
+
+        # Score by atmospheric similarity
+        if 'CAPE' in df_filtered.columns and 'K_INDEX' in df_filtered.columns:
+            df_filtered = df_filtered.dropna(subset=['CAPE', 'K_INDEX'])
+            cape_rng = df_filtered['CAPE'].max() - df_filtered['CAPE'].min() + 1e-9
+            ki_rng   = df_filtered['K_INDEX'].max() - df_filtered['K_INDEX'].min() + 1e-9
+            li_rng   = df_filtered['LIFTED_INDEX'].max() - df_filtered['LIFTED_INDEX'].min() + 1e-9 if 'LIFTED_INDEX' in df_filtered.columns else 1
+
+            df_filtered['_score'] = (
+                2.0 * (df_filtered['CAPE'] - today_cape).abs() / cape_rng +
+                1.5 * (df_filtered['K_INDEX'] - today_ki).abs() / ki_rng +
+                1.0 * (df_filtered['LIFTED_INDEX'] - today_li).abs() / li_rng if 'LIFTED_INDEX' in df_filtered.columns else 0
+            )
+
+            top_analogs = df_filtered.nsmallest(5, '_score')
+            for _, row_a in top_analogs.iterrows():
+                analogs.append({
+                    'date':               str(row_a['date'])[:10],
+                    'cape':               round(float(row_a.get('CAPE', 0)), 1),
+                    'k_index':            round(float(row_a.get('K_INDEX', 0)), 1),
+                    'lifted_index':       round(float(row_a.get('LIFTED_INDEX', 0)), 2) if 'LIFTED_INDEX' in row_a.index else None,
+                    'thunderstorm':       bool(row_a.get('LABEL', 0)),
+                    'month':              int(row_a['date'].month),
+                })
+            ts_count = sum(1 for a in analogs if a['thunderstorm'])
+            print(f"Analogs found: {len(analogs)} days, {ts_count} with TS")
+except Exception as e:
+    print(f"Analog search error: {e}")
+
+forecast["analogs"] = {
+    "top_5":          analogs,
+    "ts_rate":        round(sum(1 for a in analogs if a['thunderstorm']) / len(analogs), 2) if analogs else None,
+    "query_cape":     round(cape_now, 1),
+    "query_ki":       round(ki_now, 2),
+    "query_li":       round(li_now, 2),
+    "computed_at":    now.strftime('%Y-%m-%d %H:%M IST'),
+}
+
 # Extract Slot 2 30-day metrics (primary operational slot)
 slot2_30d = verification.get("metrics_30day", {}).get("2", {})
 forecast["verification"] = {
