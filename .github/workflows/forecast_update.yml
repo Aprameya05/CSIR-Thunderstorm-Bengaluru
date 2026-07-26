@@ -20,7 +20,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pandas numpy joblib scikit-learn xgboost requests pytz cfgrib eccodes xarray shap
+        run: pip install -r requirements.txt && pip install cfgrib eccodes xarray
 
       - name: Fetch GFS real-time data
         run: python gfs_fetcher.py
