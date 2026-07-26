@@ -1287,7 +1287,7 @@
           <div className="flex justify-between items-center mb-3 border-b border-[#172338] pb-2">
             <span className="text-xs font-bold text-cyan-300 flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${soundingStatus==='ok' ? 'bg-emerald-400' : soundingStatus==='loading' ? 'bg-amber-400 animate-pulse' : soundingStatus==='gfs-fallback' ? 'bg-orange-400' : 'bg-gray-500'}`}></span>
-              SKEW-T LOG-P ATMOSPHERIC SOUNDING — BENGALURU 43295
+              SKEW-T LOG-P ATMOSPHERIC SOUNDING — BENGALURU 43295 · Full atmospheric column · independent of slot selection
               {soundingStatus==='gfs-fallback' && <span className="text-orange-400 text-[9px] ml-2">(GFS SYNTHETIC — RADIOSONDE UNAVAILABLE)</span>}
               {soundingStatus==='ok' && <span className="text-emerald-400 text-[9px] ml-2">(LIVE RADIOSONDE)</span>}
             </span>
@@ -1519,6 +1519,9 @@
 
           {/* SKEW-T SOUNDING DIAGRAM */}
           <SkewTDiagram liveData={liveData} />
+
+          {/* SHAP slot label */}
+          <div className="text-[10px] text-[#607d8b] -mt-2">↑ Slot switcher above controls SHAP only — Skew-T shows today's full atmospheric column</div>
 
           {/* SHAP Chart Legend */}
           <div className="flex items-center gap-6 text-xs border-b border-[#172338] pb-3">
