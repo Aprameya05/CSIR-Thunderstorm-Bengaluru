@@ -185,8 +185,7 @@ def download_grib(url: str, out_path: str):
         raise RuntimeError(
             f"Response too small ({len(r.content)} bytes) -- almost "
             "certainly an HTML error page, not a GRIB2 file. Most likely "
-            "cause: this cycle/forecast hour isn't posted yet -- check the "
-            f"~{POST_LATENCY_HOURS}h post-cycle latency. "
+            "cause: this cycle/forecast hour isn't posted yet. "
             "Open the URL in a browser to see NOAA's actual response."
         )
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
@@ -519,3 +518,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

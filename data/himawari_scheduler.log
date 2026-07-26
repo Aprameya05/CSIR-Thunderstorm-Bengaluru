@@ -42,3 +42,135 @@ C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:252: RuntimeWarning: 
 10:13:26 [INFO] Saved \u2192 data\himawari_history.json  (5 frames)
 10:13:26 [INFO] 
 \u2713 Done — storm_detected=True  min_bt=-63.68°C  nearest=22.5 km
+10:22:01 [INFO] ============================================================
+10:22:01 [INFO]   fetch_himawari_realtime.py — VOBL Storm Proximity
+10:22:01 [INFO] ============================================================
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:361: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now_utc  = datetime.datetime.utcnow()
+10:22:01 [INFO] UTC now : 2026-07-26 04:52:01
+10:22:01 [INFO] Target  : 2026-07-26 04:40 UTC (segs [4, 5, 6])
+10:22:01 [INFO] 
+Fetching scene: 2026-07-26 04:40 UTC
+10:22:03 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0440/HS_H09_20260726_0440_B13_FLDK_R20_S0410.DAT.bz2
+10:22:13 [INFO]   \u2713 seg 4  3.1 MB
+10:22:13 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0440/HS_H09_20260726_0440_B13_FLDK_R20_S0510.DAT.bz2
+10:22:16 [INFO]   \u2713 seg 5  3.2 MB
+10:22:16 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0440/HS_H09_20260726_0440_B13_FLDK_R20_S0610.DAT.bz2
+10:22:21 [INFO]   \u2713 seg 6  2.9 MB
+10:22:22 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\06c5w7s71t
+10:22:23 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\04s97yo2q1
+10:22:24 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\05w8vees69
+C:\Users\Atul\AppData\Local\Programs\Python\Python313\Lib\site-packages\dask\_task_spec.py:768: RuntimeWarning: invalid value encountered in log
+  return self.func(*new_argspec)
+10:22:51 [INFO] 
+BT shape: (5500, 5500)  range [188.1, 314.7] K
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:250: RuntimeWarning: invalid value encountered in sin
+  a    = (np.sin(dlat / 2)**2
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:251: RuntimeWarning: invalid value encountered in cos
+  + np.cos(np.radians(VOBL_LAT)) * np.cos(np.radians(lats))
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:252: RuntimeWarning: invalid value encountered in sin
+  * np.sin(dlon / 2)**2)
+10:23:04 [INFO] 
+\u2500\u2500 Output \u2500\u2500
+10:23:04 [INFO]   timestamp_utc                  2026-07-26T04:40:00
+10:23:04 [INFO]   timestamp_ist                  2026-07-26T10:10:00
+10:23:04 [INFO]   vobl_bt_celsius                -11.51
+10:23:04 [INFO]   min_bt_50km                    -58.44
+10:23:04 [INFO]   mean_bt_50km                   -27.08
+10:23:04 [INFO]   cold_pixels_count              158
+10:23:04 [INFO]   storm_detected                 True
+10:23:04 [INFO]   nearest_pixel_dist_km          18.18
+10:23:04 [INFO]   threshold_celsius              -40.0
+10:23:04 [INFO]   data_source                    Himawari-9 Band 13 (10.4um) via NOAA AWS S3
+10:23:04 [INFO] Saved \u2192 data\himawari_realtime.json
+10:23:04 [INFO] Saved \u2192 data\himawari_history.json  (6 frames)
+10:23:04 [INFO] 
+\u2713 Done — storm_detected=True  min_bt=-58.44°C  nearest=18.18 km
+10:32:01 [INFO] ============================================================
+10:32:01 [INFO]   fetch_himawari_realtime.py — VOBL Storm Proximity
+10:32:01 [INFO] ============================================================
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:361: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now_utc  = datetime.datetime.utcnow()
+10:32:01 [INFO] UTC now : 2026-07-26 05:02:01
+10:32:01 [INFO] Target  : 2026-07-26 04:50 UTC (segs [4, 5, 6])
+10:32:01 [INFO] 
+Fetching scene: 2026-07-26 04:50 UTC
+10:32:07 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0450/HS_H09_20260726_0450_B13_FLDK_R20_S0410.DAT.bz2
+10:32:13 [INFO]   \u2713 seg 4  3.1 MB
+10:32:13 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0450/HS_H09_20260726_0450_B13_FLDK_R20_S0510.DAT.bz2
+10:32:16 [INFO]   \u2713 seg 5  3.2 MB
+10:32:16 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0450/HS_H09_20260726_0450_B13_FLDK_R20_S0610.DAT.bz2
+10:32:19 [INFO]   \u2713 seg 6  2.9 MB
+10:32:20 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\04zu6s82vc
+10:32:21 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\053kpoudx0
+10:32:22 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\065b0qpuur
+C:\Users\Atul\AppData\Local\Programs\Python\Python313\Lib\site-packages\dask\_task_spec.py:768: RuntimeWarning: invalid value encountered in log
+  return self.func(*new_argspec)
+10:32:53 [INFO] 
+BT shape: (5500, 5500)  range [186.7, 314.4] K
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:250: RuntimeWarning: invalid value encountered in sin
+  a    = (np.sin(dlat / 2)**2
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:251: RuntimeWarning: invalid value encountered in cos
+  + np.cos(np.radians(VOBL_LAT)) * np.cos(np.radians(lats))
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:252: RuntimeWarning: invalid value encountered in sin
+  * np.sin(dlon / 2)**2)
+10:33:06 [INFO] 
+\u2500\u2500 Output \u2500\u2500
+10:33:06 [INFO]   timestamp_utc                  2026-07-26T04:50:00
+10:33:06 [INFO]   timestamp_ist                  2026-07-26T10:20:00
+10:33:06 [INFO]   vobl_bt_celsius                -25.98
+10:33:06 [INFO]   min_bt_50km                    -55.41
+10:33:06 [INFO]   mean_bt_50km                   -28.92
+10:33:06 [INFO]   cold_pixels_count              171
+10:33:06 [INFO]   storm_detected                 True
+10:33:06 [INFO]   nearest_pixel_dist_km          12.22
+10:33:06 [INFO]   threshold_celsius              -40.0
+10:33:06 [INFO]   data_source                    Himawari-9 Band 13 (10.4um) via NOAA AWS S3
+10:33:06 [INFO] Saved \u2192 data\himawari_realtime.json
+10:33:06 [INFO] Saved \u2192 data\himawari_history.json  (6 frames)
+10:33:06 [INFO] 
+\u2713 Done — storm_detected=True  min_bt=-55.41°C  nearest=12.22 km
+10:42:01 [INFO] ============================================================
+10:42:01 [INFO]   fetch_himawari_realtime.py — VOBL Storm Proximity
+10:42:01 [INFO] ============================================================
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:361: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  now_utc  = datetime.datetime.utcnow()
+10:42:01 [INFO] UTC now : 2026-07-26 05:12:01
+10:42:01 [INFO] Target  : 2026-07-26 05:00 UTC (segs [4, 5, 6])
+10:42:01 [INFO] 
+Fetching scene: 2026-07-26 05:00 UTC
+10:42:08 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0500/HS_H09_20260726_0500_B13_FLDK_R20_S0410.DAT.bz2
+10:42:17 [INFO]   \u2713 seg 4  3.1 MB
+10:42:17 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0500/HS_H09_20260726_0500_B13_FLDK_R20_S0510.DAT.bz2
+10:42:22 [INFO]   \u2713 seg 5  3.2 MB
+10:42:22 [INFO]   S3 GET s3://noaa-himawari9/AHI-L1b-FLDK/2026/07/26/0500/HS_H09_20260726_0500_B13_FLDK_R20_S0610.DAT.bz2
+10:42:28 [INFO]   \u2713 seg 6  2.9 MB
+10:42:29 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\06a97pg9y6
+10:42:30 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\04gpmgexht
+10:42:32 [INFO] Using temp file for BZ2 decompression: C:\WINDOWS\TEMP\05p50_2t98
+C:\Users\Atul\AppData\Local\Programs\Python\Python313\Lib\site-packages\dask\_task_spec.py:768: RuntimeWarning: invalid value encountered in log
+  return self.func(*new_argspec)
+10:42:57 [INFO] 
+BT shape: (5500, 5500)  range [187.1, 313.9] K
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:250: RuntimeWarning: invalid value encountered in sin
+  a    = (np.sin(dlat / 2)**2
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:251: RuntimeWarning: invalid value encountered in cos
+  + np.cos(np.radians(VOBL_LAT)) * np.cos(np.radians(lats))
+C:\Users\Atul\Desktop\csir-repo\fetch_himawari_realtime.py:252: RuntimeWarning: invalid value encountered in sin
+  * np.sin(dlon / 2)**2)
+10:43:14 [INFO] 
+\u2500\u2500 Output \u2500\u2500
+10:43:14 [INFO]   timestamp_utc                  2026-07-26T05:00:00
+10:43:14 [INFO]   timestamp_ist                  2026-07-26T10:30:00
+10:43:14 [INFO]   vobl_bt_celsius                -37.56
+10:43:14 [INFO]   min_bt_50km                    -52.99
+10:43:14 [INFO]   mean_bt_50km                   -30.54
+10:43:14 [INFO]   cold_pixels_count              198
+10:43:14 [INFO]   storm_detected                 True
+10:43:14 [INFO]   nearest_pixel_dist_km          6.05
+10:43:14 [INFO]   threshold_celsius              -40.0
+10:43:14 [INFO]   data_source                    Himawari-9 Band 13 (10.4um) via NOAA AWS S3
+10:43:15 [INFO] Saved \u2192 data\himawari_realtime.json
+10:43:15 [INFO] Saved \u2192 data\himawari_history.json  (6 frames)
+10:43:15 [INFO] 
+\u2713 Done — storm_detected=True  min_bt=-52.99°C  nearest=6.05 km
