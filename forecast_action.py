@@ -465,6 +465,72 @@ forecast["airport_impact"] = {
 }
 print(f"Airport impact: {total_disrupted} disrupted of {total_departures} departures ({overall_risk})")
 
+# Synoptic Regime Auto-Detection
+# Based on CAPE, K-Index, T2M, month — classify into R1-R5
+try:
+    t2m_c = (float(gfs_row.get('ERA5_T2M', 302)) - 273.15) if len(gfs_df) > 0 else 28.0
+    
+    # Regime classification rules (derived from cluster analysis)
+    # R1: Hot dry pre-monsoon — low CAPE, low K, high T
+    # R2: Moist monsoon onset — moderate CAPE, high K, moderate T
+    # R3: Break monsoon — low CAPE, moderate K, cloudy
+    # R4: Strong heating — moderate CAPE, moderate K, very high T
+    # R5: Pre-monsoon convective burst — high CAPE, very high K
+
+    if ki_now >= 38 and cape_now >= 800:
+        regime_id = 'R5'
+        regime_name = 'Pre-Monsoon Convective Burst'
+        regime_ts_rate = 52.1
+        regime_auroc = 0.773
+        regime_desc = 'Severe convective instability — most challenging and highest TS rate regime'
+        regime_color = 'red'
+    elif ki_now >= 35 and cape_now >= 300 and month in [5,6,7,8,9]:
+        regime_id = 'R2'
+        regime_name = 'Moist Monsoon'
+        regime_ts_rate = 9.3
+        regime_auroc = 0.934
+        regime_desc = 'Monsoonal westerly surge with high skill forecast'
+        regime_color = 'yellow'
+    elif ki_now >= 32 and cape_now >= 100 and t2m_c >= 28:
+        regime_id = 'R4'
+        regime_name = 'Strong Solar Heating'
+        regime_ts_rate = 9.8
+        regime_auroc = 0.900
+        regime_desc = 'Strong surface heating with mid-level moisture'
+        regime_color = 'orange'
+    elif cape_now < 100 and ki_now < 30 and month in [6,7,8,9]:
+        regime_id = 'R3'
+        regime_name = 'Break Monsoon'
+        regime_ts_rate = 10.2
+        regime_auroc = 0.798
+        regime_desc = 'Break-monsoon stratiform clouding, suppressed convection'
+        regime_color = 'blue'
+    else:
+        regime_id = 'R1'
+        regime_name = 'Hot Pre-Monsoon / Stable'
+        regime_ts_rate = 1.2
+        regime_auroc = 1.000
+        regime_desc = 'Dry thermal low baseline, low storm occurrence'
+        regime_color = 'green'
+
+    forecast["synoptic_regime"] = {
+        "regime_id":      regime_id,
+        "regime_name":    regime_name,
+        "ts_rate":        regime_ts_rate,
+        "auroc":          regime_auroc,
+        "description":    regime_desc,
+        "color":          regime_color,
+        "cape_used":      round(cape_now, 1),
+        "ki_used":        round(ki_now, 2),
+        "t2m_c":          round(t2m_c, 1),
+        "month":          month,
+        "computed_at":    now.strftime('%Y-%m-%d %H:%M IST'),
+    }
+    print(f"Synoptic regime: {regime_id} — {regime_name} (TS rate: {regime_ts_rate}%)")
+except Exception as e:
+    print(f"Regime detection error: {e}")
+    forecast["synoptic_regime"] = {}
+
 # Extract Slot 2 30-day metrics (primary operational slot)
 slot2_30d = verification.get("metrics_30day", {}).get("2", {})
 forecast["verification"] = {
