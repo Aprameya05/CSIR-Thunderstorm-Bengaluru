@@ -83,13 +83,14 @@ The Models page shows live 30-day rolling verification metrics (POD, FAR, HSS, B
 Two scheduled runs at **15:45 IST** and **21:45 IST**:
 
 ```
-cron trigger
-→ gfs_fetcher.py      (auto-discovers latest GFS cycle, fetches f012/f024/f048)
-→ fetch_upperair_realtime.py  (MetPy stability indices)
-→ forecast_action.py  (XGBoost inference + SHAP + convective timer + multiday)
-→ compute_realtime_shap.py    (per-slot SHAP from today's inputs)
+cron trigger (15:45 IST / 21:45 IST)
+→ gfs_fetcher.py              (auto-discovers latest GFS cycle, fetches f012/f024/f048)
+→ forecast_action.py          (XGBoost inference + convective timer + multiday outlook)
+→ fetch_metar.py              (live METAR from aviationweather.gov — VOBL, no API key)
+→ compute_realtime_shap.py    (per-slot SHAP from today's actual GFS inputs)
+→ verify_today.py             (IMD TH-flag verification + rolling POD/FAR/HSS/Brier)
 → forecast.json committed to GitHub
-→ Cloudflare Pages auto-deploy
+→ Cloudflare Pages auto-deploy (~58s end-to-end)
 → Live website updated
 ```
 
@@ -183,8 +184,9 @@ cron trigger
 | Source | Data | Cadence | Script |
 |--------|------|---------|--------|
 | GFS NOMADS | CAPE, K-Index, LI, TT, ERA5 fields, f012/f024/f048 | 6-hourly | `gfs_fetcher.py` |
+| aviationweather.gov | Live METAR — TEMP, WIND, RH, VIS, flight category | 30-min | `fetch_metar.py` |
 | Himawari-9 (NOAA S3) | Band 13 IR BT, 50km VOBL box | 10-min | `fetch_himawari_realtime.py` |
-| IMD Table-II (43295) | Surface obs, TH flag, G-codes | Daily | Training + verification |
+| IMD Table-II (43295) | Surface obs, TH flag, G-codes | Daily | Training + `verify_today.py` |
 | ERA5 (CDS API) | 6-hourly T/q/u/v 500/700/850hPa | 6-hourly | Training (Vidhi) |
 | IGRA Soundings | Upper-air profiles | Daily | Training only |
 | MetPy (GFS-derived) | Stability indices all 4 slots | 6-hourly | `fetch_upperair_realtime.py` |
@@ -228,8 +230,9 @@ CSIR_Thunderstorm/
 ├── run_daily_forecast_v2.py      # Full local pipeline
 ├── fetch_gfs_realtime.py         # GFS slot fetcher (per-slot)
 ├── fetch_upperair_realtime.py    # MetPy stability indices (Atul)
+├── fetch_metar.py                # Live METAR from aviationweather.gov (VOBL)
 ├── fetch_himawari_realtime.py    # Himawari-9 satellite fetcher (Atul)
-├── verify_today.py               # Daily verification (Sneha)
+├── verify_today.py               # Daily verification logger (Sneha)
 ├── forecast_logger.py            # ForecastLogger class (Sneha)
 ├── main.py                       # FastAPI — 7 endpoints (Satvik)
 ├── index.html                    # React dashboard (single file)
@@ -264,8 +267,14 @@ python run_daily_forecast_v2.py
 # Smart GFS fetch (auto-discovers latest cycle + f024/f048)
 python gfs_fetcher.py
 
+# Fetch live METAR for VOBL
+python fetch_metar.py
+
 # Compute real-time SHAP from today's GFS inputs
 python compute_realtime_shap.py
+
+# Run daily verification against IMD observations
+python verify_today.py
 
 # Export forecast.json with all signals
 python forecast_action.py
@@ -311,14 +320,20 @@ curl -X POST https://csir-thunderstorm-api.onrender.com/rag/explain \
 - [x] Multi-day extended outlook (f024/f048)
 - [x] Real-time SHAP per slot from today's GFS inputs
 - [x] Himawari-9 BT visualization on Radar Map
+- [x] Live METAR integration (VOBL — TEMP, WIND, RH, VIS, flight category)
+- [x] Synoptic regime auto-detection with today's regime highlighted
+- [x] Live API "Try it" buttons with elapsed timer + wake-up UX
+- [x] Automated daily verification pipeline (IMD TH flag → POD/FAR/HSS/Brier)
 
 ### Phase 4 — Enhancements 📋
-- [ ] Historical analog display on dashboard
-- [ ] Synoptic regime auto-detection from GFS fields
-- [ ] Airport impact score (flights affected estimate)
+- [x] Historical analog display on dashboard
+- [x] Synoptic regime auto-detection from GFS fields
+- [x] Airport impact score (flights affected estimate)
+- [ ] Model drift detection alert (rolling AUROC < 0.75 trigger)
+- [ ] Upper-air fetcher for all 4 slots independently (Atul)
 - [ ] GPM IMERG precipitation overlay
 - [ ] IMD Doppler radar (pending Dr. Agnihotri)
-- [ ] Model drift detection alert
+- [ ] IMD Table-II live feed (pending Dr. Agnihotri — currently manual update)
 
 ---
 
@@ -326,11 +341,11 @@ curl -X POST https://csir-thunderstorm-api.onrender.com/rag/explain \
 
 | Member | Role | Key Contributions |
 |--------|------|------------------|
-| **Aprameya Bharadwaj** | ML Lead & Architect | A1–A5, pipeline, RAG, dashboard, CI/CD, GFS fetcher, SHAP, convective timer |
-| **Atul Denny** | Data & Pipeline Lead | GFS fetcher, MetPy upper-air, Himawari-9 satellite fetcher |
-| **Satvik** | Deployment Lead | FastAPI, Render deployment, all 7 API endpoints |
-| **Vidhi** | ERA5 Data | 6-hourly ERA5 2015–2025 (16,072 rows, zero nulls) |
-| **Sneha** | Verification | EDA, ForecastLogger, rolling verification dashboard |
+| **Aprameya Bharadwaj** | ML Lead & Architect | A1–A5, pipeline, RAG, dashboard, CI/CD, GFS fetcher, SHAP, convective timer, live METAR, regime detection, Live API UX |
+| **Atul Denny** | Data & Pipeline Lead | GFS fetcher, MetPy upper-air stability indices, Himawari-9 satellite fetcher (NOAA S3) |
+| **Satvik** | Deployment Lead | FastAPI on Render, all 7 endpoints including RAG, API_EXAMPLES.md |
+| **Vidhi** | ERA5 Data | 6-hourly ERA5 2015–2025 (16,072 rows, zero nulls), 200/300 hPa winds |
+| **Sneha** | Verification Lead | EDA charts, ForecastLogger, `verify_today.py` (IMD TH-flag verification pipeline) |
 
 ---
 
