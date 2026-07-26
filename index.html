@@ -429,7 +429,7 @@
     }
 
     // --- 1. DASHBOARD PAGE ---
-    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData }) {
+    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange }) {
       const currentSlot = slots[selectedSlotIndex] || slots[2];
       const photoInfo = SLOT_AIRPORT_PHOTOS[selectedSlotIndex] || SLOT_AIRPORT_PHOTOS[2];
       const riskInfo = getRiskBadge(currentSlot.ts_probability);
@@ -633,10 +633,31 @@
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#172338] text-center">
-                <button className="text-xs font-mono text-cyan-400 font-bold hover:underline">
+                <button className="text-xs font-mono text-cyan-400 font-bold hover:underline" onClick={() => onNavTabChange('FORECAST')}>
                   VIEW DETAILED FORECAST →
                 </button>
               </div>
+
+              {/* Mini Extended Outlook */}
+              {liveData?.multiday_outlook?.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-[#172338]">
+                  <div className="text-[9px] font-bold text-[#607d8b] uppercase tracking-wider mb-2">EXTENDED OUTLOOK</div>
+                  <div className="space-y-1.5">
+                    {liveData.multiday_outlook.map((day, idx) => {
+                      const riskColor = day.risk_level === 'HIGH' ? 'text-red-400' : day.risk_level === 'MODERATE' ? 'text-orange-400' : day.risk_level === 'LOW' ? 'text-yellow-400' : 'text-emerald-400';
+                      return (
+                        <div key={idx} className="flex items-center justify-between text-[10px] px-2 py-1.5 rounded bg-[#050811] border border-[#172338]">
+                          <span className="text-white font-bold capitalize">{day.day_label?.replace('_',' ')}</span>
+                          <span className="text-[#607d8b]">{day.date}</span>
+                          <span className="text-[#607d8b]">CAPE {day.cape} K {day.k_index}</span>
+                          <span className={`font-bold ${riskColor}`}>{(day.ts_probability_slot2 * 100).toFixed(1)}%</span>
+                          <span className={`font-bold text-[9px] ${riskColor}`}>{day.risk_level}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
 
@@ -1876,6 +1897,7 @@
                       lastUpdated={lastUpdated}
                       liveTime={liveTime}
                       liveData={liveData}
+                      onNavTabChange={onNavTabChange}
                     />
                   </motion.div>
                 )}
