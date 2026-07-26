@@ -172,17 +172,22 @@ def build_nomads_url(cycle_utc: datetime, fhour: int) -> str:
 
 def download_grib(url: str, out_path: str):
     print(f"Downloading: {url}")
-    r = requests.get(url, timeout=120)
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        )
+    }
+    r = requests.get(url, headers=headers, timeout=120)
     r.raise_for_status()
     if len(r.content) < 1000:
         raise RuntimeError(
             f"Response too small ({len(r.content)} bytes) -- almost "
             "certainly an HTML error page, not a GRIB2 file. Most likely "
             "cause: this cycle/forecast hour isn't posted yet -- check the "
-            f"~{POST_LATENCY_HOURS}h post-cycle latency from "
-            "pipeline_scoping_findings.md before assuming the script is "
-            "broken. Print out the URL above and open it directly in a "
-            "browser to see NOAA's actual response."
+            f"~{POST_LATENCY_HOURS}h post-cycle latency. "
+            "Open the URL in a browser to see NOAA's actual response."
         )
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "wb") as f:
