@@ -476,24 +476,24 @@
               <div className="grid grid-cols-2 gap-2 my-1 font-mono text-xs">
                 <div>
                   <div className="text-[9px] text-[#607d8b]">TEMP</div>
-                  <div className="text-sm font-bold text-white">28.6°C</div>
+                  <div className="text-sm font-bold text-white">{liveData?.metar?.temp_c != null ? `${liveData.metar.temp_c}°C` : '28.6°C'}</div>
                 </div>
                 <div>
                   <div className="text-[9px] text-[#607d8b]">WIND</div>
-                  <div className="text-xs font-bold text-white">240° / 14 kts</div>
+                  <div className="text-xs font-bold text-white">{liveData?.metar?.wind_dir != null ? `${liveData.metar.wind_dir}° / ${liveData.metar.wind_speed_kt} kts` : '260° / 13 kts'}</div>
                 </div>
                 <div>
                   <div className="text-[9px] text-[#607d8b]">RH</div>
-                  <div className="text-sm font-bold text-white">78%</div>
+                  <div className="text-sm font-bold text-white">{liveData?.metar?.rh_pct != null ? `${liveData.metar.rh_pct}%` : '78%'}</div>
                 </div>
                 <div>
                   <div className="text-[9px] text-[#607d8b]">VISIBILITY</div>
-                  <div className="text-sm font-bold text-white">10 km</div>
+                  <div className="text-sm font-bold text-white">{liveData?.metar?.visibility_km != null ? `${liveData.metar.visibility_km} km` : '10 km'}</div>
                 </div>
               </div>
               <div className="text-[9px] font-mono text-[#607d8b] border-t border-[#172338] pt-1.5 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                <span>Updated 1 min ago</span>
+                <span>{liveData?.metar?.flight_category ? `VOBL ${liveData.metar.flight_category} · METAR` : 'Updated 1 min ago'}</span>
               </div>
             </div>
 
@@ -1763,11 +1763,11 @@
               <div className="grid grid-cols-2 gap-6 text-base">
                 <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
                   <span className="text-xs text-[#607d8b] block font-bold">WIND SURFACE</span>
-                  <span className="text-xl font-extrabold text-white">240° / 14 kts</span>
+                  <span className="text-xl font-extrabold text-white">{liveData?.metar?.wind_dir != null ? `${liveData.metar.wind_dir}° / ${liveData.metar.wind_speed_kt} kts` : '260° / 13 kts'}</span>
                 </div>
                 <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
                   <span className="text-xs text-[#607d8b] block font-bold">VISIBILITY</span>
-                  <span className="text-xl font-extrabold text-white">10 km</span>
+                  <span className="text-xl font-extrabold text-white">{liveData?.metar?.visibility_km != null ? `${liveData.metar.visibility_km} km` : '10 km'}</span>
                 </div>
                 <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
                   <span className="text-xs text-[#607d8b] block font-bold">CAPE STABILITY</span>

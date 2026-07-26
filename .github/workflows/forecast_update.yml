@@ -28,6 +28,12 @@ jobs:
       - name: Run forecast pipeline
         run: python forecast_action.py
 
+      - name: Fetch live METAR (VOBL)
+        run: python fetch_metar.py
+
+      - name: Compute real-time SHAP
+        run: python compute_realtime_shap.py
+
       - name: Commit and push forecast.json
         run: |
           git config --global user.name "CSIR Forecast Bot"
