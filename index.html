@@ -813,6 +813,33 @@
                 </div>
               )}
 
+              {/* Card 1.8: SYNOPTIC REGIME */}
+              {liveData?.synoptic_regime?.regime_id && (
+                <div className="atc-card p-3 rounded-2xl font-mono">
+                  <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-2 border-b border-[#172338] pb-1">
+                    SYNOPTIC REGIME — AUTO-DETECTED
+                  </h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <span className={`text-sm font-extrabold ${
+                        liveData.synoptic_regime.color === 'red' ? 'text-red-400' :
+                        liveData.synoptic_regime.color === 'orange' ? 'text-orange-400' :
+                        liveData.synoptic_regime.color === 'yellow' ? 'text-yellow-400' :
+                        liveData.synoptic_regime.color === 'blue' ? 'text-blue-400' :
+                        'text-emerald-400'
+                      }`}>{liveData.synoptic_regime.regime_id}</span>
+                      <span className="text-white font-bold text-xs ml-2">{liveData.synoptic_regime.regime_name}</span>
+                    </div>
+                    <span className="text-[9px] text-[#607d8b]">AUROC {liveData.synoptic_regime.auroc}</span>
+                  </div>
+                  <div className="text-[9px] text-[#607d8b] mb-2">{liveData.synoptic_regime.description}</div>
+                  <div className="flex justify-between text-[9px]">
+                    <span className="text-[#607d8b]">Historical TS rate: <span className="text-white font-bold">{liveData.synoptic_regime.ts_rate}%</span></span>
+                    <span className="text-[#607d8b]">CAPE <span className="text-white">{liveData.synoptic_regime.cape_used}</span> K <span className="text-white">{liveData.synoptic_regime.ki_used}</span></span>
+                  </div>
+                </div>
+              )}
+
               {/* Card 2: ALERT LEVEL GUIDE */}
               <div className="atc-card p-3 rounded-2xl font-mono">
                 <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-2 border-b border-[#172338] pb-1">
