@@ -717,6 +717,38 @@
                 </div>
               </div>
 
+              {/* Card 1.5: HISTORICAL ANALOGS */}
+              {liveData?.analogs?.top_5?.length > 0 && (
+                <div className="atc-card p-4 rounded-2xl font-mono">
+                  <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">
+                    HISTORICAL ANALOGS — SIMILAR ATMOSPHERIC DAYS
+                  </h4>
+                  <div className="space-y-1.5 text-[10px]">
+                    {liveData.analogs.top_5.slice(0,3).map((a, i) => (
+                      <div key={i} className={`flex items-center justify-between px-2 py-1.5 rounded border ${a.thunderstorm ? 'bg-red-500/10 border-red-500/30' : 'bg-[#050811] border-[#172338]'}`}>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold ${a.thunderstorm ? 'text-red-400' : 'text-emerald-400'}`}>
+                            {a.thunderstorm ? '⚡' : '✓'}
+                          </span>
+                          <span className="text-white font-bold">{a.date}</span>
+                        </div>
+                        <div className="flex gap-3 text-[#607d8b]">
+                          <span>CAPE <span className="text-white">{a.cape}</span></span>
+                          <span>K <span className="text-white">{a.k_index}</span></span>
+                          <span>LI <span className="text-white">{a.lifted_index}</span></span>
+                        </div>
+                        <span className={`font-bold text-[9px] ${a.thunderstorm ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {a.thunderstorm ? 'TS OCCURRED' : 'NO TS'}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="text-[9px] text-[#607d8b] mt-1 text-right">
+                      TS rate in analogs: {liveData.analogs.ts_rate !== null ? (liveData.analogs.ts_rate * 100).toFixed(0) + '%' : '—'} · CAPE={liveData.analogs.query_cape} K={liveData.analogs.query_ki}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Card 2: ALERT LEVEL GUIDE */}
               <div className="atc-card p-4 rounded-2xl font-mono">
                 <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">
