@@ -1,10 +1,6 @@
 {
   "date": "2026-07-26",
-<<<<<<< HEAD
-  "generated_at": "2026-07-26 10:16 IST",
-=======
-  "generated_at": "2026-07-26 04:41 IST",
->>>>>>> 91a9f13edd49c351ea95c0ac97f8249d45e4bd2b
+  "generated_at": "2026-07-26 04:51 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0232,
@@ -58,8 +54,8 @@
       "lifted_index": -1.06,
       "totals_totals": 41.0,
       "trend": "stable",
-      "trend_diff": 0.003,
-      "prev_probability": 0
+      "trend_diff": 0.0,
+      "prev_probability": 0.003
     },
     {
       "slot": 3,
@@ -88,14 +84,14 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-07-26T03:50:00",
-      "timestamp_ist": "2026-07-26T09:20:00",
-      "vobl_bt_celsius": -5.56,
-      "min_bt_50km": -30.77,
-      "mean_bt_50km": -4.88,
-      "cold_pixels_count": 0,
-      "storm_detected": false,
-      "nearest_pixel_dist_km": null,
+      "timestamp_utc": "2026-07-26T04:30:00",
+      "timestamp_ist": "2026-07-26T10:00:00",
+      "vobl_bt_celsius": -9.05,
+      "min_bt_50km": -63.68,
+      "mean_bt_50km": -24.04,
+      "cold_pixels_count": 142,
+      "storm_detected": true,
+      "nearest_pixel_dist_km": 22.5,
       "threshold_celsius": -40.0,
       "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
       "available": true
@@ -148,33 +144,33 @@
         "nearest_pixel_dist_km": null,
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3"
+      },
+      {
+        "timestamp_utc": "2026-07-26T04:30:00",
+        "timestamp_ist": "2026-07-26T10:00:00",
+        "vobl_bt_celsius": -9.05,
+        "min_bt_50km": -63.68,
+        "mean_bt_50km": -24.04,
+        "cold_pixels_count": 142,
+        "storm_detected": true,
+        "nearest_pixel_dist_km": 22.5,
+        "threshold_celsius": -40.0,
+        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3"
       }
     ]
   },
   "convective_initiation": {
     "instability_score": 27.2,
     "initiation_status": "PRE-CONVECTIVE",
-<<<<<<< HEAD
-    "initiation_message": "Peak convective window in 2.7h (1300-1800 IST)",
-    "initiation_risk": "MINIMAL",
-    "hours_to_peak": 2.7,
-    "cape_now": 0.0,
-    "ki_now": 28.7,
-    "li_now": 0.23,
-    "tt_now": 38.41,
-    "peak_window_ist": "1300-1800 IST",
-    "computed_at": "2026-07-26 10:16 IST"
-=======
-    "initiation_message": "Peak convective window in 8.3h (1300-1800 IST)",
+    "initiation_message": "Peak convective window in 8.2h (1300-1800 IST)",
     "initiation_risk": "LOW",
-    "hours_to_peak": 8.3,
+    "hours_to_peak": 8.2,
     "cape_now": 70.0,
     "ki_now": 34.17,
     "li_now": -1.06,
     "tt_now": 41.0,
     "peak_window_ist": "1300-1800 IST",
-    "computed_at": "2026-07-26 04:41 IST"
->>>>>>> 91a9f13edd49c351ea95c0ac97f8249d45e4bd2b
+    "computed_at": "2026-07-26 04:51 IST"
   },
   "multiday_outlook": [
     {
@@ -246,11 +242,10 @@
       }
     ],
     "ts_rate": 0.0,
-<<<<<<< HEAD
-    "query_cape": 0.0,
-    "query_ki": 28.7,
-    "query_li": 0.23,
-    "computed_at": "2026-07-26 10:16 IST"
+    "query_cape": 70.0,
+    "query_ki": 34.17,
+    "query_li": -1.06,
+    "computed_at": "2026-07-26 04:51 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -262,7 +257,7 @@
       {
         "slot": 0,
         "label": "Late Night",
-        "ts_probability": 0.0231,
+        "ts_probability": 0.0232,
         "departures": 8,
         "disrupted_est": 0,
         "impact_pct": 1.4
@@ -270,7 +265,7 @@
       {
         "slot": 1,
         "label": "Morning",
-        "ts_probability": 0.0077,
+        "ts_probability": 0.0078,
         "departures": 45,
         "disrupted_est": 0,
         "impact_pct": 0.5
@@ -278,10 +273,10 @@
       {
         "slot": 2,
         "label": "Afternoon",
-        "ts_probability": 0,
+        "ts_probability": 0.0028,
         "departures": 52,
         "disrupted_est": 0,
-        "impact_pct": 0.0
+        "impact_pct": 0.2
       },
       {
         "slot": 3,
@@ -292,13 +287,7 @@
         "impact_pct": 0.0
       }
     ],
-    "computed_at": "2026-07-26 10:16 IST"
-=======
-    "query_cape": 70.0,
-    "query_ki": 34.17,
-    "query_li": -1.06,
-    "computed_at": "2026-07-26 04:41 IST"
->>>>>>> 91a9f13edd49c351ea95c0ac97f8249d45e4bd2b
+    "computed_at": "2026-07-26 04:51 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -383,40 +372,8 @@
           "direction": "decreases_risk"
         },
         {
-<<<<<<< HEAD
-          "feature": "ERA5_V10",
-          "shap": -0.48454,
-          "value": 1.5995,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "moisture_flux_850",
-          "shap": -0.47969,
-          "value": 0.181,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "CAPE",
-          "shap": -0.46576,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        }
-      ],
-      "computed_at": "2026-07-26 10:17 IST"
-    },
-    "1": {
-      "slot": 1,
-      "prob": 0.0018,
-      "threshold": 0.38,
-      "base_value": 1.3336,
-      "top_features": [
-        {
-          "feature": "DRNRF",
-          "shap": -0.69858,
-=======
           "feature": "LABEL_lag1",
           "shap": -0.47681,
->>>>>>> 91a9f13edd49c351ea95c0ac97f8249d45e4bd2b
           "value": 0.0,
           "direction": "decreases_risk"
         },
@@ -439,7 +396,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:11 IST"
+      "computed_at": "2026-07-26 10:21 IST"
     },
     "1": {
       "slot": 1,
@@ -491,46 +448,8 @@
         },
         {
           "feature": "PRECIP_WATER",
-<<<<<<< HEAD
-          "shap": 0.39856,
-          "value": 108.1569,
-          "direction": "increases_risk"
-        }
-      ],
-      "computed_at": "2026-07-26 10:17 IST"
-    },
-    "2": {
-      "slot": 2,
-      "prob": 0.0002,
-      "threshold": 0.16,
-      "base_value": 0.988,
-      "top_features": [
-        {
-          "feature": "K_INDEX",
-          "shap": -1.16134,
-          "value": 28.6967,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "TOTALS_TOTALS",
-          "shap": -1.09035,
-          "value": 38.4096,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "cape_x_kindex",
-          "shap": -1.01114,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "ERA5_T2M",
-          "shap": 0.8235,
-          "value": 293.7296,
-=======
           "shap": 0.40243,
           "value": 124.6026,
->>>>>>> 91a9f13edd49c351ea95c0ac97f8249d45e4bd2b
           "direction": "increases_risk"
         },
         {
@@ -546,11 +465,7 @@
           "direction": "decreases_risk"
         }
       ],
-<<<<<<< HEAD
-      "computed_at": "2026-07-26 10:17 IST"
-=======
-      "computed_at": "2026-07-26 10:11 IST"
->>>>>>> 91a9f13edd49c351ea95c0ac97f8249d45e4bd2b
+      "computed_at": "2026-07-26 10:21 IST"
     },
     "2": {
       "slot": 2,
@@ -619,7 +534,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-07-26 10:11 IST"
+      "computed_at": "2026-07-26 10:21 IST"
     },
     "3": {
       "slot": 3,
@@ -688,11 +603,7 @@
           "direction": "decreases_risk"
         }
       ],
-<<<<<<< HEAD
-      "computed_at": "2026-07-26 10:17 IST"
-=======
-      "computed_at": "2026-07-26 10:11 IST"
->>>>>>> 91a9f13edd49c351ea95c0ac97f8249d45e4bd2b
+      "computed_at": "2026-07-26 10:21 IST"
     }
   }
 }
