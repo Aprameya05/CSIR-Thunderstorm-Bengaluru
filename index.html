@@ -580,6 +580,100 @@
               </div>
             </div>
 
+            {/* Tile 7: CAPE × SHEAR COMPOSITE INDEX */}
+            {(() => {
+              const mp = liveData?.met_parameters;
+              const cape = mp?.ua_cape_jkg ?? mp?.cape_jkg ?? mp?.ERA5_CAPE ?? null;
+              const u500 = mp?.ERA5_u_500hPa ?? null;
+              const v500 = mp?.ERA5_v_500hPa ?? null;
+              const u850 = mp?.ERA5_u_850hPa ?? null;
+              const v850 = mp?.ERA5_v_850hPa ?? null;
+
+              // Bulk wind shear 850-500 hPa in m/s
+              const shear = (u500 !== null && u850 !== null && v500 !== null && v850 !== null)
+                ? Math.sqrt(Math.pow(u500 - u850, 2) + Math.pow(v500 - v850, 2))
+                : null;
+
+              // CAPE × Shear composite (J/kg × m/s) — scale to 0-100
+              // Severe threshold: CAPE>1000 & shear>15 m/s → CSI > 15000
+              const csi = (cape !== null && shear !== null) ? Math.round(cape * shear) : null;
+              const csiNorm = csi !== null ? Math.min(csi / 20000, 1) : null; // normalize to 0-1
+
+              const csiLevel = csi === null ? null
+                : csi > 15000 ? 'SEVERE'
+                : csi > 5000  ? 'MODERATE'
+                : csi > 1000  ? 'WEAK'
+                : 'MINIMAL';
+
+              const csiColor = csiLevel === 'SEVERE' ? 'text-red-400'
+                : csiLevel === 'MODERATE' ? 'text-orange-400'
+                : csiLevel === 'WEAK' ? 'text-yellow-400'
+                : 'text-emerald-400';
+
+              const arcColor = csiLevel === 'SEVERE' ? '#ef5350'
+                : csiLevel === 'MODERATE' ? '#ff9800'
+                : csiLevel === 'WEAK' ? '#ffc107'
+                : '#4caf50';
+
+              // SVG arc gauge
+              const R = 32, SW = 7, cx = 45, cy = 45;
+              const circ = Math.PI * R;
+              const fill = csiNorm !== null ? csiNorm * circ : 0;
+              const dash = `${fill} ${circ}`;
+
+              return (
+                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+                  <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
+                    <span>🌪</span>
+                    <span>CAPE × SHEAR INDEX</span>
+                  </div>
+
+                  <div className="flex items-center gap-3 my-1">
+                    {/* Arc gauge */}
+                    <svg width="90" height="55" viewBox="0 0 90 55">
+                      {/* Background arc */}
+                      <path d={`M${cx-R},${cy} A${R},${R} 0 0,1 ${cx+R},${cy}`}
+                        fill="none" stroke="#172338" strokeWidth={SW} strokeLinecap="round" />
+                      {/* Fill arc */}
+                      {csiNorm !== null && (
+                        <path d={`M${cx-R},${cy} A${R},${R} 0 0,1 ${cx+R},${cy}`}
+                          fill="none" stroke={arcColor} strokeWidth={SW} strokeLinecap="round"
+                          strokeDasharray={dash}
+                          strokeDashoffset="0"
+                          pathLength={circ}
+                        />
+                      )}
+                      {/* Value text */}
+                      <text x={cx} y={cy-8} textAnchor="middle" fill="white"
+                        fontSize="11" fontFamily="monospace" fontWeight="bold">
+                        {csi !== null ? (csi > 999 ? `${(csi/1000).toFixed(1)}k` : csi) : '—'}
+                      </text>
+                      <text x={cx} y={cy+2} textAnchor="middle" fill="#607d8b" fontSize="7" fontFamily="monospace">J·m/kg·s</text>
+                      {/* Scale labels */}
+                      <text x={cx-R-2} y={cy+12} textAnchor="middle" fill="#607d8b" fontSize="7">0</text>
+                      <text x={cx+R+2} y={cy+12} textAnchor="middle" fill="#607d8b" fontSize="7">20k</text>
+                    </svg>
+
+                    <div className="flex-1 text-[10px] space-y-1">
+                      <div className={`text-sm font-extrabold ${csiColor}`}>{csiLevel ?? '—'}</div>
+                      <div className="flex justify-between">
+                        <span className="text-[#607d8b]">CAPE</span>
+                        <span className="text-white font-bold">{cape !== null ? `${Math.round(cape)} J/kg` : '—'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#607d8b]">SHEAR 850-500</span>
+                        <span className="text-white font-bold">{shear !== null ? `${shear.toFixed(1)} m/s` : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
+                    Severe: &gt;15,000 · Moderate: &gt;5,000 · Weak: &gt;1,000
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
 
 
