@@ -1696,7 +1696,7 @@
     }
 
     // --- 8. ATC VIEW PAGE (FULLSCREEN MINIMAL DISPLAY) ---
-    function AtcViewFullscreen({ currentSlot, onExitAtc }) {
+    function AtcViewFullscreen({ currentSlot, onExitAtc, liveData }) {
       const isAlert = currentSlot.ts_probability >= 0.30;
 
       return (
@@ -1954,6 +1954,7 @@
             <AtcViewFullscreen 
               currentSlot={currentSlots[selectedSlotIndex]} 
               onExitAtc={handleExitAtc}
+              liveData={liveData}
             />
           )}
 
