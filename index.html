@@ -1560,6 +1560,113 @@
       const [scrubberTime, setScrubberTime] = useState(4);
       const [isPlaying, setIsPlaying] = useState(false);
 
+      // ---- LIGHTNING FEED STATE ----
+      const [strikes, setStrikes] = useState([]);          // [{x,y,lat,lng,age,dist,id}]
+      const [strikeCount1h, setStrikeCount1h] = useState(0);
+      const [strikeRate, setStrikeRate] = useState(0);     // strikes/min last 5 min
+      const [lightningWs, setLightningWs] = useState(null);
+      const [wsStatus, setWsStatus] = useState('CONNECTING'); // CONNECTING|LIVE|OFFLINE
+      const strikeBuffer = React.useRef([]);               // rolling 1h buffer
+      const strikeIdRef = React.useRef(0);
+
+      // VOBL centre (lat/lng) and map geometry
+      const VOBL_LAT = 13.1986, VOBL_LON = 77.7066;
+      const MAP_CX = 400, MAP_CY = 300;
+      const KM_PER_PX = 200 / 240;   // 200 km radius = 240px on 800x600 viewBox
+
+      // Convert lat/lng to SVG x,y
+      const latLngToXY = (lat, lng) => {
+        const dLat = lat - VOBL_LAT;
+        const dLon = lng - VOBL_LON;
+        const km_y = dLat * 111.0;
+        const km_x = dLon * 111.0 * Math.cos(VOBL_LAT * Math.PI / 180);
+        const px_x = MAP_CX + km_x / KM_PER_PX;
+        const px_y = MAP_CY - km_y / KM_PER_PX;
+        return { x: px_x, y: px_y };
+      };
+
+      const distKm = (lat, lng) => {
+        const dLat = (lat - VOBL_LAT) * Math.PI / 180;
+        const dLon = (lng - VOBL_LON) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(VOBL_LAT*Math.PI/180)*Math.cos(lat*Math.PI/180)*Math.sin(dLon/2)**2;
+        return 6371 * 2 * Math.asin(Math.sqrt(a));
+      };
+
+      // Age strikes every second, prune >5min old from display
+      useEffect(() => {
+        const ageTimer = setInterval(() => {
+          const now = Date.now();
+          // Prune display strikes older than 5 min
+          setStrikes(prev => prev.filter(s => now - s.ts < 300000).map(s => ({...s, age: now - s.ts})));
+          // Prune buffer older than 1h
+          strikeBuffer.current = strikeBuffer.current.filter(s => now - s.ts < 3600000);
+          setStrikeCount1h(strikeBuffer.current.length);
+          // Rate: strikes in last 5 min / 5
+          const last5 = strikeBuffer.current.filter(s => now - s.ts < 300000).length;
+          setStrikeRate((last5 / 5).toFixed(1));
+        }, 1000);
+        return () => clearInterval(ageTimer);
+      }, []);
+
+      // WebSocket connection to Blitzortung
+      useEffect(() => {
+        let ws;
+        let reconnectTimer;
+        const RADIUS_DEG = 2.5; // ~280km bounding box
+
+        const connect = () => {
+          // Blitzortung public WebSocket servers (server 9 covers Asia)
+          const servers = ['ws://ws.blitzortung.org:8079', 'ws://ws.blitzortung.org:8080', 'ws://ws.blitzortung.org:8078'];
+          const url = servers[Math.floor(Math.random() * servers.length)];
+          try {
+            ws = new WebSocket(url);
+            ws.onopen = () => {
+              setWsStatus('LIVE');
+              // Subscribe to bounding box around VOBL
+              const bbox = {
+                west:  VOBL_LON - RADIUS_DEG,
+                east:  VOBL_LON + RADIUS_DEG,
+                south: VOBL_LAT - RADIUS_DEG,
+                north: VOBL_LAT + RADIUS_DEG,
+              };
+              ws.send(JSON.stringify({ west: bbox.west, east: bbox.east, south: bbox.south, north: bbox.north }));
+            };
+            ws.onmessage = (evt) => {
+              try {
+                const d = JSON.parse(evt.data);
+                // Blitzortung sends: {time, lat, lon, alt, pol, mds, mcg, status, region, delay, sig}
+                if (d.lat === undefined || d.lon === undefined) return;
+                const lat = d.lat / 1e6;  // Blitzortung uses microdegrees
+                const lng = d.lon / 1e6;
+                const dist = distKm(lat, lng);
+                if (dist > 250) return; // Only within 250 km
+                const pos = latLngToXY(lat, lng);
+                if (pos.x < 0 || pos.x > 800 || pos.y < 0 || pos.y > 600) return;
+                const now = Date.now();
+                const id = ++strikeIdRef.current;
+                const strike = { id, lat, lng, x: pos.x, y: pos.y, ts: now, age: 0, dist: Math.round(dist) };
+                strikeBuffer.current.push(strike);
+                setStrikes(prev => [...prev.slice(-200), strike]); // keep last 200 visible
+              } catch(e) {}
+            };
+            ws.onerror = () => setWsStatus('OFFLINE');
+            ws.onclose = () => {
+              setWsStatus('OFFLINE');
+              reconnectTimer = setTimeout(connect, 8000); // reconnect after 8s
+            };
+          } catch(e) {
+            setWsStatus('OFFLINE');
+            reconnectTimer = setTimeout(connect, 8000);
+          }
+        };
+
+        connect();
+        return () => {
+          if (ws) ws.close();
+          clearTimeout(reconnectTimer);
+        };
+      }, []);
+
       useEffect(() => {
         let interval;
         if (isPlaying) {
@@ -1646,6 +1753,43 @@
             );
           })()}
 
+          {/* ---- LIGHTNING STRIKE LIVE FEED PANEL ---- */}
+          <div className={`p-4 rounded-xl border font-mono ${strikeCount1h > 0 ? 'bg-yellow-500/5 border-yellow-500/30' : 'bg-[#020409] border-[#172338]'}`}>
+            <div className="flex justify-between items-center mb-3 border-b border-[#172338] pb-2">
+              <span className="text-xs font-bold text-yellow-300 flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${wsStatus === 'LIVE' ? 'bg-yellow-400 animate-pulse' : wsStatus === 'CONNECTING' ? 'bg-amber-400 animate-ping' : 'bg-gray-500'}`}></span>
+                ⚡ BLITZORTUNG LIGHTNING NETWORK — LIVE FEED
+              </span>
+              <span className="text-[10px] text-[#607d8b]">250km radius · Real-time WebSocket · {wsStatus}</span>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center text-xs">
+              <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                <div className="text-[9px] text-[#607d8b] mb-1">STRIKES (LAST HOUR)</div>
+                <div className={`text-2xl font-extrabold ${strikeCount1h > 50 ? 'text-red-400' : strikeCount1h > 10 ? 'text-orange-400' : strikeCount1h > 0 ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                  {strikeCount1h}
+                </div>
+              </div>
+              <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                <div className="text-[9px] text-[#607d8b] mb-1">RATE (STRIKES/MIN)</div>
+                <div className={`text-2xl font-extrabold ${parseFloat(strikeRate) > 10 ? 'text-red-400' : parseFloat(strikeRate) > 2 ? 'text-orange-400' : 'text-white'}`}>
+                  {strikeRate}
+                </div>
+              </div>
+              <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                <div className="text-[9px] text-[#607d8b] mb-1">NEAREST STRIKE</div>
+                <div className={`text-2xl font-extrabold ${strikes.length > 0 && Math.min(...strikes.map(s=>s.dist)) < 50 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
+                  {strikes.length > 0 ? `${Math.min(...strikes.map(s=>s.dist))} km` : '—'}
+                </div>
+              </div>
+              <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                <div className="text-[9px] text-[#607d8b] mb-1">ACTIVITY LEVEL</div>
+                <div className={`text-sm font-extrabold ${strikeCount1h > 100 ? 'text-red-400' : strikeCount1h > 30 ? 'text-orange-400' : strikeCount1h > 5 ? 'text-yellow-400' : 'text-emerald-400'}`}>
+                  {strikeCount1h > 100 ? 'SEVERE ⛈' : strikeCount1h > 30 ? 'ACTIVE ⚡' : strikeCount1h > 5 ? 'MODERATE 🌩' : 'QUIET ✓'}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Himawari-9 Satellite BT Visualization */}
           {(() => {
             const h9 = liveData?.satellite?.himawari9;
@@ -1721,6 +1865,34 @@
                   <text x="405" y="55" fill="#607d8b" fontSize="10">200 km</text>
                   <line x1="400" y1="0" x2="400" y2="600" stroke="#172338" strokeWidth="1" />
                   <line x1="0" y1="300" x2="800" y2="300" stroke="#172338" strokeWidth="1" />
+
+                  {/* ---- LIGHTNING STRIKES ON MAP ---- */}
+                  {strikes.map(s => {
+                    const freshness = Math.max(0, 1 - s.age / 300000); // 1=new, 0=5min old
+                    const isClose = s.dist < 50;
+                    const isMid = s.dist < 100;
+                    const opacity = 0.2 + freshness * 0.8;
+                    const r = s.age < 2000 ? 6 : s.age < 10000 ? 4 : 2.5;
+                    const color = isClose ? 'rgba(239,83,80,1)' : isMid ? 'rgba(255,152,0,1)' : 'rgba(255,235,59,1)';
+                    return (
+                      <g key={s.id} opacity={opacity}>
+                        {/* Flash ring for fresh strikes */}
+                        {s.age < 3000 && (
+                          <circle cx={s.x} cy={s.y} r={12} fill="none"
+                            stroke={color} strokeWidth="1.5" opacity={0.6 * freshness}>
+                            <animate attributeName="r" values="4;16;4" dur="0.8s" repeatCount="1" />
+                            <animate attributeName="opacity" values="0.8;0;0" dur="0.8s" repeatCount="1" />
+                          </circle>
+                        )}
+                        {/* Strike dot */}
+                        <circle cx={s.x} cy={s.y} r={r} fill={color} />
+                        {/* Lightning bolt symbol for close strikes */}
+                        {isClose && s.age < 30000 && (
+                          <text x={s.x+4} y={s.y-4} fill={color} fontSize="8" fontFamily="monospace">⚡</text>
+                        )}
+                      </g>
+                    );
+                  })}
 
                   {/* BT readout at VOBL */}
                   {voblBT !== null && voblBT !== undefined && (
@@ -1810,12 +1982,17 @@
               }
             </div>
 
-            <div className="flex items-center gap-3 text-[10px]">
-              <span className="text-[#607d8b]">BRIGHTNESS TEMP:</span>
+            <div className="flex items-center gap-3 text-[10px] flex-wrap">
+              <span className="text-[#607d8b]">BT:</span>
               <span style={{color:'#4caf50'}}>&gt;-20°C Clear</span>
               <span style={{color:'#ffc107'}}>-20 to -40°C Cloud</span>
               <span style={{color:'#ff9800'}}>-40 to -50°C Deep</span>
               <span style={{color:'#ef5350'}}>&lt;-50°C Storm</span>
+              <span className="text-[#172338]">|</span>
+              <span className="text-[#607d8b]">⚡ STRIKES:</span>
+              <span style={{color:'rgba(255,235,59,1)'}}>●</span><span className="text-[#607d8b]">&gt;100km</span>
+              <span style={{color:'rgba(255,152,0,1)'}}>●</span><span className="text-[#607d8b]">50-100km</span>
+              <span style={{color:'rgba(239,83,80,1)'}}>●</span><span className="text-[#607d8b]">&lt;50km</span>
             </div>
           </div>
         </div>
