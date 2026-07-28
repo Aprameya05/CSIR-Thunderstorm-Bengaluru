@@ -543,6 +543,8 @@ if himawari:
     forecast["himawari_override_active"]  = himawari_override_active
     forecast["himawari_override_slots"]   = himawari_override_slots
     forecast["himawari_boost_value"]      = himawari_boost_value
+    forecast["monsoon_phase"]             = monsoon_phase
+    forecast["monsoon_index"]             = monsoon_index
 
 forecast["satellite"] = {
     "himawari9": {
