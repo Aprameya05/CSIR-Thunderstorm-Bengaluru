@@ -257,6 +257,7 @@ for slot_id in range(4):
                 obs[col] = float(ua[col])
 
     obs  = compute_derived(obs, slot_id)
+    print(f'  [DEBUG] Slot {slot_id}: feature_cols={len(feature_cols) if feature_cols else None} fc will be=?')
     # v4 ensemble: feature_cols is None — use model's own feature names if available
     if feature_cols is None:
         # v4 ensemble trained on numpy arrays — no feature names stored
@@ -278,13 +279,13 @@ for slot_id in range(4):
     else:
         fc = feature_cols
     X    = np.array([[float(obs.get(c, 0.0)) for c in fc]])
-    # v4: model is already calibrated, predict_proba gives final probability
-    # v3: need apply_calibrator
-    if isinstance(artifact, dict):
-        raw  = float(model.predict_proba(X)[0][1])
-        cal  = apply_calibrator(artifact, raw)
+    # v3: dict with 'model' key — needs apply_calibrator
+    # v4/v5: dict with 'calibrated' key OR direct CalibratedClassifierCV — already calibrated
+    if isinstance(artifact, dict) and 'model' in artifact:
+        raw = float(model.predict_proba(X)[0][1])
+        cal = apply_calibrator(artifact, raw)
     else:
-        cal  = float(model.predict_proba(X)[0][1])
+        cal = float(model.predict_proba(X)[0][1])
     results[slot_id] = cal
 
     slots_output.append({
