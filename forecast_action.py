@@ -72,6 +72,30 @@ def compute_derived(obs, slot_id):
     obs['moisture_flux_700']  = q700 * (u700**2 + v700**2)**0.5
     obs['thickness_500_850']  = t850 - t500
     obs['mid_level_drying']   = q700 / (q850 + 1e-9)
+
+    # v5 temporal features — atmospheric lags and rolling stats
+    # These use met_history loaded from forecast_log.csv
+    cape_now  = obs.get('ERA5_CAPE', obs.get('CAPE', 0.0))
+    ki_now    = obs.get('K_INDEX', 30.0)
+    pwat_now  = obs.get('PRECIP_WATER', 40.0)
+    shear_now = obs.get('shear_850_500',
+                        ((obs.get('ERA5_u_500hPa',5)-obs.get('ERA5_u_850hPa',-3))**2 +
+                         (obs.get('ERA5_v_500hPa',2)-obs.get('ERA5_v_850hPa',2))**2)**0.5)
+
+    for w in [3, 7, 14]:
+        obs[f'CAPE_roll{w}']  = get_roll('ERA5_CAPE', w, cape_now)
+        obs[f'KI_roll{w}']    = get_roll('K_INDEX',   w, ki_now)
+        obs[f'PWAT_roll{w}']  = get_roll('PRECIP_WATER', w, pwat_now)
+        obs[f'shear_roll{w}'] = get_roll('shear_850_500', w, shear_now)
+    for lag in [1, 2, 3]:
+        obs[f'CAPE_lag{lag}']  = get_lag('ERA5_CAPE',    lag, cape_now)
+        obs[f'KI_lag{lag}']    = get_lag('K_INDEX',      lag, ki_now)
+        obs[f'LI_lag{lag}']    = get_lag('LIFTED_INDEX', lag, obs.get('LIFTED_INDEX',-2.0))
+        obs[f'PWAT_lag{lag}']  = get_lag('PRECIP_WATER', lag, pwat_now)
+        obs[f'shear_lag{lag}'] = get_lag('shear_850_500', lag, shear_now)
+    obs['CAPE_trend3'] = cape_now - obs.get('CAPE_roll3', cape_now)
+    obs['KI_trend3']   = ki_now   - obs.get('KI_roll3',   ki_now)
+    obs['PWAT_trend3'] = pwat_now - obs.get('PWAT_roll3',  pwat_now)
     return obs
 
 now      = datetime.now()
@@ -88,6 +112,34 @@ if ua_path.exists():
     for _, row in ua_today.iterrows():
         upper_air[int(row['slot'])] = row.to_dict()
     print(f"Upper air loaded: {list(upper_air.keys())}")
+
+# Load rolling met history for temporal features (last 14 days from forecast_log)
+met_history = {}  # {feature: [val_t-1, val_t-2, val_t-3]} oldest first
+flog_path = DATA / 'forecast_log.csv'
+if flog_path.exists():
+    try:
+        flog = pd.read_csv(flog_path)
+        flog['date'] = pd.to_datetime(flog['date'])
+        # Get last 14 days of Slot 2 (most complete met data)
+        recent = flog[flog['slot']==2].sort_values('date').tail(14)
+        for feat in ['ERA5_CAPE','K_INDEX','LIFTED_INDEX','PRECIP_WATER']:
+            if feat in recent.columns:
+                vals = recent[feat].fillna(0).tolist()
+                met_history[feat] = vals  # oldest to newest
+    except Exception as _e:
+        pass
+
+def get_lag(feat, lag, default=0.0):
+    vals = met_history.get(feat, [])
+    if len(vals) >= lag:
+        return float(vals[-lag])
+    return default
+
+def get_roll(feat, window, default=0.0):
+    vals = met_history.get(feat, [])
+    if len(vals) >= 1:
+        return float(np.mean(vals[-window:]))
+    return default
 
 # Load GFS data if available
 gfs_df   = pd.DataFrame()
