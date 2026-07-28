@@ -129,9 +129,17 @@ for slot_id in range(4):
         continue
 
     artifact     = artifact_model if artifact_model is not None else joblib.load(model_path)
-    model        = artifact['model']
-    feature_cols = artifact['feature_cols']
-    threshold    = artifact['threshold']
+    # v4 ensemble: artifact is CalibratedClassifierCV directly
+    # v3: artifact is dict with 'model', 'feature_cols', 'threshold'
+    if isinstance(artifact, dict):
+        model        = artifact['model']
+        feature_cols = artifact['feature_cols']
+        threshold    = artifact.get('threshold', THRESHOLDS[slot_id])
+    else:
+        # v4 ensemble — artifact is the model directly
+        model        = artifact
+        feature_cols = None   # uses FEATURES from Cell 2 / forecast_action defaults
+        threshold    = THRESHOLDS[slot_id]
 
     obs = {
         'month':month,'doy':doy,
