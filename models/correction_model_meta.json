@@ -15,12 +15,14 @@
   ],
   "cv_auroc_mean": 0.8812209575123962,
   "cv_auroc_std": 0.014276515783704013,
-  "full_auroc": 0.88600909638813,
-  "brier_score": 0.07813158784419785,
+  "full_auroc": 0.8860263441189143,
+  "brier_score": 0.07813158784419634,
   "n_train": 3819,
   "n_positives": 457,
   "base_rate": 0.11966483372610631,
+  "t500_climatological_mean": 268.80315602775596,
+  "q700_scale": 1000.0,
   "trained_on": "2015-2025 ERA5+IMD Bengaluru Station 43295",
-  "model_type": "LogisticRegression + IsotonicCalibration",
-  "note": "ERA5 proxies for Himawari BT \u2014 replace cold_top_proxy with real BT when archive available"
+  "model_type": "LogisticRegression(C=0.5, balanced) + IsotonicCalibration",
+  "note": "cold_top_proxy = t500_mean - ERA5_t_500hPa. Replace with real Himawari min_bt_50km when archive available."
 }
