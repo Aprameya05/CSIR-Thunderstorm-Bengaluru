@@ -660,3 +660,78 @@ async def lightning_proxy(client_ws: WebSocket):
                 await asyncio.sleep(5)
             except asyncio.CancelledError:
                 return
+            
+@app.get("/correction/status")
+async def correction_status():
+    import json
+    from pathlib import Path
+
+    meta_path = Path("models/correction_model_meta.json")
+    fc_path = Path("forecast.json")
+
+    meta, fc = {}, {}
+
+    if meta_path.exists():
+        with open(meta_path) as f:
+            meta = json.load(f)
+
+    if fc_path.exists():
+        with open(fc_path) as f:
+            fc = json.load(f)
+
+    return {
+        "correction_model": meta,
+        "currently_active": fc.get("himawari_override_active", False),
+        "override_slots": fc.get("himawari_override_slots", []),
+        "boost_value": fc.get("himawari_boost_value", 0.0),
+        "himawari": fc.get("satellite", {}).get("himawari9", {}),
+    }
+
+
+@app.get("/nowcast/explain/{slot_id}")
+async def explain_slot(slot_id: int):
+    import json
+    from pathlib import Path
+
+    if slot_id not in [0, 1, 2, 3]:
+        raise HTTPException(status_code=400, detail="slot_id must be 0-3")
+
+    fc_path = Path("forecast.json")
+
+    if not fc_path.exists():
+        raise HTTPException(status_code=503, detail="forecast.json not found")
+
+    with open(fc_path) as f:
+        fc = json.load(f)
+
+    slot = next((s for s in fc.get("slots", []) if s["slot"] == slot_id), None)
+
+    if not slot:
+        raise HTTPException(status_code=404, detail=f"Slot {slot_id} not found")
+
+    mp = fc.get("met_parameters", {})
+    shap = fc.get("realtime_shap", {}).get(str(slot_id), {})
+    top = shap.get("top_features", [{}])[0] if shap else {}
+
+    override = slot.get("himawari_override", False)
+    prob = slot["ts_probability"]
+
+    level = "HIGH" if prob >= 0.5 else "MODERATE" if prob >= 0.3 else "LOW"
+
+    explanation = (
+        f"Slot {slot_id} ({slot.get('time','')}) shows {prob*100:.1f}% thunderstorm probability — {level} risk. "
+        f"Top driver: {top.get('feature','unknown')} (SHAP={top.get('shap',0):.3f}). "
+        f"Atmosphere: CAPE={mp.get('ua_cape_jkg',0):.0f} J/kg, K-Index={mp.get('ua_k_index',0):.1f}. "
+    )
+
+    if override:
+        explanation += "Himawari-9 satellite override active — deep convection detected near VOBL."
+
+    return {
+        "slot": slot_id,
+        "probability": prob,
+        "risk_level": level,
+        "explanation": explanation,
+        "himawari_override": override,
+        "top_shap_feature": top,
+    }            
