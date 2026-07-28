@@ -256,7 +256,6 @@ for slot_id in range(4):
                 obs[col] = float(ua[col])
 
     obs  = compute_derived(obs, slot_id)
-    print(f'  [DEBUG] Slot {slot_id}: feature_cols={len(feature_cols) if feature_cols else None} fc will be=?')
     # v4 ensemble: feature_cols is None — use model's own feature names if available
     if feature_cols is None:
         # v4 ensemble trained on numpy arrays — no feature names stored
