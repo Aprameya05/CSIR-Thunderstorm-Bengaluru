@@ -1,0 +1,23 @@
+{
+  "pwat_mean": 40.44145312346259,
+  "pwat_std": 3.7343646875189704,
+  "ki_mean": 36.448180139133946,
+  "ki_std": 2.740307738253504,
+  "q500_mean": 0.003872178142713241,
+  "q500_std": 0.0011736629501960848,
+  "active_threshold": 0.5,
+  "break_threshold": -0.5,
+  "phase_thresholds": {
+    "ACTIVE": 0.167,
+    "NEUTRAL": 0.15,
+    "BREAK": 0.15
+  },
+  "model_version": "monsoon_phase_v1",
+  "monsoon_months": [
+    6,
+    7,
+    8,
+    9
+  ],
+  "description": "Composite monsoon index from PWAT+KI+q500, phase-specific thresholds"
+}
