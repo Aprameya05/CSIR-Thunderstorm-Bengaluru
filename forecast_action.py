@@ -162,21 +162,20 @@ for slot_id in range(4):
     v3_path = MODELS / f'nowcast_slot{slot_id}_xgb_v3_calibrated.pkl'
 
     # Slot 1 uses v5; Slots 2/3 use v3; Slot 0 uses v4
+    # IMPORTANT: store full artifact dict in artifact_model, not just calibrated model
     if slot_id == 1 and v5_path.exists():
-        artifact = joblib.load(v5_path)
+        artifact_model = joblib.load(v5_path)  # full dict with 'calibrated'+'features'
         model_path = None
-        artifact_model = artifact['calibrated'] if isinstance(artifact, dict) else artifact
-        auroc_str = f"{artifact.get('auroc',0):.4f}" if isinstance(artifact,dict) else '?'
-        print(f'  [v5 temporal] Slot {slot_id} | AUROC={auroc_str}')
+        auroc_str = f"{artifact_model.get('auroc',0):.4f}" if isinstance(artifact_model,dict) else '?'
+        print(f'  [v5 temporal] Slot {slot_id} | AUROC={auroc_str} | features={len(artifact_model.get("features",[]))}')
     elif slot_id in [2, 3] and v3_path.exists():
         model_path     = v3_path
         artifact_model = None
         print(f'  [v3 calibrated] Slot {slot_id} | AUROC=0.8710')
     elif v4_path.exists():
-        artifact = joblib.load(v4_path)
+        artifact_model = joblib.load(v4_path)  # full dict with 'calibrated'+'features'
         model_path = None
-        artifact_model = artifact['calibrated'] if isinstance(artifact, dict) else artifact
-        auroc_str = f"{artifact.get('auroc',0):.4f}" if isinstance(artifact,dict) else '?'
+        auroc_str = f"{artifact_model.get('auroc',0):.4f}" if isinstance(artifact_model,dict) else '?'
         print(f'  [v4 ensemble] Slot {slot_id} | AUROC={auroc_str}')
     else:
         model_path     = v3_path
@@ -257,7 +256,6 @@ for slot_id in range(4):
                 obs[col] = float(ua[col])
 
     obs  = compute_derived(obs, slot_id)
-    print(f'  [DEBUG] Slot {slot_id}: feature_cols={len(feature_cols) if feature_cols else None} fc will be=?')
     # v4 ensemble: feature_cols is None — use model's own feature names if available
     if feature_cols is None:
         # v4 ensemble trained on numpy arrays — no feature names stored
