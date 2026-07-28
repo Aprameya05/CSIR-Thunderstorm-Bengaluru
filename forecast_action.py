@@ -257,22 +257,59 @@ if himawari_hist_path.exists():
     except Exception:
         pass
 
-# ── HIMAWARI REAL-TIME OVERRIDE ──────────────────────────────────────────────
+# ── HIMAWARI CORRECTION MODEL (TRAINED, CV AUROC=0.8812) ─────────────────────
+# Replaces heuristic boost with calibrated logistic correction model
+# Trained on 2015-2025 ERA5+IMD data. ERA5 proxies for Himawari BT.
+CORRECTION_MODEL_PATH = BASE / 'models' / 'himawari_correction_model.pkl'
+CORRECTION_META_PATH  = BASE / 'models' / 'correction_model_meta.json'
 HIMAWARI_BT_THRESHOLD = -45.0
 HIMAWARI_PIXEL_MIN    = 50
 HIMAWARI_DIST_MAX_KM  = 100.0
-HIMAWARI_BOOST_BASE   = 0.35
-HIMAWARI_BOOST_MAX    = 0.75
+CORRECTION_MIN_UPLIFT = 0.05    # only override if correction gives ≥5% uplift
 
-def compute_himawari_boost(h):
-    bt   = h.get("min_bt_50km", 0) or 0
-    cpx  = h.get("cold_pixels_count", 0) or 0
-    dist = h.get("nearest_pixel_dist_km", 999) or 999
-    bt_factor   = min(max((abs(bt) - 45) / 25, 0), 1.0)
-    px_factor   = min(max((cpx - 50) / 250, 0), 1.0)
-    dist_factor = max(1.0 - dist / HIMAWARI_DIST_MAX_KM, 0)
-    boost = HIMAWARI_BOOST_BASE + (HIMAWARI_BOOST_MAX - HIMAWARI_BOOST_BASE) * (bt_factor * 0.5 + px_factor * 0.3 + dist_factor * 0.2)
-    return round(min(boost, HIMAWARI_BOOST_MAX), 3)
+# Load trained correction model
+_correction_model = None
+_t500_clim_mean   = 268.80
+_correction_auroc = 0.0
+try:
+    _correction_model = joblib.load(CORRECTION_MODEL_PATH)
+    with open(CORRECTION_META_PATH) as _f:
+        _cmeta = json.load(_f)
+    _t500_clim_mean   = _cmeta.get('t500_climatological_mean', 268.80)
+    _correction_auroc = _cmeta.get('cv_auroc_mean', 0.0)
+    print(f"[CORRECTION MODEL] Loaded — CV AUROC={_correction_auroc:.4f}")
+except Exception as _e:
+    print(f"[CORRECTION MODEL] Not found ({_e}) — using heuristic fallback")
+
+def _build_correction_features(ua_row):
+    era5_cape  = float(ua_row.get('ERA5_CAPE', ua_row.get('CAPE', 0)) or 0)
+    era5_t500  = float(ua_row.get('ERA5_t_500hPa', _t500_clim_mean) or _t500_clim_mean)
+    era5_t850  = float(ua_row.get('ERA5_t_850hPa', 294.0) or 294.0)
+    era5_q700  = float(ua_row.get('ERA5_q_700hPa', 0.008) or 0.008)
+    era5_u500  = float(ua_row.get('ERA5_u_500hPa', 0) or 0)
+    era5_v500  = float(ua_row.get('ERA5_v_500hPa', 0) or 0)
+    era5_u850  = float(ua_row.get('ERA5_u_850hPa', 0) or 0)
+    era5_v850  = float(ua_row.get('ERA5_v_850hPa', 0) or 0)
+    k_idx      = float(ua_row.get('K_INDEX', 30) or 30)
+    li         = float(ua_row.get('LIFTED_INDEX', -2) or -2)
+    tt         = float(ua_row.get('TOTALS_TOTALS', 42) or 42)
+    pwat       = float(ua_row.get('PRECIP_WATER', 40) or 40)
+    m          = now.month
+    month_sin  = math.sin(2 * math.pi * m / 12)
+    month_cos  = math.cos(2 * math.pi * m / 12)
+    cold_top   = _t500_clim_mean - era5_t500
+    mid_moist  = era5_q700 * 1000
+    lapse      = era5_t850 - era5_t500
+    shear      = math.sqrt((era5_u500-era5_u850)**2 + (era5_v500-era5_v850)**2)
+    cape_x_ki  = era5_cape * k_idx
+    return [era5_cape, cold_top, mid_moist, lapse, shear,
+            k_idx, li, tt, pwat, cape_x_ki, month_sin, month_cos]
+
+def _heuristic_boost(bt, cpx, dist):
+    bt_f = min(max((abs(bt)-45)/25, 0), 1.0)
+    px_f = min(max((cpx-50)/250, 0), 1.0)
+    d_f  = max(1.0 - dist/100.0, 0)
+    return round(min(0.35 + 0.40*(bt_f*0.5 + px_f*0.3 + d_f*0.2), 0.75), 3)
 
 if himawari:
     h_storm = himawari.get("storm_detected", False)
@@ -283,8 +320,23 @@ if himawari:
     if (h_storm and h_bt < HIMAWARI_BT_THRESHOLD and
             h_cpx >= HIMAWARI_PIXEL_MIN and h_dist < HIMAWARI_DIST_MAX_KM):
 
-        himawari_boost_value     = compute_himawari_boost(himawari)
         himawari_override_active = True
+
+        # Get best available upper-air row for feature extraction
+        _ua = upper_air.get(2) or upper_air.get(3) or upper_air.get(1) or upper_air.get(0) or {}
+
+        # Compute corrected probability
+        if _correction_model is not None:
+            try:
+                _feat = _build_correction_features(_ua)
+                _corrected = float(_correction_model.predict_proba([_feat])[0][1])
+                _method = f"trained_model(AUROC={_correction_auroc:.3f})"
+            except Exception as _ex:
+                _corrected = _heuristic_boost(h_bt, h_cpx, h_dist)
+                _method = f"heuristic_fallback({_ex})"
+        else:
+            _corrected = _heuristic_boost(h_bt, h_cpx, h_dist)
+            _method = "heuristic_boost"
 
         ist_hour = now.hour
         if   0  <= ist_hour < 6:  affected = [3]
@@ -295,26 +347,30 @@ if himawari:
         for s in slots_output:
             if s["slot"] in affected:
                 original_prob = s["ts_probability"]
-                boosted_prob  = round(min(max(original_prob, himawari_boost_value), 0.95), 4)
-                if boosted_prob > original_prob:
+                boosted_prob  = round(min(max(original_prob, _corrected), 0.95), 4)
+                if boosted_prob - original_prob >= CORRECTION_MIN_UPLIFT:
                     s["ts_probability"]    = boosted_prob
                     s["ts_predicted"]      = boosted_prob >= s["threshold"]
                     s["himawari_override"] = True
-                    s["himawari_boost"]    = himawari_boost_value
+                    s["himawari_boost"]    = boosted_prob
                     s["original_prob"]     = original_prob
+                    s["correction_method"] = _method
                     himawari_override_slots.append(s["slot"])
                     results[s["slot"]]     = boosted_prob
-                    print(f"  [HIMAWARI OVERRIDE] Slot {s['slot']}: {original_prob*100:.1f}% -> {boosted_prob*100:.1f}%"
-                          f" (BT={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km boost={himawari_boost_value})")
+                    himawari_boost_value   = boosted_prob
+                    print(f"  [HIMAWARI CORRECTION] Slot {s['slot']}: {original_prob*100:.1f}% -> {boosted_prob*100:.1f}%"
+                          f" | {_method} | BT={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km")
+                else:
+                    print(f"  [HIMAWARI] Slot {s['slot']}: correction={_corrected*100:.1f}% no uplift over base={original_prob*100:.1f}%")
 
         if himawari_override_slots:
-            print(f"[HIMAWARI] Override active -- slots {himawari_override_slots} boosted to {himawari_boost_value*100:.0f}%+ floor")
+            print(f"[HIMAWARI] Correction active — slots {himawari_override_slots} | method={_method}")
         else:
-            print(f"[HIMAWARI] Storm detected but model probs already >= boost floor")
+            print(f"[HIMAWARI] Storm detected but no slots needed correction")
     else:
-        print(f"[HIMAWARI] No override -- storm={h_storm} bt={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km")
+        print(f"[HIMAWARI] No correction — storm={h_storm} bt={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km")
 
-    # Update alert and peak after override
+    # Update alert and peak after correction
     alert_active     = any(s["ts_predicted"] for s in slots_output)
     peak_slot        = max(results, key=results.get)
     peak_probability = results[peak_slot]
