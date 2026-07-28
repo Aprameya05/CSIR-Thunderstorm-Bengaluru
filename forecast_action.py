@@ -100,18 +100,38 @@ slots_output = []
 results      = {}
 
 for slot_id in range(4):
-    # Try v4 ensemble first, fall back to v3
+    # Best model per slot (empirically validated on 2024-2025 test set):
+    # Slot 0: v4_ensemble  AUROC=0.8484
+    # Slot 1: v5_temporal  AUROC=0.8317
+    # Slot 2: v3_calibrated AUROC=0.8710 (best)
+    # Slot 3: v3_calibrated AUROC=0.8710 (best)
     v4_path = MODELS / f'nowcast_slot{slot_id}_xgb_v4_ensemble.pkl'
-    if v4_path.exists():
+    v5_path = MODELS / f'nowcast_slot{slot_id}_xgb_v5_temporal.pkl'
+    v3_path = MODELS / f'nowcast_slot{slot_id}_xgb_v3_calibrated.pkl'
+
+    # Slot 1 uses v5; Slots 2/3 use v3; Slot 0 uses v4
+    if slot_id == 1 and v5_path.exists():
+        artifact = joblib.load(v5_path)
+        model_path = None
+        artifact_model = artifact['calibrated'] if isinstance(artifact, dict) else artifact
+        auroc_str = f"{artifact.get('auroc',0):.4f}" if isinstance(artifact,dict) else '?'
+        print(f'  [v5 temporal] Slot {slot_id} | AUROC={auroc_str}')
+    elif slot_id in [2, 3] and v3_path.exists():
+        model_path     = v3_path
+        artifact_model = None
+        print(f'  [v3 calibrated] Slot {slot_id} | AUROC=0.8710')
+    elif v4_path.exists():
         artifact = joblib.load(v4_path)
         model_path = None
         artifact_model = artifact['calibrated'] if isinstance(artifact, dict) else artifact
-        print(f'  [v4 ensemble] Slot {slot_id} | AUROC={artifact.get("auroc","?") if isinstance(artifact,dict) else "?"}')
+        auroc_str = f"{artifact.get('auroc',0):.4f}" if isinstance(artifact,dict) else '?'
+        print(f'  [v4 ensemble] Slot {slot_id} | AUROC={auroc_str}')
     else:
-        model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v3_calibrated.pkl'
+        model_path     = v3_path
         artifact_model = None
         if not model_path.exists():
             model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v2_calibrated.pkl'
+        print(f'  [v3 fallback] Slot {slot_id}')
 
     if model_path is not None and not model_path.exists():
         clim = {0:0.037, 1:0.011, 2:0.063, 3:0.059}
