@@ -178,9 +178,26 @@ for slot_id in range(4):
                 obs[col] = float(ua[col])
 
     obs  = compute_derived(obs, slot_id)
-    X    = np.array([[float(obs.get(c, 0.0)) for c in feature_cols]])
-    raw  = float(model.predict_proba(X)[0][1])
-    cal  = apply_calibrator(artifact, raw)
+    # v4 ensemble: feature_cols is None — use model's own feature names if available
+    if feature_cols is None:
+        try:
+            fc = model.feature_names_in_
+        except AttributeError:
+            # CalibratedClassifierCV wraps the base estimator
+            try:
+                fc = model.estimator.feature_names_in_
+            except AttributeError:
+                fc = model.calibrated_classifiers_[0].estimator.feature_names_in_
+    else:
+        fc = feature_cols
+    X    = np.array([[float(obs.get(c, 0.0)) for c in fc]])
+    # v4: model is already calibrated, predict_proba gives final probability
+    # v3: need apply_calibrator
+    if isinstance(artifact, dict):
+        raw  = float(model.predict_proba(X)[0][1])
+        cal  = apply_calibrator(artifact, raw)
+    else:
+        cal  = float(model.predict_proba(X)[0][1])
     results[slot_id] = cal
 
     slots_output.append({
