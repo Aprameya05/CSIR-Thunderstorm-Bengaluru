@@ -433,6 +433,11 @@
       const currentSlot = slots[selectedSlotIndex] || slots[2];
       const photoInfo = SLOT_AIRPORT_PHOTOS[selectedSlotIndex] || SLOT_AIRPORT_PHOTOS[2];
       const riskInfo = getRiskBadge(currentSlot.ts_probability);
+      // Peak slot for system-wide alert state (may differ from selected slot)
+      const peakSlotData = liveData?.peak_slot !== undefined
+        ? (slots.find(s => s.slot === liveData.peak_slot) || currentSlot)
+        : slots.reduce((a, b) => a.ts_probability > b.ts_probability ? a : b, currentSlot);
+      const systemAlertActive = liveData?.alert_active ?? slots.some(s => s.ts_probability >= 0.30);
 
       return (
         <div className="space-y-4 max-w-[1750px] mx-auto">
@@ -440,32 +445,51 @@
           {/* TOP ROW — 6 INFO TILES */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             
-            {/* Tile 1: CONVECTIVE RISK */}
-            <div className="atc-card atc-card-hover p-3.5 rounded-xl flex flex-col items-center justify-between text-center min-h-[170px]">
-              <span className="text-[10px] font-mono text-[#607d8b] font-bold uppercase tracking-wider">CONVECTIVE RISK</span>
-              <CircularArcGauge probability={currentSlot.ts_probability} threshold={currentSlot.threshold} size={100} />
+            {/* Tile 1: CONVECTIVE RISK — shows PEAK slot probability system-wide */}
+            <div className={`atc-card atc-card-hover p-3.5 rounded-xl flex flex-col items-center justify-between text-center min-h-[170px] ${systemAlertActive ? 'border-red-500/40' : ''}`}>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-mono text-[#607d8b] font-bold uppercase tracking-wider">CONVECTIVE RISK</span>
+                {liveData?.himawari_override_active && <span className="text-[8px] text-orange-400 font-bold">SAT</span>}
+              </div>
+              <CircularArcGauge probability={peakSlotData.ts_probability} threshold={peakSlotData.threshold || 0.30} size={100} />
               <div className="w-full mt-1">
-                <div className={`py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider ${riskInfo.bg} ${riskInfo.color} border border-current/30`}>
-                  NORMAL STATE — {currentSlot.label}
+                <div className={`py-1 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider ${getRiskBadge(peakSlotData.ts_probability).bg} ${getRiskBadge(peakSlotData.ts_probability).color} border border-current/30`}>
+                  {systemAlertActive ? `ALERT — SLOT ${peakSlotData.slot}` : `NORMAL — ${peakSlotData.label}`}
                 </div>
               </div>
             </div>
 
-            {/* Tile 2: STATUS */}
-            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px]">
-              <div className="flex items-center gap-2 text-xs font-mono text-[#607d8b] font-bold">
-                <span>🛡️</span>
-                <span>STATUS</span>
-              </div>
-              <div className="my-1">
-                <div className="text-xl font-extrabold text-emerald-400 font-display tracking-tight">ALL CLEAR</div>
-                <div className="text-[11px] font-sans text-white font-medium mt-0.5">No Convective Alerts Issued</div>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] font-mono text-[#607d8b] border-t border-[#172338] pt-2">
-                <span className="w-4 h-4 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">✓</span>
-                <span>6-hour forecast below operational thresholds</span>
-              </div>
-            </div>
+            {/* Tile 2: STATUS — driven by liveData.alert_active + himawari_override */}
+            {(() => {
+              const alertActive = liveData?.alert_active ?? slots.some(s => s.ts_probability >= 0.30);
+              const overrideActive = liveData?.himawari_override_active ?? false;
+              const overrideSlots = liveData?.himawari_override_slots ?? [];
+              const peakSlot = liveData?.peak_slot ?? null;
+              const peakProb = liveData?.peak_probability ?? 0;
+              return (
+                <div className={`atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px] ${alertActive ? 'border-red-500/50 bg-red-950/10' : ''}`}>
+                  <div className="flex items-center gap-2 text-xs font-mono text-[#607d8b] font-bold">
+                    <span>🛡️</span>
+                    <span>STATUS</span>
+                    {overrideActive && <span className="text-[9px] bg-orange-500/20 text-orange-300 border border-orange-500/40 px-1.5 py-0.5 rounded font-bold">SAT OVERRIDE</span>}
+                  </div>
+                  <div className="my-1">
+                    <div className={`text-xl font-extrabold font-display tracking-tight ${alertActive ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                      {alertActive ? '⚠ ALERT ACTIVE' : 'ALL CLEAR'}
+                    </div>
+                    <div className="text-[11px] font-sans text-white font-medium mt-0.5">
+                      {alertActive
+                        ? `Slot ${peakSlot} peak · ${(peakProb * 100).toFixed(1)}% probability${overrideActive ? ' · Himawari-boosted' : ''}`
+                        : 'No Convective Alerts Issued'}
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-2 text-[10px] font-mono border-t border-[#172338] pt-2 ${alertActive ? 'text-red-400' : 'text-[#607d8b]'}`}>
+                    <span className={`w-4 h-4 rounded flex items-center justify-center font-bold ${alertActive ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>{alertActive ? '!' : '✓'}</span>
+                    <span>{alertActive ? `Convective alert — slots ${overrideSlots.length ? overrideSlots.join(',') : peakSlot} above threshold` : '6-hour forecast below operational thresholds'}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Tile 3: LIVE WEATHER */}
             <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px]">
@@ -680,6 +704,7 @@
                   {slots.map((s) => {
                     const isSelected = selectedSlotIndex === s.slot;
                     const probPct = (s.ts_probability * 100).toFixed(1);
+                    const isOverridden = liveData?.himawari_override_slots?.includes(s.slot);
                     return (
                       <div
                         key={s.slot}
@@ -704,9 +729,10 @@
                             {s.trend === 'down' && <span className="text-emerald-400 text-xs">↓</span>}
                             {s.trend === 'stable' && <span className="text-[#607d8b] text-xs">→</span>}
                             {probPct}%
+                            {isOverridden && <span className="text-[8px] bg-orange-500/30 text-orange-300 px-1 rounded font-bold">SAT⚡</span>}
                           </div>
                           <div className="text-[9px] text-[#607d8b] uppercase font-bold">
-                            {s.trend === 'up' ? `+${(s.trend_diff*100).toFixed(1)}%` : s.trend === 'down' ? `${(s.trend_diff*100).toFixed(1)}%` : 'STABLE'}
+                            {isOverridden ? 'HIMAWARI BOOST' : s.trend === 'up' ? `+${(s.trend_diff*100).toFixed(1)}%` : s.trend === 'down' ? `${(s.trend_diff*100).toFixed(1)}%` : 'STABLE'}
                           </div>
                         </div>
                       </div>
@@ -765,7 +791,7 @@
               {/* Fix 3: Bottom Floating Card with Risk Bar & Percentage (PROBABILITY ONLY SHOWS INSIDE THIS CARD) */}
               <div className="relative z-20 atc-card p-4 rounded-xl font-mono max-w-lg shadow-2xl pointer-events-auto">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-[#607d8b] font-bold">RISK PROBABILITY</span>
+                  <span className="text-xs text-[#607d8b] font-bold">RISK PROBABILITY{currentSlot.slot !== peakSlotData.slot ? <span className="text-[9px] text-[#607d8b] ml-1">(Slot {currentSlot.slot} selected · Peak: Slot {peakSlotData.slot})</span> : ''}</span>
                   <div className="text-right flex items-baseline gap-2">
                     <span className="text-2xl font-extrabold text-white">{(currentSlot.ts_probability * 100).toFixed(1)}%</span>
                     <span className={`text-xs font-bold ${riskInfo.color}`}>{riskInfo.text}</span>
@@ -896,7 +922,7 @@
                 </div>
               )}
 
-              {/* Card 1.8: SYNOPTIC REGIME */}
+              {/* Card 1.8: SYNOPTIC REGIME + MONSOON PHASE */}
               {liveData?.synoptic_regime?.regime_id && (
                 <div className="atc-card p-3 rounded-2xl font-mono">
                   <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-2 border-b border-[#172338] pb-1">
@@ -916,10 +942,32 @@
                     <span className="text-[9px] text-[#607d8b]">AUROC {liveData.synoptic_regime.auroc}</span>
                   </div>
                   <div className="text-[9px] text-[#607d8b] mb-2">{liveData.synoptic_regime.description}</div>
-                  <div className="flex justify-between text-[9px]">
+                  <div className="flex justify-between text-[9px] mb-2">
                     <span className="text-[#607d8b]">Historical TS rate: <span className="text-white font-bold">{liveData.synoptic_regime.ts_rate}%</span></span>
                     <span className="text-[#607d8b]">CAPE <span className="text-white">{liveData.synoptic_regime.cape_used}</span> K <span className="text-white">{liveData.synoptic_regime.ki_used}</span></span>
                   </div>
+                  {/* Monsoon Phase */}
+                  {liveData?.monsoon_phase && (
+                    <div className={`flex items-center justify-between border-t border-[#172338] pt-2 text-[9px] ${
+                      liveData.monsoon_phase === 'ACTIVE' ? 'text-cyan-400' :
+                      liveData.monsoon_phase === 'BREAK'  ? 'text-amber-400' :
+                      'text-[#607d8b]'
+                    }`}>
+                      <span className="font-bold flex items-center gap-1">
+                        <span>{liveData.monsoon_phase === 'ACTIVE' ? '🌧' : liveData.monsoon_phase === 'BREAK' ? '☀️' : '⛅'}</span>
+                        MONSOON: {liveData.monsoon_phase}
+                      </span>
+                      <span className="text-[#607d8b]">
+                        Index: <span className={`font-bold ${
+                          liveData.monsoon_phase === 'ACTIVE' ? 'text-cyan-400' :
+                          liveData.monsoon_phase === 'BREAK'  ? 'text-amber-400' :
+                          'text-white'
+                        }`}>{liveData.monsoon_index?.toFixed(2)}</span>
+                        {liveData.monsoon_phase === 'ACTIVE' && <span className="text-cyan-400 ml-1">· LOWER THRESHOLD</span>}
+                        {liveData.monsoon_phase === 'BREAK'  && <span className="text-amber-400 ml-1">· SUPPRESSED</span>}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -953,12 +1001,20 @@
               </div>
 
               {/* Card 3: RECENT ALERTS */}
-              <div className="atc-card p-4 rounded-2xl font-mono flex items-center justify-between">
+              <div className={`atc-card p-4 rounded-2xl font-mono flex items-center justify-between ${systemAlertActive ? 'border-red-500/40 bg-red-950/10' : ''}`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">✓</div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${systemAlertActive ? 'bg-red-500/20 text-red-400 animate-pulse' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                    {systemAlertActive ? '!' : '✓'}
+                  </div>
                   <div>
-                    <div className="text-xs font-bold text-emerald-400">No active alerts</div>
-                    <div className="text-[10px] text-[#607d8b]">All systems normal. Continue monitoring.</div>
+                    <div className={`text-xs font-bold ${systemAlertActive ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {systemAlertActive ? `ALERT ACTIVE — Slot ${peakSlotData.slot} at ${(peakSlotData.ts_probability*100).toFixed(1)}%` : 'No active alerts'}
+                    </div>
+                    <div className="text-[10px] text-[#607d8b]">
+                      {systemAlertActive
+                        ? (liveData?.himawari_override_active ? 'Himawari-9 satellite override active — deep convection detected' : 'Model probability exceeds operational threshold')
+                        : 'All systems normal. Continue monitoring.'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2486,6 +2542,10 @@
               threshold: s.threshold,
               icon: s.slot === 0 ? "🌙" : s.slot === 1 ? "☀️" : s.slot === 2 ? "⛅" : "🌆"
             })));
+            // Auto-select peak slot when alert is active (override or model)
+            if (json.alert_active && json.peak_slot !== undefined && json.peak_slot !== null) {
+              setSelectedSlotIndex(json.peak_slot);
+            }
           }
         } catch (err) {
           setIsLiveData(false);

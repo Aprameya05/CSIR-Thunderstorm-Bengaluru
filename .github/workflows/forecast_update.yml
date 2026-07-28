@@ -25,6 +25,9 @@ jobs:
       - name: Fetch GFS real-time data
         run: python gfs_fetcher.py
 
+      - name: Fetch Himawari-9 satellite data
+        run: python fetch_himawari_realtime.py
+
       - name: Run forecast pipeline
         run: python forecast_action.py
 

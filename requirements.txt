@@ -3,7 +3,7 @@ pandas
 numpy
 plotly
 joblib
-scikit-learn
+scikit-learn==1.6.1
 xgboost
 shap
 matplotlib
@@ -18,3 +18,5 @@ sentence-transformers
 groq
 websockets
 metpy
+boto3
+satpy
