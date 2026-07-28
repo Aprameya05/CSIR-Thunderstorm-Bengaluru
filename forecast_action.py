@@ -200,6 +200,10 @@ def _wind(key):
     except (TypeError, ValueError):
         return 0.0
 
+himawari_override_active = False
+himawari_override_slots  = []
+himawari_boost_value     = 0.0
+
 forecast = {
     "date":             date_str,
     "generated_at":     now.strftime('%Y-%m-%d %H:%M IST'),
@@ -269,10 +273,6 @@ def compute_himawari_boost(h):
     dist_factor = max(1.0 - dist / HIMAWARI_DIST_MAX_KM, 0)
     boost = HIMAWARI_BOOST_BASE + (HIMAWARI_BOOST_MAX - HIMAWARI_BOOST_BASE) * (bt_factor * 0.5 + px_factor * 0.3 + dist_factor * 0.2)
     return round(min(boost, HIMAWARI_BOOST_MAX), 3)
-
-himawari_override_active = False
-himawari_override_slots  = []
-himawari_boost_value     = 0.0
 
 if himawari:
     h_storm = himawari.get("storm_detected", False)
