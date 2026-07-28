@@ -285,7 +285,7 @@ for slot_id in range(4):
                             else 'BREAK' if _mi < phase_detector['break_threshold']
                             else 'NEUTRAL')
             print(f"  [MONSOON] Phase={monsoon_phase} Index={monsoon_index:.2f} "
-                  f"PWAT={_pwat:.1f} KI={_ki:.1f}")
+                  f"KI={_ki:.1f} q500={_q500:.5f} t500={_t500:.1f}")
         except Exception as _e:
             print(f"  [MONSOON] Phase detection error: {_e}")
 
