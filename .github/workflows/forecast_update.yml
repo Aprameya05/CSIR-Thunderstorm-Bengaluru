@@ -31,6 +31,9 @@ jobs:
       - name: Fetch live METAR (VOBL)
         run: python fetch_metar.py
 
+      - name: Fetch Himawari-9 satellite data
+        run: python fetch_himawari_realtime.py
+
       - name: Compute real-time SHAP
         run: python compute_realtime_shap.py
 
