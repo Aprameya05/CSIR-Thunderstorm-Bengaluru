@@ -180,14 +180,22 @@ for slot_id in range(4):
     obs  = compute_derived(obs, slot_id)
     # v4 ensemble: feature_cols is None — use model's own feature names if available
     if feature_cols is None:
-        try:
-            fc = model.feature_names_in_
-        except AttributeError:
-            # CalibratedClassifierCV wraps the base estimator
-            try:
-                fc = model.estimator.feature_names_in_
-            except AttributeError:
-                fc = model.calibrated_classifiers_[0].estimator.feature_names_in_
+        # v4 ensemble trained on numpy arrays — no feature names stored
+        # Use the v4 feature list (same 54 features used in Cell 2 training)
+        fc = [
+            'ERA5_CAPE','ERA5_T2M','ERA5_D2M','ERA5_U10','ERA5_V10','ERA5_SP',
+            'ERA5_t_500hPa','ERA5_t_700hPa','ERA5_t_850hPa',
+            'ERA5_q_500hPa','ERA5_q_700hPa','ERA5_q_850hPa',
+            'ERA5_u_500hPa','ERA5_u_700hPa','ERA5_u_850hPa',
+            'ERA5_v_500hPa','ERA5_v_700hPa','ERA5_v_850hPa',
+            'K_INDEX','LIFTED_INDEX','TOTALS_TOTALS','PRECIP_WATER','CIN',
+            'MAX','MIN','DTR','RF','EVP','SSH','DRNRF',
+            'RF_3d','RF_7d','MAX_3d_avg','MIN_3d_avg','RF_lag1','MAX_lag1','MIN_lag1','LABEL_lag1',
+            'MONTH_sin','MONTH_cos','DOY_sin','DOY_cos','SEASON',
+            'cold_top_proxy','mid_moisture','lapse_rate_850_500','shear_850_500',
+            'cape_x_ki','cape_x_tt','rh_proxy','wind_speed_850','wind_speed_500',
+            'theta_e_proxy','moisture_flux_850',
+        ]
     else:
         fc = feature_cols
     X    = np.array([[float(obs.get(c, 0.0)) for c in fc]])
