@@ -444,7 +444,7 @@ try:
 except Exception as _e:
     print(f"[CORRECTION MODEL] Not found ({_e}) — using heuristic fallback")
 
-def _build_correction_features(ua_row):
+def _build_correction_features(ua_row, himawari_obs=None):
     era5_cape  = float(ua_row.get('ERA5_CAPE', ua_row.get('CAPE', 0)) or 0)
     era5_t500  = float(ua_row.get('ERA5_t_500hPa', _t500_clim_mean) or _t500_clim_mean)
     era5_t850  = float(ua_row.get('ERA5_t_850hPa', 294.0) or 294.0)
@@ -465,8 +465,15 @@ def _build_correction_features(ua_row):
     lapse      = era5_t850 - era5_t500
     shear      = math.sqrt((era5_u500-era5_u850)**2 + (era5_v500-era5_v850)**2)
     cape_x_ki  = era5_cape * k_idx
+    # V4 features — real Himawari BT (defaults to neutral when unavailable)
+    h = himawari_obs or {}
+    min_bt     = float(h.get('min_bt_50km', 0) or 0)
+    cold_px    = float(h.get('cold_pixels_count', 0) or 0)
+    near_dist  = float(h.get('nearest_pixel_dist_km', 999) or 999)
+    storm_flag = float(1 if h.get('storm_detected', False) else 0)
     return [era5_cape, cold_top, mid_moist, lapse, shear,
-            k_idx, li, tt, pwat, cape_x_ki, month_sin, month_cos]
+            k_idx, li, tt, pwat, cape_x_ki, month_sin, month_cos,
+            min_bt, cold_px, near_dist, storm_flag]
 
 def _heuristic_boost(bt, cpx, dist):
     bt_f = min(max((abs(bt)-45)/25, 0), 1.0)
@@ -491,7 +498,7 @@ if himawari:
         # Compute corrected probability
         if _correction_model is not None:
             try:
-                _feat = _build_correction_features(_ua)
+                _feat = _build_correction_features(_ua, himawari)
                 _corrected = float(_correction_model.predict_proba([_feat])[0][1])
                 _method = f"trained_model(AUROC={_correction_auroc:.3f})"
             except Exception as _ex:
