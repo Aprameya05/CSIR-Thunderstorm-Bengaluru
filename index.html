@@ -922,7 +922,7 @@
                 </div>
               )}
 
-              {/* Card 1.8: SYNOPTIC REGIME */}
+              {/* Card 1.8: SYNOPTIC REGIME + MONSOON PHASE */}
               {liveData?.synoptic_regime?.regime_id && (
                 <div className="atc-card p-3 rounded-2xl font-mono">
                   <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-2 border-b border-[#172338] pb-1">
@@ -942,10 +942,32 @@
                     <span className="text-[9px] text-[#607d8b]">AUROC {liveData.synoptic_regime.auroc}</span>
                   </div>
                   <div className="text-[9px] text-[#607d8b] mb-2">{liveData.synoptic_regime.description}</div>
-                  <div className="flex justify-between text-[9px]">
+                  <div className="flex justify-between text-[9px] mb-2">
                     <span className="text-[#607d8b]">Historical TS rate: <span className="text-white font-bold">{liveData.synoptic_regime.ts_rate}%</span></span>
                     <span className="text-[#607d8b]">CAPE <span className="text-white">{liveData.synoptic_regime.cape_used}</span> K <span className="text-white">{liveData.synoptic_regime.ki_used}</span></span>
                   </div>
+                  {/* Monsoon Phase */}
+                  {liveData?.monsoon_phase && (
+                    <div className={`flex items-center justify-between border-t border-[#172338] pt-2 text-[9px] ${
+                      liveData.monsoon_phase === 'ACTIVE' ? 'text-cyan-400' :
+                      liveData.monsoon_phase === 'BREAK'  ? 'text-amber-400' :
+                      'text-[#607d8b]'
+                    }`}>
+                      <span className="font-bold flex items-center gap-1">
+                        <span>{liveData.monsoon_phase === 'ACTIVE' ? '🌧' : liveData.monsoon_phase === 'BREAK' ? '☀️' : '⛅'}</span>
+                        MONSOON: {liveData.monsoon_phase}
+                      </span>
+                      <span className="text-[#607d8b]">
+                        Index: <span className={`font-bold ${
+                          liveData.monsoon_phase === 'ACTIVE' ? 'text-cyan-400' :
+                          liveData.monsoon_phase === 'BREAK'  ? 'text-amber-400' :
+                          'text-white'
+                        }`}>{liveData.monsoon_index?.toFixed(2)}</span>
+                        {liveData.monsoon_phase === 'ACTIVE' && <span className="text-cyan-400 ml-1">· LOWER THRESHOLD</span>}
+                        {liveData.monsoon_phase === 'BREAK'  && <span className="text-amber-400 ml-1">· SUPPRESSED</span>}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
