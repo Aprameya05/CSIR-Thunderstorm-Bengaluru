@@ -100,11 +100,20 @@ slots_output = []
 results      = {}
 
 for slot_id in range(4):
-    model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v3_calibrated.pkl'
-    if not model_path.exists():
-        model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v2_calibrated.pkl'
+    # Try v4 ensemble first, fall back to v3
+    v4_path = MODELS / f'nowcast_slot{slot_id}_xgb_v4_ensemble.pkl'
+    if v4_path.exists():
+        artifact = joblib.load(v4_path)
+        model_path = None
+        artifact_model = artifact['calibrated'] if isinstance(artifact, dict) else artifact
+        print(f'  [v4 ensemble] Slot {slot_id} | AUROC={artifact.get("auroc","?") if isinstance(artifact,dict) else "?"}')
+    else:
+        model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v3_calibrated.pkl'
+        artifact_model = None
+        if not model_path.exists():
+            model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v2_calibrated.pkl'
 
-    if not model_path.exists():
+    if model_path is not None and not model_path.exists():
         clim = {0:0.037, 1:0.011, 2:0.063, 3:0.059}
         prob = clim[slot_id]
         results[slot_id] = prob
@@ -119,7 +128,7 @@ for slot_id in range(4):
         })
         continue
 
-    artifact     = joblib.load(model_path)
+    artifact     = artifact_model if artifact_model is not None else joblib.load(model_path)
     model        = artifact['model']
     feature_cols = artifact['feature_cols']
     threshold    = artifact['threshold']
@@ -210,7 +219,7 @@ forecast = {
     "alert_active":     alert_active,
     "peak_slot":        peak_slot,
     "peak_probability": round(float(peak_probability), 4),
-    "model_version":    "v3_calibrated",
+    "model_version":    "v4_ensemble_A100",
     "himawari_override_active": himawari_override_active,
     "himawari_override_slots":  himawari_override_slots,
     "himawari_boost_value":     himawari_boost_value,
