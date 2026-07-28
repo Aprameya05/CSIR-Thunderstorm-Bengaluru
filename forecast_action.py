@@ -273,12 +273,13 @@ for slot_id in range(4):
     if phase_detector and len(gfs_df) > 0:
         try:
             _row    = gfs_df.iloc[0]
-            _pwat   = float(_row.get('PRECIP_WATER', phase_detector.get('pwat_mean', 40)))
-            _ki     = float(_row.get('K_INDEX', phase_detector.get('ki_mean', 36)))
-            _q500   = float(_row.get('ERA5_q_500hPa', phase_detector.get('q500_mean', 0.003)))
-            _mi = (0.40 * (_pwat - phase_detector['pwat_mean']) / (phase_detector['pwat_std'] + 1e-9) +
-                   0.30 * (_ki   - phase_detector['ki_mean'])   / (phase_detector['ki_std']  + 1e-9) +
-                   0.30 * (_q500 - phase_detector['q500_mean']) / (phase_detector['q500_std'] + 1e-9))
+            _ki     = float(_row.get('K_INDEX',       phase_detector.get('ki_mean',   36.45)))
+            _q500   = float(_row.get('ERA5_q_500hPa', phase_detector.get('q500_mean', 0.004)))
+            _t500   = float(_row.get('ERA5_t_500hPa', phase_detector.get('t500_mean', 269.3)))
+            _z_ki   = (_ki   - phase_detector['ki_mean'])   / (phase_detector['ki_std']   + 1e-9)
+            _z_q500 = (_q500 - phase_detector['q500_mean']) / (phase_detector['q500_std'] + 1e-9)
+            _z_t500 = (phase_detector['t500_mean'] - _t500) / (phase_detector['t500_std'] + 1e-9)
+            _mi = 0.60 * _z_ki + 0.20 * _z_q500 + 0.20 * _z_t500
             monsoon_index = round(float(_mi), 3)
             monsoon_phase = ('ACTIVE'  if _mi > phase_detector['active_threshold']
                             else 'BREAK' if _mi < phase_detector['break_threshold']
