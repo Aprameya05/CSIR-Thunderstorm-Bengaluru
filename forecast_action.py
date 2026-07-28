@@ -186,7 +186,13 @@ for slot_id in range(4):
     elif slot_id in [2, 3] and v3_path.exists():
         model_path     = v3_path
         artifact_model = None
-        print(f'  [v3 calibrated] Slot {slot_id} | AUROC=0.8710')
+        # Apply phase-specific threshold for monsoon months (Jun-Sep, Slot 2)
+        if (now.month in [6,7,8,9] and phase_detector and
+                'phase_thresholds' in phase_detector and slot_id == 2):
+            phase_thr = phase_detector['phase_thresholds'].get(monsoon_phase)
+            if phase_thr:
+                threshold = phase_thr
+        print(f'  [v3 calibrated] Slot {slot_id} | AUROC=0.8710 | phase={monsoon_phase} thr={threshold}')
     elif v4_path.exists():
         artifact_model = joblib.load(v4_path)  # full dict with 'calibrated'+'features'
         model_path = None
