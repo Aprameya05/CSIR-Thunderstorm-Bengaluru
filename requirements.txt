@@ -18,3 +18,5 @@ sentence-transformers
 groq
 websockets
 metpy
+boto3
+satpy
