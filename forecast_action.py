@@ -181,67 +181,6 @@ for slot_id in range(4):
     })
     print(f"Slot {slot_id}: {cal*100:.1f}%")
 
-# ── HIMAWARI REAL-TIME OVERRIDE ──────────────────────────────────────────────
-HIMAWARI_BT_THRESHOLD   = -45.0
-HIMAWARI_PIXEL_MIN      = 50
-HIMAWARI_DIST_MAX_KM    = 100.0
-HIMAWARI_BOOST_BASE     = 0.35
-HIMAWARI_BOOST_MAX      = 0.75
-
-def compute_himawari_boost(h):
-    bt   = h.get("min_bt_50km", 0) or 0
-    cpx  = h.get("cold_pixels_count", 0) or 0
-    dist = h.get("nearest_pixel_dist_km", 999) or 999
-    bt_factor   = min(max((abs(bt) - 45) / 25, 0), 1.0)
-    px_factor   = min(max((cpx - 50) / 250, 0), 1.0)
-    dist_factor = max(1.0 - dist / HIMAWARI_DIST_MAX_KM, 0)
-    boost = HIMAWARI_BOOST_BASE + (HIMAWARI_BOOST_MAX - HIMAWARI_BOOST_BASE) * (bt_factor * 0.5 + px_factor * 0.3 + dist_factor * 0.2)
-    return round(min(boost, HIMAWARI_BOOST_MAX), 3)
-
-himawari_override_active = False
-himawari_override_slots  = []
-himawari_boost_value     = 0.0
-
-if himawari:
-    h_storm = himawari.get("storm_detected", False)
-    h_bt    = himawari.get("min_bt_50km") or 0
-    h_cpx   = himawari.get("cold_pixels_count") or 0
-    h_dist  = himawari.get("nearest_pixel_dist_km") or 999
-
-    if (h_storm and h_bt < HIMAWARI_BT_THRESHOLD and
-            h_cpx >= HIMAWARI_PIXEL_MIN and h_dist < HIMAWARI_DIST_MAX_KM):
-
-        himawari_boost_value     = compute_himawari_boost(himawari)
-        himawari_override_active = True
-
-        ist_hour = now.hour
-        if   0  <= ist_hour < 6:  affected = [3]
-        elif 6  <= ist_hour < 12: affected = [0, 1]
-        elif 12 <= ist_hour < 18: affected = [2]
-        else:                     affected = [2, 3]
-
-        for s in slots_output:
-            if s["slot"] in affected:
-                original_prob = s["ts_probability"]
-                boosted_prob  = round(min(max(original_prob, himawari_boost_value), 0.95), 4)
-                if boosted_prob > original_prob:
-                    s["ts_probability"]    = boosted_prob
-                    s["ts_predicted"]      = boosted_prob >= s["threshold"]
-                    s["himawari_override"] = True
-                    s["himawari_boost"]    = himawari_boost_value
-                    s["original_prob"]     = original_prob
-                    himawari_override_slots.append(s["slot"])
-                    results[s["slot"]]     = boosted_prob
-                    print(f"  [HIMAWARI OVERRIDE] Slot {s['slot']}: {original_prob*100:.1f}% -> {boosted_prob*100:.1f}% "
-                          f"(BT={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km boost={himawari_boost_value})")
-
-        if himawari_override_slots:
-            print(f"[HIMAWARI] Override active -- slots {himawari_override_slots} boosted to {himawari_boost_value*100:.0f}%+ floor")
-        else:
-            print(f"[HIMAWARI] Storm detected but model probabilities already >= boost floor")
-    else:
-        print(f"[HIMAWARI] No override -- storm={h_storm} bt={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km")
-
 alert_active     = any(s["ts_predicted"] for s in slots_output)
 peak_slot        = max(results, key=results.get)
 peak_probability = results[peak_slot]
@@ -313,6 +252,79 @@ if himawari_hist_path.exists():
             himawari_history = json.load(f)
     except Exception:
         pass
+
+# ── HIMAWARI REAL-TIME OVERRIDE ──────────────────────────────────────────────
+HIMAWARI_BT_THRESHOLD = -45.0
+HIMAWARI_PIXEL_MIN    = 50
+HIMAWARI_DIST_MAX_KM  = 100.0
+HIMAWARI_BOOST_BASE   = 0.35
+HIMAWARI_BOOST_MAX    = 0.75
+
+def compute_himawari_boost(h):
+    bt   = h.get("min_bt_50km", 0) or 0
+    cpx  = h.get("cold_pixels_count", 0) or 0
+    dist = h.get("nearest_pixel_dist_km", 999) or 999
+    bt_factor   = min(max((abs(bt) - 45) / 25, 0), 1.0)
+    px_factor   = min(max((cpx - 50) / 250, 0), 1.0)
+    dist_factor = max(1.0 - dist / HIMAWARI_DIST_MAX_KM, 0)
+    boost = HIMAWARI_BOOST_BASE + (HIMAWARI_BOOST_MAX - HIMAWARI_BOOST_BASE) * (bt_factor * 0.5 + px_factor * 0.3 + dist_factor * 0.2)
+    return round(min(boost, HIMAWARI_BOOST_MAX), 3)
+
+himawari_override_active = False
+himawari_override_slots  = []
+himawari_boost_value     = 0.0
+
+if himawari:
+    h_storm = himawari.get("storm_detected", False)
+    h_bt    = himawari.get("min_bt_50km") or 0
+    h_cpx   = himawari.get("cold_pixels_count") or 0
+    h_dist  = himawari.get("nearest_pixel_dist_km") or 999
+
+    if (h_storm and h_bt < HIMAWARI_BT_THRESHOLD and
+            h_cpx >= HIMAWARI_PIXEL_MIN and h_dist < HIMAWARI_DIST_MAX_KM):
+
+        himawari_boost_value     = compute_himawari_boost(himawari)
+        himawari_override_active = True
+
+        ist_hour = now.hour
+        if   0  <= ist_hour < 6:  affected = [3]
+        elif 6  <= ist_hour < 12: affected = [0, 1]
+        elif 12 <= ist_hour < 18: affected = [2]
+        else:                     affected = [2, 3]
+
+        for s in slots_output:
+            if s["slot"] in affected:
+                original_prob = s["ts_probability"]
+                boosted_prob  = round(min(max(original_prob, himawari_boost_value), 0.95), 4)
+                if boosted_prob > original_prob:
+                    s["ts_probability"]    = boosted_prob
+                    s["ts_predicted"]      = boosted_prob >= s["threshold"]
+                    s["himawari_override"] = True
+                    s["himawari_boost"]    = himawari_boost_value
+                    s["original_prob"]     = original_prob
+                    himawari_override_slots.append(s["slot"])
+                    results[s["slot"]]     = boosted_prob
+                    print(f"  [HIMAWARI OVERRIDE] Slot {s['slot']}: {original_prob*100:.1f}% -> {boosted_prob*100:.1f}%"
+                          f" (BT={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km boost={himawari_boost_value})")
+
+        if himawari_override_slots:
+            print(f"[HIMAWARI] Override active -- slots {himawari_override_slots} boosted to {himawari_boost_value*100:.0f}%+ floor")
+        else:
+            print(f"[HIMAWARI] Storm detected but model probs already >= boost floor")
+    else:
+        print(f"[HIMAWARI] No override -- storm={h_storm} bt={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km")
+
+    # Update alert and peak after override
+    alert_active     = any(s["ts_predicted"] for s in slots_output)
+    peak_slot        = max(results, key=results.get)
+    peak_probability = results[peak_slot]
+    # Patch forecast dict with post-override values
+    forecast["alert_active"]              = alert_active
+    forecast["peak_slot"]                 = peak_slot
+    forecast["peak_probability"]          = round(float(peak_probability), 4)
+    forecast["himawari_override_active"]  = himawari_override_active
+    forecast["himawari_override_slots"]   = himawari_override_slots
+    forecast["himawari_boost_value"]      = himawari_boost_value
 
 forecast["satellite"] = {
     "himawari9": {
