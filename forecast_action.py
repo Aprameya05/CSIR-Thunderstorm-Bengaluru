@@ -201,16 +201,23 @@ for slot_id in range(4):
         continue
 
     artifact     = artifact_model if artifact_model is not None else joblib.load(model_path)
-    # v4 ensemble: artifact is CalibratedClassifierCV directly
-    # v3: artifact is dict with 'model', 'feature_cols', 'threshold'
-    if isinstance(artifact, dict):
+    # Artifact formats:
+    # v3: dict with keys 'model', 'feature_cols', 'threshold'
+    # v4/v5: dict with keys 'calibrated', 'features', 'auroc'  OR CalibratedClassifierCV directly
+    if isinstance(artifact, dict) and 'model' in artifact:
+        # v3 format
         model        = artifact['model']
         feature_cols = artifact['feature_cols']
         threshold    = artifact.get('threshold', THRESHOLDS[slot_id])
+    elif isinstance(artifact, dict) and 'calibrated' in artifact:
+        # v4/v5 format
+        model        = artifact['calibrated']
+        feature_cols = artifact.get('features', None)
+        threshold    = THRESHOLDS[slot_id]
     else:
-        # v4 ensemble — artifact is the model directly
+        # CalibratedClassifierCV directly (old v4 without dict wrapper)
         model        = artifact
-        feature_cols = None   # uses FEATURES from Cell 2 / forecast_action defaults
+        feature_cols = None
         threshold    = THRESHOLDS[slot_id]
 
     obs = {
