@@ -141,6 +141,21 @@ def get_roll(feat, window, default=0.0):
         return float(np.mean(vals[-window:]))
     return default
 
+# ── Monsoon phase detection ──────────────────────────────────────────────────
+monsoon_phase    = 'NEUTRAL'
+monsoon_index    = 0.0
+phase_detector   = {}
+phase_det_path   = MODELS / 'monsoon_phase_detector.json'
+if phase_det_path.exists():
+    try:
+        with open(phase_det_path) as _f:
+            phase_detector = json.load(_f)
+        # Compute monsoon index from latest GFS/upper-air values
+        # Will be updated after GFS loads — placeholder here
+        monsoon_phase = 'NEUTRAL'
+    except Exception as _e:
+        pass
+
 # Load GFS data if available
 gfs_df   = pd.DataFrame()
 gfs_path = DATA / 'gfs_realtime_43295.csv'
@@ -248,6 +263,25 @@ for slot_id in range(4):
             if col in row.index and pd.notna(row[col]):
                 obs[col] = float(row[col])
 
+    # ── Update monsoon phase using actual GFS values ─────────────────────────
+    if phase_detector and len(gfs_df) > 0:
+        try:
+            _row    = gfs_df.iloc[0]
+            _pwat   = float(_row.get('PRECIP_WATER', phase_detector.get('pwat_mean', 40)))
+            _ki     = float(_row.get('K_INDEX', phase_detector.get('ki_mean', 36)))
+            _q500   = float(_row.get('ERA5_q_500hPa', phase_detector.get('q500_mean', 0.003)))
+            _mi = (0.40 * (_pwat - phase_detector['pwat_mean']) / (phase_detector['pwat_std'] + 1e-9) +
+                   0.30 * (_ki   - phase_detector['ki_mean'])   / (phase_detector['ki_std']  + 1e-9) +
+                   0.30 * (_q500 - phase_detector['q500_mean']) / (phase_detector['q500_std'] + 1e-9))
+            monsoon_index = round(float(_mi), 3)
+            monsoon_phase = ('ACTIVE'  if _mi > phase_detector['active_threshold']
+                            else 'BREAK' if _mi < phase_detector['break_threshold']
+                            else 'NEUTRAL')
+            print(f"  [MONSOON] Phase={monsoon_phase} Index={monsoon_index:.2f} "
+                  f"PWAT={_pwat:.1f} KI={_ki:.1f}")
+        except Exception as _e:
+            print(f"  [MONSOON] Phase detection error: {_e}")
+
     if slot_id in upper_air:
         ua = upper_air[slot_id]
         for col in ['CAPE','CIN','K_INDEX','LIFTED_INDEX','TOTALS_TOTALS','PRECIP_WATER',
@@ -334,6 +368,8 @@ forecast = {
     "himawari_override_active": himawari_override_active,
     "himawari_override_slots":  himawari_override_slots,
     "himawari_boost_value":     himawari_boost_value,
+    "monsoon_phase":            monsoon_phase,
+    "monsoon_index":            monsoon_index,
     "slots":            slots_output,
     "met_parameters": {
         "ua_cape_jkg":       met_slot.get('cape', 0),
