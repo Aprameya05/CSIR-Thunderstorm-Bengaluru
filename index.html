@@ -1426,18 +1426,37 @@
           {/* Rolling Verification & Dataset Specs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-              <h4 className="font-bold text-white mb-2">ROLLING VERIFICATION PERFORMANCE</h4>
-              <div className="space-y-1.5 text-[#90a4ae]">
-                <div className="flex justify-between"><span>2023 TEST PERIOD:</span> <span className="text-emerald-400 font-bold">AUROC 0.896 | HSS 0.428</span></div>
-                <div className="flex justify-between"><span>2024 TEST PERIOD:</span> <span className="text-white font-bold">AUROC 0.806 | HSS 0.350</span></div>
-                <div className="flex justify-between"><span>2025 TEST PERIOD:</span> <span className="text-white font-bold">AUROC 0.784 | HSS 0.318</span></div>
+              <h4 className="font-bold text-white mb-2">WALK-FORWARD VERIFICATION (Per-Year)</h4>
+              <div className="space-y-1.5 text-[#90a4ae] text-[10px]">
+                <div className="grid grid-cols-4 text-[9px] text-[#607d8b] font-bold border-b border-[#172338] pb-1">
+                  <span>YEAR</span><span className="text-center">AUROC</span><span className="text-center">POD</span><span className="text-center">HSS</span>
+                </div>
+                {[
+                  {year:'2021', auroc:'0.9270', pod:'0.739', hss:'0.610', color:'text-emerald-400'},
+                  {year:'2022', auroc:'0.9627', pod:'0.952', hss:'0.713', color:'text-emerald-400'},
+                  {year:'2023', auroc:'0.8884', pod:'0.732', hss:'0.431', color:'text-white'},
+                  {year:'2024', auroc:'0.8647', pod:'0.650', hss:'0.300', color:'text-white'},
+                  {year:'2025', auroc:'0.8580', pod:'0.714', hss:'0.348', color:'text-white'},
+                ].map(r => (
+                  <div key={r.year} className="grid grid-cols-4 py-0.5 border-b border-[#172338]/50">
+                    <span className="text-[#607d8b]">{r.year}</span>
+                    <span className={`text-center font-bold ${r.color}`}>{r.auroc}</span>
+                    <span className="text-center text-cyan-300">{r.pod}</span>
+                    <span className="text-center text-white">{r.hss}</span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-4 pt-1 border-t border-cyan-500/30 font-bold">
+                  <span className="text-cyan-300">MEAN</span>
+                  <span className="text-center text-cyan-300">0.9002</span>
+                  <span className="text-center text-cyan-300">0.757</span>
+                  <span className="text-center text-cyan-300">0.480</span>
+                </div>
                 {liveData?.verification && (
                   <div className="mt-2 pt-2 border-t border-[#172338]">
-                    <div className="flex justify-between"><span>ROLLING 30-DAY POD:</span> <span className="text-cyan-300 font-bold">{liveData.verification.pod ?? '—'}</span></div>
-                    <div className="flex justify-between"><span>ROLLING 30-DAY FAR:</span> <span className="text-cyan-300 font-bold">{liveData.verification.far ?? '—'}</span></div>
-                    <div className="flex justify-between"><span>ROLLING 30-DAY HSS:</span> <span className="text-cyan-300 font-bold">{liveData.verification.hss ?? '—'}</span></div>
-                    <div className="flex justify-between"><span>BRIER SCORE:</span> <span className="text-cyan-300 font-bold">{liveData.verification.brier ?? '—'}</span></div>
-                    <div className="text-[9px] text-[#607d8b] mt-1">Last verified: {liveData.verification.date_verified ?? '—'}</div>
+                    <div className="flex justify-between"><span>ROLLING 30-DAY POD:</span> <span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.pod ?? '—'}</span></div>
+                    <div className="flex justify-between"><span>ROLLING 30-DAY FAR:</span> <span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.far ?? '—'}</span></div>
+                    <div className="flex justify-between"><span>ROLLING 30-DAY HSS:</span> <span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.hss ?? '—'}</span></div>
+                    <div className="text-[9px] text-[#607d8b] mt-1">Last verified: {liveData.verification.last_updated ?? '—'}</div>
                   </div>
                 )}
               </div>
