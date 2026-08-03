@@ -661,9 +661,15 @@ if multiday_path.exists():
             d_prob       = min(round(d_score / 100.0 * 0.6, 3), 0.95)
             risk = "HIGH" if d_score >= 70 else "MODERATE" if d_score >= 45 else "LOW" if d_score >= 25 else "MINIMAL"
 
+            # Compute date dynamically from today + forecast hour (fixes stale date bug)
+            fhour = int(day_row.get('fhour', 24))
+            from datetime import timedelta
+            dynamic_date = (now + timedelta(hours=fhour)).strftime('%Y-%m-%d')
+            day_label_dynamic = 'tomorrow' if fhour <= 30 else 'day_after'
+
             multiday_outlook.append({
-                "date":              day_row.get('date'),
-                "day_label":         day_row.get('day_label'),
+                "date":              dynamic_date,
+                "day_label":         day_label_dynamic,
                 "cape":              round(day_cape, 1),
                 "k_index":           round(day_ki, 2),
                 "lifted_index":      round(day_li, 2),
