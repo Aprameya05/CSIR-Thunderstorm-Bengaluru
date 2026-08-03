@@ -1,6 +1,6 @@
 {
   "date": "2026-08-03",
-  "generated_at": "2026-08-03 06:45 IST",
+  "generated_at": "2026-08-03 06:50 IST",
   "alert_active": true,
   "peak_slot": 0,
   "peak_probability": 0.2911,
@@ -31,9 +31,9 @@
       "himawari_boost": 0.2911,
       "original_prob": 0.003,
       "correction_method": "trained_model(AUROC=0.914)",
-      "trend": "up",
-      "trend_diff": 0.125,
-      "prev_probability": 0.167
+      "trend": "stable",
+      "trend_diff": 0.0,
+      "prev_probability": 0.291
     },
     {
       "slot": 1,
@@ -52,9 +52,9 @@
       "himawari_boost": 0.2911,
       "original_prob": 0.0,
       "correction_method": "trained_model(AUROC=0.914)",
-      "trend": "up",
-      "trend_diff": 0.125,
-      "prev_probability": 0.167
+      "trend": "stable",
+      "trend_diff": 0.0,
+      "prev_probability": 0.291
     },
     {
       "slot": 2,
@@ -70,8 +70,8 @@
       "lifted_index": 0.23,
       "totals_totals": 38.4,
       "trend": "stable",
-      "trend_diff": -0.009,
-      "prev_probability": 0.009
+      "trend_diff": 0,
+      "prev_probability": 0
     },
     {
       "slot": 3,
@@ -105,8 +105,8 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-08-03T06:30:00",
-      "timestamp_ist": "2026-08-03T12:00:00",
+      "timestamp_utc": "2026-08-03T06:40:00",
+      "timestamp_ist": "2026-08-03T12:10:00",
       "vobl_bt_celsius": -49.59,
       "min_bt_50km": -53.49,
       "mean_bt_50km": -37.57,
@@ -179,8 +179,8 @@
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3"
       },
       {
-        "timestamp_utc": "2026-08-03T06:30:00",
-        "timestamp_ist": "2026-08-03T12:00:00",
+        "timestamp_utc": "2026-08-03T06:40:00",
+        "timestamp_ist": "2026-08-03T12:10:00",
         "vobl_bt_celsius": -49.59,
         "min_bt_50km": -53.49,
         "mean_bt_50km": -37.57,
@@ -203,11 +203,11 @@
     "li_now": 0.23,
     "tt_now": 38.41,
     "peak_window_ist": "1300-1800 IST",
-    "computed_at": "2026-08-03 06:45 IST"
+    "computed_at": "2026-08-03 06:50 IST"
   },
   "multiday_outlook": [
     {
-      "date": "2026-07-27",
+      "date": "2026-08-04",
       "day_label": "tomorrow",
       "cape": 41.0,
       "k_index": 34.12,
@@ -219,7 +219,7 @@
       "peak_window": "1300-1800 IST"
     },
     {
-      "date": "2026-07-28",
+      "date": "2026-08-05",
       "day_label": "day_after",
       "cape": 59.0,
       "k_index": 36.07,
@@ -278,7 +278,7 @@
     "query_cape": 0.0,
     "query_ki": 28.7,
     "query_li": 0.23,
-    "computed_at": "2026-08-03 06:45 IST"
+    "computed_at": "2026-08-03 06:50 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -320,7 +320,7 @@
         "impact_pct": 0.0
       }
     ],
-    "computed_at": "2026-08-03 06:45 IST"
+    "computed_at": "2026-08-03 06:50 IST"
   },
   "synoptic_regime": {
     "regime_id": "R3",
@@ -333,7 +333,7 @@
     "ki_used": 28.7,
     "t2m_c": 20.6,
     "month": 8,
-    "computed_at": "2026-08-03 06:45 IST"
+    "computed_at": "2026-08-03 06:50 IST"
   },
   "verification": {
     "date_verified": "2026-08-02",
@@ -415,7 +415,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-08-03 12:15 IST"
+      "computed_at": "2026-08-03 12:20 IST"
     },
     "1": {
       "slot": 1,
@@ -484,7 +484,7 @@
           "direction": "increases_risk"
         }
       ],
-      "computed_at": "2026-08-03 12:15 IST"
+      "computed_at": "2026-08-03 12:20 IST"
     },
     "2": {
       "slot": 2,
@@ -553,7 +553,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-08-03 12:15 IST"
+      "computed_at": "2026-08-03 12:20 IST"
     },
     "3": {
       "slot": 3,
@@ -622,7 +622,7 @@
           "direction": "increases_risk"
         }
       ],
-      "computed_at": "2026-08-03 12:15 IST"
+      "computed_at": "2026-08-03 12:20 IST"
     }
   },
   "metar": {
@@ -651,6 +651,6 @@
     ],
     "thunderstorm_present": false,
     "raw": "METAR VOBL 030630Z 27015KT 6000 SCT012 BKN080 27/19 Q1014 NOSIG",
-    "fetched_utc": "2026-08-03T06:45:10Z"
+    "fetched_utc": "2026-08-03T06:50:25Z"
   }
 }
