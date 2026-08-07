@@ -186,13 +186,15 @@
       { slot: 3, label: "EVENING", time: "18:00 - 24:00 IST", ts_probability: 0.096, ts_predicted: false, threshold: 0.60, icon: "🌆" }
     ];
 
-    const METRICS_SUMMARY = [
+    // METRICS_SUMMARY — static fallback values (Slot 2 v3 calibrated, 2023-2025 test period)
+    // Dashboard bottom row reads liveData.verification.rolling_30d when available (see below)
+    const METRICS_SUMMARY_FALLBACK = [
       { name: 'AUROC', val: '0.871', delta: '▲ 0.02' },
-      { name: 'POD', val: '0.500', delta: '▲ 0.03' },
-      { name: 'FAR', val: '0.586', delta: '▼ 0.01' },
-      { name: 'CSI', val: '0.293', delta: '▲ 0.01' },
-      { name: 'HSS', val: '0.389', delta: '▲ 0.02' },
-      { name: 'BIAS', val: '1.208', delta: '▲ 0.05' },
+      { name: 'POD',   val: '0.473', delta: '▲ 0.03' },
+      { name: 'FAR',   val: '0.671', delta: '▼ 0.01' },
+      { name: 'CSI',   val: '0.293', delta: '▲ 0.01' },
+      { name: 'HSS',   val: '0.389', delta: '▲ 0.02' },
+      { name: 'BIAS',  val: '1.208', delta: '▲ 0.05' },
     ];
 
     const SHAP_DATA_FALLBACK = [
@@ -422,7 +424,7 @@
           <div className="flex items-center gap-4 font-mono text-xs">
             <div className="text-right">
               <div className="text-sm font-extrabold text-white tracking-wider">{liveTime}</div>
-              <div className="text-[10px] text-[#607d8b]">25 JUL 2026</div>
+              <div className="text-[10px] text-[#607d8b]">{(() => { const now = new Date(); const utc = now.getTime() + now.getTimezoneOffset()*60000; const ist = new Date(utc + 3600000*5.5); return ist.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).toUpperCase(); })()}</div>
             </div>
 
             <div className="flex items-center gap-1.5 bg-[#080d1a] border border-[#172338] px-3 py-1.5 rounded-lg text-emerald-400 font-bold text-[11px]">
@@ -437,7 +439,7 @@
     }
 
     // --- 1. DASHBOARD PAGE ---
-    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange }) {
+    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange, fetchLatencyMs }) {
       const currentSlot = slots[selectedSlotIndex] || slots[2];
       const photoInfo = SLOT_AIRPORT_PHOTOS[selectedSlotIndex] || SLOT_AIRPORT_PHOTOS[2];
       const riskInfo = getRiskBadge(currentSlot.ts_probability);
@@ -619,7 +621,9 @@
                 </div>
                 <div className="flex justify-between items-center text-[10px]">
                   <span className="text-[#607d8b]">LATENCY</span>
-                  <span className="text-emerald-400 font-bold">1.2 sec</span>
+                  <span className={`font-bold ${fetchLatencyMs === null ? 'text-[#607d8b]' : fetchLatencyMs < 1000 ? 'text-emerald-400' : fetchLatencyMs < 3000 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {fetchLatencyMs !== null ? (fetchLatencyMs < 1000 ? `${fetchLatencyMs} ms` : `${(fetchLatencyMs/1000).toFixed(1)} s`) : '—'}
+                  </span>
                 </div>
               </div>
               <div className="flex justify-between items-center text-[10px] border-t border-[#172338] pt-1.5">
@@ -665,23 +669,34 @@
             </div>
 
             {/* Tile 6: MODEL PERFORMANCE */}
-            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
-              <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
-                <span>📈</span>
-                <span>MODEL PERFORMANCE</span>
-              </div>
-              <div className="my-1 flex items-center justify-between">
-                <HalfCircleAurocGauge value={0.871} size={80} />
-                <div className="text-[10px] text-right space-y-0.5">
-                  <div><span className="text-[#607d8b]">POD</span> <span className="text-white font-bold">0.500</span></div>
-                  <div><span className="text-[#607d8b]">FAR</span> <span className="text-white font-bold">0.586</span></div>
-                  <div><span className="text-[#607d8b]">CSI</span> <span className="text-white font-bold">0.293</span></div>
+            {(() => {
+              // Live rolling_30d > static test-period fallback
+              const v = liveData?.verification?.rolling_30d;
+              const auroc = liveData?.model_performance?.auroc ?? 0.871;
+              const pod   = v?.pod   ?? 0.473;
+              const far   = v?.far   ?? 0.671;
+              const csi   = v?.csi   ?? 0.293;
+              const isLive = !!v;
+              return (
+                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+                  <div className="flex items-center justify-between text-xs text-[#607d8b] font-bold">
+                    <div className="flex items-center gap-2"><span>📈</span><span>MODEL PERFORMANCE</span></div>
+                    {isLive && <span className="text-[8px] text-cyan-400 font-bold">30-DAY</span>}
+                  </div>
+                  <div className="my-1 flex items-center justify-between">
+                    <HalfCircleAurocGauge value={auroc} size={80} />
+                    <div className="text-[10px] text-right space-y-0.5">
+                      <div><span className="text-[#607d8b]">POD</span> <span className={`font-bold ${pod >= 0.5 ? 'text-emerald-400' : pod >= 0.3 ? 'text-amber-400' : 'text-red-400'}`}>{pod.toFixed(3)}</span></div>
+                      <div><span className="text-[#607d8b]">FAR</span> <span className={`font-bold ${far <= 0.5 ? 'text-emerald-400' : far <= 0.7 ? 'text-amber-400' : 'text-red-400'}`}>{far.toFixed(3)}</span></div>
+                      <div><span className="text-[#607d8b]">CSI</span> <span className="text-white font-bold">{csi.toFixed(3)}</span></div>
+                    </div>
+                  </div>
+                  <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
+                    {isLive ? `Rolling 30-day · ${liveData.verification.last_updated ?? ''}` : '⏱ Test Period: 2023–2025 · Slot 2 v3'}
+                  </div>
                 </div>
-              </div>
-              <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
-                ⏱ Test Period: 2023 – 2025
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Tile 7: CONVECTIVE INSTABILITY COMPOSITE (CAPE × K-INDEX) */}
             {(() => {
@@ -1303,36 +1318,104 @@
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
             
             {/* Card 1: MODEL PERFORMANCE SUMMARY (6 Metrics in a row) */}
-            <div className="lg:col-span-8 atc-card p-4 rounded-2xl">
-              <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-3 border-b border-[#172338] pb-2">
-                MODEL PERFORMANCE SUMMARY
-              </h4>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
-                {METRICS_SUMMARY.map(m => (
-                  <div key={m.name} className="p-2.5 rounded-xl bg-[#050811]/90 border border-[#172338]">
-                    <div className="text-[9px] text-[#607d8b] font-bold">{m.name}</div>
-                    <div className="text-base font-extrabold text-white my-0.5">{m.val}</div>
-                    <div className="text-[9px] text-emerald-400 font-bold">{m.delta}</div>
+            {(() => {
+              // Prefer live rolling_30d verification; fall back to static test-period numbers
+              const v = liveData?.verification?.rolling_30d;
+              const metrics = v ? [
+                { name: 'AUROC', val: liveData?.model_performance?.auroc?.toFixed(3) ?? '0.871', delta: '30-DAY' },
+                { name: 'POD',   val: typeof v.pod  === 'number' ? v.pod.toFixed(3)  : '—', delta: '30-DAY' },
+                { name: 'FAR',   val: typeof v.far  === 'number' ? v.far.toFixed(3)  : '—', delta: '30-DAY' },
+                { name: 'CSI',   val: typeof v.csi  === 'number' ? v.csi.toFixed(3)  : '—', delta: '30-DAY' },
+                { name: 'HSS',   val: typeof v.hss  === 'number' ? v.hss.toFixed(3)  : '—', delta: '30-DAY' },
+                { name: 'BRIER', val: typeof v.brier === 'number' ? v.brier.toFixed(3) : '—', delta: '30-DAY' },
+              ] : METRICS_SUMMARY_FALLBACK;
+              const isLive = !!v;
+              return (
+                <div className="lg:col-span-8 atc-card p-4 rounded-2xl">
+                  <div className="flex items-center justify-between mb-3 border-b border-[#172338] pb-2">
+                    <h4 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider">
+                      MODEL PERFORMANCE SUMMARY
+                    </h4>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${isLive ? 'text-cyan-300 border-cyan-700/50 bg-cyan-900/30' : 'text-[#607d8b] border-[#172338] bg-[#050811]'}`}>
+                      {isLive ? `ROLLING 30-DAY · ${liveData.verification.last_updated ?? ''}` : 'TEST PERIOD 2023–2025 · SLOT 2 v3'}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
+                    {metrics.map(m => (
+                      <div key={m.name} className="p-2.5 rounded-xl bg-[#050811]/90 border border-[#172338]">
+                        <div className="text-[9px] text-[#607d8b] font-bold">{m.name}</div>
+                        <div className="text-base font-extrabold text-white my-0.5">{m.val}</div>
+                        <div className={`text-[9px] font-bold ${isLive ? 'text-cyan-400' : 'text-emerald-400'}`}>{m.delta}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
-            {/* Card 2: DATA HEALTH */}
-            <div className="lg:col-span-4 atc-card p-4 rounded-2xl flex flex-col justify-between">
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-[#607d8b] mb-2">
-                  <span>📶</span>
-                  <span>DATA HEALTH & TELEMETRY</span>
+            {/* Card 2: DATA HEALTH — dynamic staleness from generated_at */}
+            {(() => {
+              // Parse generated_at and compute age in hours
+              let ageHours = null;
+              let ageLabel = '—';
+              let staleLevel = 'ok'; // ok | warn | stale
+              const genAt = liveData?.generated_at;
+              if (genAt) {
+                try {
+                  // generated_at expected as "2026-07-25 17:20 IST" or ISO
+                  const parsed = new Date(genAt.replace(' IST','').trim());
+                  if (!isNaN(parsed)) {
+                    // Convert to UTC comparison
+                    const nowUtc = Date.now();
+                    const genUtc = parsed.getTime() - (5.5 * 3600000); // IST → UTC offset subtract
+                    ageHours = (nowUtc - genUtc) / 3600000;
+                    if (ageHours < 2)       { ageLabel = `${Math.round(ageHours * 60)} min ago`; staleLevel = 'ok'; }
+                    else if (ageHours < 8)  { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'warn'; }
+                    else                    { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'stale'; }
+                  }
+                } catch(_) {}
+              }
+              const statusText = !liveData ? 'OFFLINE — NO DATA'
+                : staleLevel === 'stale' ? 'DATA STALE — CHECK PIPELINE'
+                : staleLevel === 'warn'  ? 'DATA AGEING — WITHIN WINDOW'
+                : 'ALL SYSTEMS OPERATIONAL';
+              const statusColor = !liveData ? 'text-red-400'
+                : staleLevel === 'stale' ? 'text-red-400'
+                : staleLevel === 'warn'  ? 'text-amber-400'
+                : 'text-emerald-400';
+              const dotColor = !liveData ? 'bg-red-500'
+                : staleLevel === 'stale' ? 'bg-red-500'
+                : staleLevel === 'warn'  ? 'bg-amber-400'
+                : 'bg-emerald-500';
+              return (
+                <div className={`lg:col-span-4 atc-card p-4 rounded-2xl flex flex-col justify-between ${staleLevel === 'stale' ? 'border-red-500/40' : staleLevel === 'warn' ? 'border-amber-500/30' : ''}`}>
+                  <div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#607d8b] mb-2">
+                      <span>📶</span>
+                      <span>DATA HEALTH & TELEMETRY</span>
+                    </div>
+                    <div className={`text-sm font-extrabold flex items-center gap-2 ${statusColor}`}>
+                      <span className={`inline-block w-2 h-2 rounded-full ${dotColor} ${staleLevel === 'ok' ? 'animate-pulse' : ''}`}></span>
+                      {statusText}
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-[10px] font-mono border-t border-[#172338] pt-2">
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">LAST PIPELINE RUN</span>
+                      <span className={`font-bold ${statusColor}`}>{genAt ?? '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">DATA AGE</span>
+                      <span className={`font-bold ${staleLevel === 'ok' ? 'text-emerald-400' : staleLevel === 'warn' ? 'text-amber-400' : 'text-red-400'}`}>{ageLabel}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">SOURCE</span>
+                      <span className="text-white font-bold">forecast.json · GHA CI/CD</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm font-extrabold text-emerald-400">
-                  ALL SYSTEMS OPERATIONAL
-                </div>
-              </div>
-              <div className="text-[10px] text-[#607d8b] border-t border-[#172338] pt-2">
-                Data streams healthy | Last check: 17:20 IST | Telemetry: forecast.json API
-              </div>
-            </div>
+              );
+            })()}
 
           </div>
 
@@ -1387,7 +1470,10 @@
 
                   <div className="relative z-20 text-center border-t border-[#172338] pt-3 text-xs">
                     <div className="text-[#607d8b]">DECISION LIMIT: <span className="text-white font-bold">{(s.threshold * 100).toFixed(0)}%</span></div>
-                    <div className="text-emerald-400 font-bold mt-1">✓ THRESHOLD NOMINAL</div>
+                    {s.ts_probability >= s.threshold
+                      ? <div className="text-red-400 font-bold mt-1 animate-pulse">⚠ THRESHOLD EXCEEDED</div>
+                      : <div className="text-emerald-400 font-bold mt-1">✓ THRESHOLD NOMINAL</div>
+                    }
                   </div>
                 </div>
               );
@@ -1472,75 +1558,106 @@
 
     // --- 3. MODELS PAGE (REAL METRICS & COMPARISON) ---
     function ModelsPage({ liveData }) {
+      // Per-slot production model metadata
+      const SLOT_MODELS = [
+        { slot: 0, label: 'LATE NIGHT',  model: 'v4 Ensemble',   auroc: 0.8484, pod: 0.235, far: 0.875, threshold: 0.15,  brier: 0.0243 },
+        { slot: 1, label: 'MORNING',     model: 'v5 Temporal',   auroc: 0.8317, pod: 0.062, far: 0.875, threshold: 0.15,  brier: 0.0225 },
+        { slot: 2, label: 'AFTERNOON',   model: 'v3 Calibrated', auroc: 0.8710, pod: 0.473, far: 0.671, threshold: 0.226, brier: 0.060  },
+        { slot: 3, label: 'EVENING',     model: 'v3 Calibrated', auroc: 0.8710, pod: 0.655, far: 0.679, threshold: 0.163, brier: null   },
+      ];
+      // Slot 2 shown in the headline metrics block (peak afternoon slot, primary operational)
+      const s2 = SLOT_MODELS[2];
       return (
         <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
           <div className="flex justify-between items-center border-b border-[#172338] pb-4">
             <div>
               <h2 className="text-xl font-bold text-white">MODEL SKILL VERIFICATION & CALIBRATION METRICS</h2>
-              <p className="text-xs text-[#607d8b]">Comparing Operational Daily Baseline vs Slot 2 v3 Calibrated Model Performance</p>
+              <p className="text-xs text-[#607d8b]">Per-slot best model selection — v3/v4/v5 ensemble · Test period 2023–2025</p>
             </div>
             <span className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
-              VERIFIED 2023-2025 TEST PERIOD
+              VERIFIED 2023–2025 TEST PERIOD
             </span>
           </div>
 
-          {/* REAL Slot 2 v3 Calibrated Metrics Row */}
+          {/* Per-slot model table */}
           <div>
             <h3 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-3">
-              SLOT 2 V3 CALIBRATED OPERATIONAL METRICS
+              PER-SLOT PRODUCTION MODEL PERFORMANCE
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-              <div className="p-4 rounded-xl bg-[#050811] border border-cyan-500/40">
-                <div className="text-xs text-[#607d8b]">AUROC</div>
-                <div className="text-3xl font-extrabold text-cyan-300">0.821</div>
-                <div className="text-[10px] text-emerald-400 mt-1">Calibrated Skill</div>
-              </div>
-              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                <div className="text-xs text-[#607d8b]">POD (Probability of Detection)</div>
-                <div className="text-3xl font-extrabold text-emerald-400">0.356</div>
-                <div className="text-[10px] text-[#607d8b] mt-1">Strict Event Hits</div>
-              </div>
-              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                <div className="text-xs text-[#607d8b]">FAR (False Alarm Ratio)</div>
-                <div className="text-3xl font-extrabold text-amber-400">0.623</div>
-                <div className="text-[10px] text-[#607d8b] mt-1">Controlled Alarms</div>
-              </div>
-              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                <div className="text-xs text-[#607d8b]">HSS (Heidke Skill Score)</div>
-                <div className="text-3xl font-extrabold text-emerald-400">0.318</div>
-                <div className="text-[10px] text-[#607d8b] mt-1">Over Random Chance</div>
-              </div>
-              <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                <div className="text-xs text-[#607d8b]">BRIER SCORE</div>
-                <div className="text-3xl font-extrabold text-cyan-300">0.060</div>
-                <div className="text-[10px] text-emerald-400 mt-1">Near Perfect Reliability</div>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr className="text-[9px] text-[#607d8b] border-b border-[#172338]">
+                    <th className="text-left py-2 pr-3">SLOT</th>
+                    <th className="text-left py-2 pr-3">WINDOW</th>
+                    <th className="text-left py-2 pr-3">MODEL</th>
+                    <th className="text-center py-2 pr-3">AUROC</th>
+                    <th className="text-center py-2 pr-3">POD</th>
+                    <th className="text-center py-2 pr-3">FAR</th>
+                    <th className="text-center py-2 pr-3">THRESHOLD</th>
+                    <th className="text-center py-2">BRIER</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {SLOT_MODELS.map((s, i) => {
+                    const isAfternoon = s.slot === 2;
+                    return (
+                      <tr key={s.slot} className={`border-b border-[#172338]/50 ${isAfternoon ? 'bg-cyan-500/5' : ''}`}>
+                        <td className={`py-2 pr-3 font-bold ${isAfternoon ? 'text-cyan-300' : 'text-white'}`}>
+                          {s.slot} {isAfternoon && <span className="text-[8px] text-cyan-400 ml-1">★ PEAK</span>}
+                        </td>
+                        <td className="py-2 pr-3 text-[#607d8b]">{['00–06','06–12','12–18','18–24'][s.slot]} IST</td>
+                        <td className="py-2 pr-3">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                            s.model === 'v5 Temporal'   ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                            s.model === 'v4 Ensemble'   ? 'bg-amber-500/15  text-amber-300  border-amber-500/30'  :
+                                                          'bg-cyan-500/15   text-cyan-300   border-cyan-500/30'
+                          }`}>{s.model}</span>
+                        </td>
+                        <td className={`py-2 pr-3 text-center font-bold ${s.auroc >= 0.87 ? 'text-emerald-400' : 'text-white'}`}>{s.auroc.toFixed(4)}</td>
+                        <td className={`py-2 pr-3 text-center font-bold ${s.pod >= 0.5 ? 'text-emerald-400' : s.pod >= 0.3 ? 'text-amber-400' : 'text-red-400'}`}>{s.pod.toFixed(3)}</td>
+                        <td className={`py-2 pr-3 text-center font-bold ${s.far <= 0.5 ? 'text-emerald-400' : s.far <= 0.7 ? 'text-amber-400' : 'text-red-400'}`}>{s.far.toFixed(3)}</td>
+                        <td className="py-2 pr-3 text-center text-[#607d8b]">{(s.threshold * 100).toFixed(0)}%</td>
+                        <td className="py-2 text-center text-white">{s.brier !== null ? s.brier.toFixed(4) : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="text-[9px] text-[#607d8b] mt-2">
+              Thresholds F-beta (β=2) optimized · Slot 3 POD improved 47.3%→65.5% after threshold optimization (0.30→0.163)
             </div>
           </div>
 
-          {/* Model Comparison Table */}
+          {/* Model version history */}
           <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-            <h4 className="text-xs font-bold text-white mb-3">MODEL ARCHITECTURE COMPARISON SUMMARY</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+            <h4 className="text-xs font-bold text-white mb-3">MODEL VERSION EVOLUTION</h4>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
               <div className="p-3 rounded bg-[#080d1a] border border-[#172338]">
-                <div className="text-[#607d8b]">v1 Baseline ERA5</div>
-                <div className="text-lg font-bold text-white">AUROC 0.750</div>
-                <div className="text-[10px] text-[#607d8b]">Daily ERA5 Synoptic</div>
+                <div className="text-[#607d8b] text-[9px]">v1 · Single XGBoost</div>
+                <div className="text-base font-bold text-white mt-1">0.833</div>
+                <div className="text-[9px] text-[#607d8b] mt-0.5">Daily ERA5 features</div>
               </div>
               <div className="p-3 rounded bg-[#080d1a] border border-[#172338]">
-                <div className="text-[#607d8b]">v2 6-Hr Slot Model</div>
-                <div className="text-lg font-bold text-white">AUROC 0.785</div>
-                <div className="text-[10px] text-[#607d8b]">IMD Station Soundings</div>
+                <div className="text-[#607d8b] text-[9px]">v2 · 6-Hr XGBoost</div>
+                <div className="text-base font-bold text-white mt-1">0.821</div>
+                <div className="text-[9px] text-[#607d8b] mt-0.5">6-hourly ERA5 (Vidhi)</div>
               </div>
-              <div className="p-3 rounded bg-cyan-500/10 border border-cyan-400/50">
-                <div className="text-cyan-300 font-bold">v3 Derived Features (Current)</div>
-                <div className="text-lg font-bold text-cyan-300">AUROC 0.821</div>
-                <div className="text-[10px] text-cyan-400">Novel Physical Interactions</div>
+              <div className="p-3 rounded bg-[#080d1a] border border-cyan-500/40">
+                <div className="text-cyan-300 font-bold text-[9px]">v3 · Calibrated ★ PROD</div>
+                <div className="text-base font-bold text-cyan-300 mt-1">0.871</div>
+                <div className="text-[9px] text-cyan-400 mt-0.5">10 derived interactions</div>
               </div>
               <div className="p-3 rounded bg-[#080d1a] border border-amber-500/30">
-                <div className="text-amber-300 font-bold">v4 Wind Shear Research</div>
-                <div className="text-lg font-bold text-amber-300">AUROC 0.834</div>
-                <div className="text-[10px] text-[#607d8b]">Single-point divergence insufficient, spatial gradient needed</div>
+                <div className="text-amber-300 font-bold text-[9px]">v4 · A100 Ensemble</div>
+                <div className="text-base font-bold text-amber-300 mt-1">0.8791</div>
+                <div className="text-[9px] text-[#607d8b] mt-0.5">XGB+RF+GB+LSTM meta · Slot 0</div>
+              </div>
+              <div className="p-3 rounded bg-[#080d1a] border border-purple-500/30">
+                <div className="text-purple-300 font-bold text-[9px]">v5 · Temporal ★ PROD</div>
+                <div className="text-base font-bold text-purple-300 mt-1">0.8659</div>
+                <div className="text-[9px] text-[#607d8b] mt-0.5">84 features · lag+rolling · Slot 1</div>
               </div>
             </div>
           </div>
@@ -2811,6 +2928,7 @@
       const [liveData, setLiveData] = useState(null);
       const [isLiveData, setIsLiveData] = useState(false);
       const [lastUpdated, setLastUpdated] = useState('');
+      const [fetchLatencyMs, setFetchLatencyMs] = useState(null);
       const [currentSlots, setCurrentSlots] = useState(DEFAULT_SLOTS);
       const [selectedSlotIndex, setSelectedSlotIndex] = useState(() => getInitialSlotByIstTime());
       const [liveTime, setLiveTime] = useState('');
@@ -2820,9 +2938,12 @@
       // Fetch forecast telemetry
       const fetchRealForecast = async () => {
         try {
+          const t0 = performance.now();
           const res = await fetch('./forecast.json');
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json = await res.json();
+          const latency = performance.now() - t0;
+          setFetchLatencyMs(Math.round(latency));
           setLiveData(json);
           setLastUpdated(json.generated_at || json.date || 'Just now');
           setIsLiveData(true);
@@ -2942,6 +3063,7 @@
                       liveTime={liveTime}
                       liveData={liveData}
                       onNavTabChange={handleNavTabClick}
+                      fetchLatencyMs={fetchLatencyMs}
                     />
                   </motion.div>
                 )}
