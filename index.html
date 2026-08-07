@@ -48,8 +48,6 @@
   <!-- Babel Standalone for JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Recharts UMD -->
-  <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js" crossorigin></script>
   
   <style>
     /* Custom Scrollbar */
@@ -1703,7 +1701,7 @@
             </div>
           </div>
 
-          {/* Walk-Forward Chart + Dataset Specs */}
+          {/* Walk-Forward Chart + Dataset Specs — pure SVG, no Recharts */}
           {(() => {
             const WF_DATA = [
               { year: '2021', auroc: 0.9251, pod: 0.529, hss: 0.610, ts_events: 69 },
@@ -1714,17 +1712,33 @@
             ];
             const MEAN_AUROC = 0.8726;
             const [wfMetric, setWfMetric] = React.useState('auroc');
+            const [hoveredIdx, setHoveredIdx] = React.useState(null);
             const metricConfig = {
-              auroc: { label: 'AUROC',  color: '#38bdf8', domain: [0.70, 1.00], ref: MEAN_AUROC, refLabel: `Mean ${MEAN_AUROC}` },
-              pod:   { label: 'POD',    color: '#4caf50', domain: [0.00, 1.00], ref: 0.395,      refLabel: 'Mean 0.395' },
-              hss:   { label: 'HSS',    color: '#ab47bc', domain: [0.00, 1.00], ref: 0.480,      refLabel: 'Mean 0.480' },
+              auroc: { label: 'AUROC', color: '#38bdf8', min: 0.70, max: 1.00, ref: MEAN_AUROC, refLabel: `Mean ${MEAN_AUROC}`, driftLine: 0.75 },
+              pod:   { label: 'POD',   color: '#4caf50', min: 0.00, max: 1.00, ref: 0.395,      refLabel: 'Mean 0.395', driftLine: null },
+              hss:   { label: 'HSS',   color: '#ab47bc', min: 0.00, max: 1.00, ref: 0.480,      refLabel: 'Mean 0.480', driftLine: null },
             };
             const cfg = metricConfig[wfMetric];
-            const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell, ResponsiveContainer } = Recharts;
+
+            // SVG chart dimensions
+            const W = 580, H = 180, PAD = { t: 16, r: 20, b: 28, l: 44 };
+            const chartW = W - PAD.l - PAD.r;
+            const chartH = H - PAD.t - PAD.b;
+            const barW = chartW / WF_DATA.length * 0.55;
+            const barGap = chartW / WF_DATA.length;
+
+            const toY = val => PAD.t + chartH - ((val - cfg.min) / (cfg.max - cfg.min)) * chartH;
+            const toX = idx => PAD.l + idx * barGap + barGap / 2;
+
+            // Y axis ticks
+            const yTicks = [];
+            const step = (cfg.max - cfg.min) / 5;
+            for (let i = 0; i <= 5; i++) yTicks.push(+(cfg.min + i * step).toFixed(2));
+
             return (
               <div className="space-y-4">
-                {/* Chart card — full width */}
                 <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                  {/* Header */}
                   <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <div>
                       <h4 className="font-bold text-white text-xs">WALK-FORWARD VALIDATION (Per-Year)</h4>
@@ -1733,48 +1747,110 @@
                     <div className="flex items-center gap-1">
                       {Object.entries(metricConfig).map(([k, v]) => (
                         <button key={k} onClick={() => setWfMetric(k)}
-                          className={`px-2.5 py-1 rounded text-[9px] font-bold border transition-all ${
-                            wfMetric === k
-                              ? 'text-white border-current'
-                              : 'text-[#607d8b] border-[#172338] bg-[#080d1a]'
-                          }`}
-                          style={wfMetric === k ? { color: v.color, borderColor: v.color, background: v.color + '22' } : {}}
+                          className="px-2.5 py-1 rounded text-[9px] font-bold border transition-all"
+                          style={wfMetric === k
+                            ? { color: v.color, borderColor: v.color, background: v.color + '22' }
+                            : { color: '#607d8b', borderColor: '#172338', background: '#080d1a' }
+                          }
                         >{v.label}</button>
                       ))}
                     </div>
                   </div>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={WF_DATA} margin={{ top: 8, right: 20, left: -10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#172338" vertical={false} />
-                      <XAxis dataKey="year" tick={{ fill: '#607d8b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis domain={cfg.domain} tick={{ fill: '#607d8b', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => v.toFixed(2)} />
-                      <Tooltip
-                        contentStyle={{ background: '#0d1427', border: '1px solid #172338', borderRadius: 8, fontFamily: 'monospace', fontSize: 11 }}
-                        labelStyle={{ color: '#90a4ae', fontWeight: 'bold' }}
-                        formatter={(val, name) => [val.toFixed(4), cfg.label]}
-                        cursor={{ fill: 'rgba(56,189,248,0.05)' }}
-                      />
-                      <ReferenceLine y={cfg.ref} stroke={cfg.color} strokeDasharray="6 3" strokeOpacity={0.6}
-                        label={{ value: cfg.refLabel, position: 'insideTopRight', fill: cfg.color, fontSize: 9, dy: -4 }} />
-                      {wfMetric === 'auroc' && (
-                        <ReferenceLine y={0.75} stroke="#ef5350" strokeDasharray="4 2" strokeOpacity={0.5}
-                          label={{ value: 'Drift alert 0.75', position: 'insideBottomRight', fill: '#ef5350', fontSize: 9, dy: 4 }} />
-                      )}
-                      <Bar dataKey={wfMetric} radius={[4, 4, 0, 0]}>
-                        {WF_DATA.map((entry, idx) => {
-                          const val = entry[wfMetric];
-                          const isLow = wfMetric === 'auroc' ? val < 0.85 : val < 0.30;
-                          return <Cell key={idx} fill={isLow ? '#ef535088' : cfg.color} fillOpacity={0.85} />;
-                        })}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                  {/* Summary row */}
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#172338] text-[9px] font-mono">
+
+                  {/* SVG Chart */}
+                  <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ fontFamily: 'monospace', overflow: 'visible' }}>
+                    {/* Grid lines + Y axis labels */}
+                    {yTicks.map(tick => {
+                      const y = toY(tick);
+                      return (
+                        <g key={tick}>
+                          <line x1={PAD.l} x2={W - PAD.r} y1={y} y2={y} stroke="#172338" strokeWidth="1" />
+                          <text x={PAD.l - 4} y={y + 3} textAnchor="end" fontSize="8" fill="#607d8b">{tick.toFixed(2)}</text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Mean reference line */}
+                    {(() => {
+                      const y = toY(cfg.ref);
+                      return (
+                        <g>
+                          <line x1={PAD.l} x2={W - PAD.r} y1={y} y2={y}
+                            stroke={cfg.color} strokeWidth="1.5" strokeDasharray="6 3" opacity="0.6" />
+                          <text x={W - PAD.r - 2} y={y - 3} textAnchor="end" fontSize="8" fill={cfg.color}>{cfg.refLabel}</text>
+                        </g>
+                      );
+                    })()}
+
+                    {/* Drift alert line (AUROC only) */}
+                    {cfg.driftLine && (() => {
+                      const y = toY(cfg.driftLine);
+                      return (
+                        <g>
+                          <line x1={PAD.l} x2={W - PAD.r} y1={y} y2={y}
+                            stroke="#ef5350" strokeWidth="1" strokeDasharray="4 2" opacity="0.5" />
+                          <text x={W - PAD.r - 2} y={y + 9} textAnchor="end" fontSize="8" fill="#ef5350">Drift alert 0.75</text>
+                        </g>
+                      );
+                    })()}
+
+                    {/* Bars */}
+                    {WF_DATA.map((d, idx) => {
+                      const val = d[wfMetric];
+                      const x = toX(idx) - barW / 2;
+                      const y = toY(val);
+                      const barH = toY(cfg.min) - y;
+                      const isLow = wfMetric === 'auroc' ? val < 0.85 : val < 0.30;
+                      const fill = isLow ? '#ef5350' : cfg.color;
+                      const isHovered = hoveredIdx === idx;
+                      return (
+                        <g key={d.year}
+                          onMouseEnter={() => setHoveredIdx(idx)}
+                          onMouseLeave={() => setHoveredIdx(null)}
+                          style={{ cursor: 'default' }}>
+                          <rect x={x} y={y} width={barW} height={barH}
+                            fill={fill} fillOpacity={isHovered ? 1 : 0.8}
+                            rx="3" ry="3" />
+                          {/* Value label on hover */}
+                          {isHovered && (
+                            <text x={toX(idx)} y={y - 4} textAnchor="middle" fontSize="9" fontWeight="bold" fill={fill}>
+                              {val.toFixed(4)}
+                            </text>
+                          )}
+                          {/* X axis label */}
+                          <text x={toX(idx)} y={H - 4} textAnchor="middle" fontSize="9" fill={isHovered ? '#e0e0e0' : '#607d8b'}
+                            fontWeight={isHovered ? 'bold' : 'normal'}>
+                            {d.year}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    {/* Hover tooltip box */}
+                    {hoveredIdx !== null && (() => {
+                      const d = WF_DATA[hoveredIdx];
+                      const val = d[wfMetric];
+                      const tx = Math.min(Math.max(toX(hoveredIdx), 90), W - 90);
+                      const ty = toY(val) - 42;
+                      return (
+                        <g>
+                          <rect x={tx - 58} y={ty} width="116" height="36"
+                            rx="4" fill="#0d1427" stroke="#172338" strokeWidth="1" />
+                          <text x={tx} y={ty + 13} textAnchor="middle" fontSize="9" fill="#90a4ae" fontWeight="bold">{d.year}</text>
+                          <text x={tx} y={ty + 27} textAnchor="middle" fontSize="10" fill={cfg.color} fontWeight="bold">
+                            {cfg.label}: {val.toFixed(4)}
+                          </text>
+                        </g>
+                      );
+                    })()}
+                  </svg>
+
+                  {/* Summary strip */}
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#172338] text-[9px] font-mono flex-wrap gap-2">
                     <div className="flex gap-4">
                       <span className="text-[#607d8b]">MEAN AUROC <span className="text-cyan-300 font-bold">0.8726</span></span>
                       <span className="text-[#607d8b]">BEST <span className="text-emerald-400 font-bold">2022 (0.9466)</span></span>
-                      <span className="text-[#607d8b]">2024 LOW DUE TO <span className="text-amber-400 font-bold">20 TS EVENTS ONLY</span></span>
+                      <span className="text-[#607d8b]">2024 LOW: <span className="text-amber-400 font-bold">20 TS EVENTS ONLY</span></span>
                     </div>
                     {liveData?.verification?.rolling_30d && (
                       <span className="text-cyan-400 font-bold">
