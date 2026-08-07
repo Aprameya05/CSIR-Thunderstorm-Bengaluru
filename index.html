@@ -1424,6 +1424,15 @@
     }
 
     // --- 2. FORECAST PAGE (FULL 4-SLOT DETAILED GAUGES VIEW + 24-HR TIMELINE) ---
+
+    // Per-slot model metadata — single source of truth for the Forecast page
+    const SLOT_MODEL_META = {
+      0: { model: 'v4 Ensemble',   auroc: 0.8484, features: 54,  calibration: 'Isotonic', color: 'text-amber-300',  bg: 'bg-amber-500/15',  border: 'border-amber-500/30'  },
+      1: { model: 'v5 Temporal',   auroc: 0.8317, features: 84,  calibration: 'Isotonic', color: 'text-purple-300', bg: 'bg-purple-500/15', border: 'border-purple-500/30' },
+      2: { model: 'v3 Calibrated', auroc: 0.8710, features: 54,  calibration: 'Isotonic', color: 'text-cyan-300',   bg: 'bg-cyan-500/15',   border: 'border-cyan-500/30'   },
+      3: { model: 'v3 Calibrated', auroc: 0.8710, features: 54,  calibration: 'Isotonic', color: 'text-cyan-300',   bg: 'bg-cyan-500/15',   border: 'border-cyan-500/30'   },
+    };
+
     function ForecastPage({ slots, selectedSlotIndex, onSelectSlot, liveData }) {
       return (
         <div className="space-y-6 max-w-[1750px] mx-auto font-mono">
@@ -1433,6 +1442,12 @@
               <p className="text-xs text-[#607d8b]">Operational 24-Hour Thunderstorm Probability Windows for VOBL Runway 09L/27R Sector</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Model legend */}
+              <div className="hidden sm:flex items-center gap-2 text-[9px] font-bold mr-2">
+                <span className="px-1.5 py-0.5 rounded border bg-amber-500/15 text-amber-300 border-amber-500/30">v4 ENSEMBLE</span>
+                <span className="px-1.5 py-0.5 rounded border bg-purple-500/15 text-purple-300 border-purple-500/30">v5 TEMPORAL</span>
+                <span className="px-1.5 py-0.5 rounded border bg-cyan-500/15 text-cyan-300 border-cyan-500/30">v3 CALIBRATED</span>
+              </div>
               <span className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 text-xs font-bold">
                 IMD STATION 43295 NOWCAST
               </span>
@@ -1444,15 +1459,17 @@
             {slots.map((s, idx) => {
               const isSelected = selectedSlotIndex === s.slot;
               const rInfo = getRiskBadge(s.ts_probability);
+              const meta = SLOT_MODEL_META[s.slot];
 
               return (
                 <div
                   key={s.slot}
                   onClick={() => onSelectSlot(s.slot)}
-                  className={`atc-card p-5 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[320px] ${
+                  className={`atc-card p-5 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[340px] ${
                     isSelected ? 'slot-active-teal' : 'hover:border-cyan-400/50'
                   }`}
                 >
+                  {/* Header: slot number + label + risk badge */}
                   <div className="relative z-20 flex justify-between items-start">
                     <div>
                       <div className="text-xs font-bold text-[#607d8b]">SLOT 0{s.slot + 1}</div>
@@ -1464,16 +1481,35 @@
                     </span>
                   </div>
 
-                  <div className="relative z-20 my-4 text-center">
+                  {/* Model version badge — sits below header */}
+                  <div className="relative z-20 mt-2">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold border ${meta.bg} ${meta.color} ${meta.border}`}>
+                      🤖 {meta.model}
+                    </span>
+                    <span className="ml-1.5 text-[9px] text-[#607d8b]">AUROC {meta.auroc.toFixed(4)} · {meta.features} features</span>
+                  </div>
+
+                  {/* Probability gauge */}
+                  <div className="relative z-20 my-3 text-center">
                     <CircularArcGauge probability={s.ts_probability} threshold={s.threshold} size={130} />
                   </div>
 
-                  <div className="relative z-20 text-center border-t border-[#172338] pt-3 text-xs">
-                    <div className="text-[#607d8b]">DECISION LIMIT: <span className="text-white font-bold">{(s.threshold * 100).toFixed(0)}%</span></div>
-                    {s.ts_probability >= s.threshold
-                      ? <div className="text-red-400 font-bold mt-1 animate-pulse">⚠ THRESHOLD EXCEEDED</div>
-                      : <div className="text-emerald-400 font-bold mt-1">✓ THRESHOLD NOMINAL</div>
-                    }
+                  {/* Footer: threshold + model calibration */}
+                  <div className="relative z-20 border-t border-[#172338] pt-3 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#607d8b]">DECISION LIMIT</span>
+                      <span className="text-white font-bold">{(s.threshold * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#607d8b]">CALIBRATION</span>
+                      <span className="text-white font-bold">{meta.calibration}</span>
+                    </div>
+                    <div className="text-center pt-0.5">
+                      {s.ts_probability >= s.threshold
+                        ? <span className="text-red-400 font-bold animate-pulse">⚠ THRESHOLD EXCEEDED</span>
+                        : <span className="text-emerald-400 font-bold">✓ THRESHOLD NOMINAL</span>
+                      }
+                    </div>
                   </div>
                 </div>
               );
@@ -1501,6 +1537,9 @@
                     <div className="text-[10px] text-[#607d8b]">{s.time}</div>
                     <div className={`text-sm font-extrabold mt-1 ${rInfo.color}`}>
                       {(s.ts_probability * 100).toFixed(1)}%
+                    </div>
+                    <div className={`text-[8px] font-bold mt-1 ${SLOT_MODEL_META[s.slot].color}`}>
+                      {SLOT_MODEL_META[s.slot].model}
                     </div>
                   </div>
                 );
