@@ -840,6 +840,128 @@
               );
             })()}
 
+            {/* Tile 9: GFS WEATHER GUIDANCE */}
+            {(() => {
+              // GFS model output — written by pipeline into forecast.json
+              // Keys: gfs_tmax_c, gfs_tmin_c, gfs_rainfall_mm, gfs_valid_date
+              // Falls back gracefully to '—' until pipeline populates these fields.
+              const gfsTmax    = liveData?.gfs_tmax_c    ?? liveData?.gfs?.tmax_c    ?? null;
+              const gfsTmin    = liveData?.gfs_tmin_c    ?? liveData?.gfs?.tmin_c    ?? null;
+              const gfsRain    = liveData?.gfs_rainfall_mm ?? liveData?.gfs?.rainfall_mm ?? null;
+              const gfsDate    = liveData?.gfs_valid_date ?? liveData?.gfs?.valid_date ?? null;
+              const gfsCycle   = liveData?.gfs_cycle      ?? liveData?.gfs?.cycle      ?? '00Z';
+
+              // Temperature colour bands (Bengaluru operational context)
+              const tmaxColor = gfsTmax === null ? 'text-[#607d8b]'
+                : gfsTmax >= 36 ? 'text-red-400'
+                : gfsTmax >= 32 ? 'text-orange-400'
+                : gfsTmax >= 28 ? 'text-yellow-400'
+                : 'text-emerald-400';
+
+              const tminColor = gfsTmin === null ? 'text-[#607d8b]'
+                : gfsTmin >= 26 ? 'text-orange-400'
+                : gfsTmin >= 22 ? 'text-yellow-400'
+                : 'text-emerald-400';
+
+              // Rainfall colour bands (mm / 24-h)
+              const rainColor = gfsRain === null ? 'text-[#607d8b]'
+                : gfsRain >= 64.5 ? 'text-red-400'     // extremely heavy
+                : gfsRain >= 15.6 ? 'text-orange-400'  // heavy
+                : gfsRain >= 7.6  ? 'text-yellow-400'  // moderate
+                : gfsRain >= 0.1  ? 'text-cyan-400'    // light
+                : 'text-emerald-400';                   // trace / nil
+
+              const rainLabel = gfsRain === null ? '—'
+                : gfsRain >= 64.5 ? 'EXTR. HEAVY'
+                : gfsRain >= 15.6 ? 'HEAVY'
+                : gfsRain >= 7.6  ? 'MODERATE'
+                : gfsRain >= 0.1  ? 'LIGHT'
+                : 'NIL / TRACE';
+
+              // Progress bar for rainfall (0–150 mm scale)
+              const rainBarW   = gfsRain !== null ? Math.min((gfsRain / 150) * 100, 100) : 0;
+              const rainBarCol = gfsRain === null ? '#38bdf8'
+                : gfsRain >= 64.5 ? '#ef5350'
+                : gfsRain >= 15.6 ? '#ff9800'
+                : gfsRain >= 7.6  ? '#ffc107'
+                : gfsRain >= 0.1  ? '#38bdf8'
+                : '#4caf50';
+
+              return (
+                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
+                      <span>🌡️</span>
+                      <span>GFS WEATHER GUIDANCE</span>
+                    </div>
+                    {/* Prominent model-output badge — not our prediction */}
+                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-sky-900/50 text-sky-400 border border-sky-700/50 tracking-wider">
+                      GFS MODEL OUTPUT
+                    </span>
+                  </div>
+
+                  {/* Temperature row */}
+                  <div className="flex items-center justify-around my-1">
+                    {/* Max temp */}
+                    <div className="text-center">
+                      <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">MAX TEMP</div>
+                      <div className={`text-xl font-extrabold tracking-tight ${tmaxColor}`}>
+                        {gfsTmax !== null ? `${gfsTmax.toFixed(1)}°C` : '—'}
+                      </div>
+                      <div className="text-[8px] text-[#607d8b] mt-0.5">TMP 2m ↑</div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-10 w-px bg-[#172338]" />
+
+                    {/* Min temp */}
+                    <div className="text-center">
+                      <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">MIN TEMP</div>
+                      <div className={`text-xl font-extrabold tracking-tight ${tminColor}`}>
+                        {gfsTmin !== null ? `${gfsTmin.toFixed(1)}°C` : '—'}
+                      </div>
+                      <div className="text-[8px] text-[#607d8b] mt-0.5">TMP 2m ↓</div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-10 w-px bg-[#172338]" />
+
+                    {/* Rainfall */}
+                    <div className="text-center min-w-[52px]">
+                      <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">RAINFALL</div>
+                      <div className={`text-xl font-extrabold tracking-tight ${rainColor}`}>
+                        {gfsRain !== null ? `${gfsRain.toFixed(1)}` : '—'}
+                      </div>
+                      <div className="text-[8px] text-[#607d8b] mt-0.5">
+                        {gfsRain !== null ? 'mm / 24h' : 'mm / 24h'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rainfall progress bar + label */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[8px] text-[#607d8b] mb-0.5">
+                      <span>APCP</span>
+                      <span className={`font-bold ${rainColor}`}>{rainLabel}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-[#172338] overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${rainBarW}%`, background: rainBarCol }} />
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="text-[8px] text-[#607d8b] border-t border-[#172338] pt-1.5 flex items-center justify-between">
+                    <span>NCEP GFS · {gfsCycle} run{gfsDate ? ` · ${gfsDate}` : ''}</span>
+                    <span className="text-[7px] text-[#3d5066] italic">NOT a CSIR/IMD forecast</span>
+                  </div>
+
+                </div>
+              );
+            })()}
+
           </div>
 
 
