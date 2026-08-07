@@ -1703,54 +1703,137 @@
             </div>
           </div>
 
-          {/* Rolling Verification & Dataset Specs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-              <h4 className="font-bold text-white mb-2">WALK-FORWARD VERIFICATION (Per-Year)</h4>
-              <div className="space-y-1.5 text-[#90a4ae] text-[10px]">
-                <div className="grid grid-cols-4 text-[9px] text-[#607d8b] font-bold border-b border-[#172338] pb-1">
-                  <span>YEAR</span><span className="text-center">AUROC</span><span className="text-center">POD</span><span className="text-center">HSS</span>
-                </div>
-                {[
-                  {year:'2021', auroc:'0.9270', pod:'0.739', hss:'0.610', color:'text-emerald-400'},
-                  {year:'2022', auroc:'0.9627', pod:'0.952', hss:'0.713', color:'text-emerald-400'},
-                  {year:'2023', auroc:'0.8884', pod:'0.732', hss:'0.431', color:'text-white'},
-                  {year:'2024', auroc:'0.8647', pod:'0.650', hss:'0.300', color:'text-white'},
-                  {year:'2025', auroc:'0.8580', pod:'0.714', hss:'0.348', color:'text-white'},
-                ].map(r => (
-                  <div key={r.year} className="grid grid-cols-4 py-0.5 border-b border-[#172338]/50">
-                    <span className="text-[#607d8b]">{r.year}</span>
-                    <span className={`text-center font-bold ${r.color}`}>{r.auroc}</span>
-                    <span className="text-center text-cyan-300">{r.pod}</span>
-                    <span className="text-center text-white">{r.hss}</span>
+          {/* Walk-Forward Chart + Dataset Specs */}
+          {(() => {
+            const WF_DATA = [
+              { year: '2021', auroc: 0.9251, pod: 0.529, hss: 0.610, ts_events: 69 },
+              { year: '2022', auroc: 0.9466, pod: 0.455, hss: 0.713, ts_events: 62 },
+              { year: '2023', auroc: 0.8595, pod: 0.667, hss: 0.431, ts_events: 41 },
+              { year: '2024', auroc: 0.8256, pod: 0.182, hss: 0.300, ts_events: 20 },
+              { year: '2025', auroc: 0.8062, pod: 0.143, hss: 0.348, ts_events: 35 },
+            ];
+            const MEAN_AUROC = 0.8726;
+            const [wfMetric, setWfMetric] = React.useState('auroc');
+            const metricConfig = {
+              auroc: { label: 'AUROC',  color: '#38bdf8', domain: [0.70, 1.00], ref: MEAN_AUROC, refLabel: `Mean ${MEAN_AUROC}` },
+              pod:   { label: 'POD',    color: '#4caf50', domain: [0.00, 1.00], ref: 0.395,      refLabel: 'Mean 0.395' },
+              hss:   { label: 'HSS',    color: '#ab47bc', domain: [0.00, 1.00], ref: 0.480,      refLabel: 'Mean 0.480' },
+            };
+            const cfg = metricConfig[wfMetric];
+            const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Cell, ResponsiveContainer } = Recharts;
+            return (
+              <div className="space-y-4">
+                {/* Chart card — full width */}
+                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div>
+                      <h4 className="font-bold text-white text-xs">WALK-FORWARD VALIDATION (Per-Year)</h4>
+                      <p className="text-[9px] text-[#607d8b]">Train on years before test year · IMD Station 43295 · Slot 2 v3 Calibrated</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Object.entries(metricConfig).map(([k, v]) => (
+                        <button key={k} onClick={() => setWfMetric(k)}
+                          className={`px-2.5 py-1 rounded text-[9px] font-bold border transition-all ${
+                            wfMetric === k
+                              ? 'text-white border-current'
+                              : 'text-[#607d8b] border-[#172338] bg-[#080d1a]'
+                          }`}
+                          style={wfMetric === k ? { color: v.color, borderColor: v.color, background: v.color + '22' } : {}}
+                        >{v.label}</button>
+                      ))}
+                    </div>
                   </div>
-                ))}
-                <div className="grid grid-cols-4 pt-1 border-t border-cyan-500/30 font-bold">
-                  <span className="text-cyan-300">MEAN</span>
-                  <span className="text-center text-cyan-300">0.9002</span>
-                  <span className="text-center text-cyan-300">0.757</span>
-                  <span className="text-center text-cyan-300">0.480</span>
-                </div>
-                {liveData?.verification && (
-                  <div className="mt-2 pt-2 border-t border-[#172338]">
-                    <div className="flex justify-between"><span>ROLLING 30-DAY POD:</span> <span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.pod ?? '—'}</span></div>
-                    <div className="flex justify-between"><span>ROLLING 30-DAY FAR:</span> <span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.far ?? '—'}</span></div>
-                    <div className="flex justify-between"><span>ROLLING 30-DAY HSS:</span> <span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.hss ?? '—'}</span></div>
-                    <div className="text-[9px] text-[#607d8b] mt-1">Last verified: {liveData.verification.last_updated ?? '—'}</div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={WF_DATA} margin={{ top: 8, right: 20, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#172338" vertical={false} />
+                      <XAxis dataKey="year" tick={{ fill: '#607d8b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis domain={cfg.domain} tick={{ fill: '#607d8b', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => v.toFixed(2)} />
+                      <Tooltip
+                        contentStyle={{ background: '#0d1427', border: '1px solid #172338', borderRadius: 8, fontFamily: 'monospace', fontSize: 11 }}
+                        labelStyle={{ color: '#90a4ae', fontWeight: 'bold' }}
+                        formatter={(val, name) => [val.toFixed(4), cfg.label]}
+                        cursor={{ fill: 'rgba(56,189,248,0.05)' }}
+                      />
+                      <ReferenceLine y={cfg.ref} stroke={cfg.color} strokeDasharray="6 3" strokeOpacity={0.6}
+                        label={{ value: cfg.refLabel, position: 'insideTopRight', fill: cfg.color, fontSize: 9, dy: -4 }} />
+                      {wfMetric === 'auroc' && (
+                        <ReferenceLine y={0.75} stroke="#ef5350" strokeDasharray="4 2" strokeOpacity={0.5}
+                          label={{ value: 'Drift alert 0.75', position: 'insideBottomRight', fill: '#ef5350', fontSize: 9, dy: 4 }} />
+                      )}
+                      <Bar dataKey={wfMetric} radius={[4, 4, 0, 0]}>
+                        {WF_DATA.map((entry, idx) => {
+                          const val = entry[wfMetric];
+                          const isLow = wfMetric === 'auroc' ? val < 0.85 : val < 0.30;
+                          return <Cell key={idx} fill={isLow ? '#ef535088' : cfg.color} fillOpacity={0.85} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                  {/* Summary row */}
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#172338] text-[9px] font-mono">
+                    <div className="flex gap-4">
+                      <span className="text-[#607d8b]">MEAN AUROC <span className="text-cyan-300 font-bold">0.8726</span></span>
+                      <span className="text-[#607d8b]">BEST <span className="text-emerald-400 font-bold">2022 (0.9466)</span></span>
+                      <span className="text-[#607d8b]">2024 LOW DUE TO <span className="text-amber-400 font-bold">20 TS EVENTS ONLY</span></span>
+                    </div>
+                    {liveData?.verification?.rolling_30d && (
+                      <span className="text-cyan-400 font-bold">
+                        30-DAY POD {liveData.verification.rolling_30d.pod?.toFixed(3) ?? '—'} · HSS {liveData.verification.rolling_30d.hss?.toFixed(3) ?? '—'}
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
 
-            <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-              <h4 className="font-bold text-white mb-2">CALIBRATION & DATASET SPECIFICATIONS</h4>
-              <div className="space-y-1.5 text-[#90a4ae]">
-                <div className="flex justify-between"><span>CALIBRATION METHOD:</span> <span className="text-cyan-300 font-bold">Isotonic (all slots — Slots 0&1 Isotonic, Slots 2&3 Isotonic)</span></div>
-                <div className="flex justify-between"><span>TRAINING PERIOD:</span> <span className="text-white font-bold">2015 – 2022 (8 Years Data)</span></div>
-                <div className="flex justify-between"><span>TESTING PERIOD:</span> <span className="text-white font-bold">2023 – 2025 (3 Years Data)</span></div>
+                {/* Bottom row: per-year table + dataset specs */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                    <h4 className="font-bold text-white mb-2 text-xs">PER-YEAR RESULTS</h4>
+                    <div className="space-y-1 text-[10px]">
+                      <div className="grid grid-cols-5 text-[9px] text-[#607d8b] font-bold border-b border-[#172338] pb-1">
+                        <span>YEAR</span><span className="text-center">AUROC</span><span className="text-center">POD</span><span className="text-center">HSS</span><span className="text-center">TS EVT</span>
+                      </div>
+                      {WF_DATA.map(r => (
+                        <div key={r.year} className="grid grid-cols-5 py-0.5 border-b border-[#172338]/40">
+                          <span className="text-[#607d8b]">{r.year}</span>
+                          <span className={`text-center font-bold ${r.auroc >= 0.90 ? 'text-emerald-400' : r.auroc >= 0.85 ? 'text-white' : 'text-amber-400'}`}>{r.auroc.toFixed(4)}</span>
+                          <span className={`text-center ${r.pod >= 0.5 ? 'text-emerald-400' : 'text-amber-400'}`}>{r.pod.toFixed(3)}</span>
+                          <span className="text-center text-white">{r.hss.toFixed(3)}</span>
+                          <span className={`text-center ${r.ts_events < 30 ? 'text-red-400' : 'text-[#607d8b]'}`}>{r.ts_events}</span>
+                        </div>
+                      ))}
+                      <div className="grid grid-cols-5 pt-1 border-t border-cyan-500/30 font-bold text-[9px]">
+                        <span className="text-cyan-300">MEAN</span>
+                        <span className="text-center text-cyan-300">0.8726</span>
+                        <span className="text-center text-cyan-300">0.395</span>
+                        <span className="text-center text-cyan-300">0.480</span>
+                        <span className="text-center text-cyan-300">45</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                    <h4 className="font-bold text-white mb-2 text-xs">CALIBRATION & DATASET SPECIFICATIONS</h4>
+                    <div className="space-y-1.5 text-[#90a4ae] text-[10px]">
+                      <div className="flex justify-between"><span>CALIBRATION METHOD</span><span className="text-cyan-300 font-bold">Isotonic (all slots)</span></div>
+                      <div className="flex justify-between"><span>TRAINING PERIOD</span><span className="text-white font-bold">2015 – 2022 (8 years)</span></div>
+                      <div className="flex justify-between"><span>TESTING PERIOD</span><span className="text-white font-bold">2023 – 2025 (3 years)</span></div>
+                      <div className="flex justify-between"><span>TOTAL SAMPLES</span><span className="text-white font-bold">3,819 days</span></div>
+                      <div className="flex justify-between"><span>STORM EVENTS</span><span className="text-white font-bold">457 days (12.0%)</span></div>
+                      <div className="flex justify-between border-t border-[#172338] pt-1.5 mt-1.5"><span className="text-amber-300">OCTOBER NOTE</span><span className="text-amber-300 font-bold">Threshold 0.10 (vs 0.226)</span></div>
+                      <div className="text-[9px] text-[#607d8b]">Oct post-monsoon seasonal suppression fix — POD 0.38→0.62</div>
+                      {liveData?.verification && (
+                        <div className="border-t border-[#172338] pt-1.5 mt-1.5 space-y-0.5">
+                          <div className="flex justify-between"><span>30-DAY POD</span><span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.pod?.toFixed(3) ?? '—'}</span></div>
+                          <div className="flex justify-between"><span>30-DAY FAR</span><span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.far?.toFixed(3) ?? '—'}</span></div>
+                          <div className="flex justify-between"><span>30-DAY HSS</span><span className="text-cyan-300 font-bold">{liveData.verification.rolling_30d?.hss?.toFixed(3) ?? '—'}</span></div>
+                          <div className="text-[9px] text-[#607d8b]">Last verified: {liveData.verification.last_updated ?? '—'}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
       );
     }
@@ -2881,97 +2964,243 @@
     }
 
     // --- 8. ATC VIEW PAGE (FULLSCREEN MINIMAL DISPLAY) ---
-    function AtcViewFullscreen({ currentSlot, onExitAtc, liveData }) {
-      const isAlert = currentSlot.ts_probability >= 0.30;
+    function AtcViewFullscreen({ currentSlot, onExitAtc, liveData, slots }) {
+      const isAlert = currentSlot.ts_probability >= currentSlot.threshold;
+      const isSatOverride = liveData?.himawari_override_active ?? false;
+
+      // Next slot (wraps around)
+      const nextSlot = slots ? slots[(currentSlot.slot + 1) % slots.length] : null;
+
+      // Model version for active slot
+      const MODEL_LABELS = { 0: 'v4 Ensemble', 1: 'v5 Temporal', 2: 'v3 Calibrated', 3: 'v3 Calibrated' };
+      const modelLabel = MODEL_LABELS[currentSlot.slot] ?? 'v3 Calibrated';
+
+      // Monsoon phase
+      const monsoonPhase = liveData?.synoptic_regime?.monsoon_phase ?? liveData?.monsoon_phase ?? null;
+      const monsoonIndex = liveData?.synoptic_regime?.monsoon_index ?? null;
+      const phaseColor = monsoonPhase === 'ACTIVE' ? 'text-cyan-400' : monsoonPhase === 'BREAK' ? 'text-amber-400' : 'text-white';
+
+      // Himawari state
+      const h9 = liveData?.satellite?.himawari9;
+      const stormDetected = h9?.storm_detected ?? false;
+      const minBT = h9?.min_bt_50km ?? null;
+      const coldPx = h9?.cold_pixels_count ?? 0;
+
+      // Flight category colour
+      const flightCat = liveData?.metar?.flight_category ?? '—';
+      const fcColor = flightCat === 'VFR' ? 'text-emerald-400' : flightCat === 'MVFR' ? 'text-blue-400' : flightCat === 'IFR' ? 'text-red-400' : 'text-purple-400';
+
+      // IST clock
+      const [istTime, setIstTime] = React.useState('');
+      React.useEffect(() => {
+        const tick = () => {
+          const now = new Date();
+          const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+          const ist = new Date(utc + 3600000 * 5.5);
+          setIstTime(ist.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' IST');
+        };
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+      }, []);
 
       return (
-        <div className={`fixed inset-0 z-[200] p-8 flex flex-col justify-between font-mono text-white transition-colors duration-1000 ${
-          isAlert ? 'bg-red-950 animate-[pulse_3s_infinite_ease-in-out]' : 'bg-[#020409]'
+        <div className={`fixed inset-0 z-[200] flex flex-col font-mono text-white transition-colors duration-1000 ${
+          isAlert ? 'bg-red-950' : 'bg-[#020409]'
         }`}>
-          
-          <div className="flex justify-between items-center border-b border-[#172338] pb-6">
+
+          {/* ── Header bar ── */}
+          <div className="flex justify-between items-center px-8 py-4 border-b border-[#172338]">
             <div>
-              <h1 className="text-3xl font-extrabold text-cyan-400 font-display tracking-tight">
-                VOBL ATC CONVECTIVE ALERT MONITOR
-              </h1>
-              <p className="text-sm text-[#607d8b]">
-                IMD Station 43295 — Kempegowda International Airport Bengaluru (Runway 09L/27R Sector)
-              </p>
+              <h1 className="text-2xl font-extrabold text-cyan-400 tracking-tight">VOBL ATC CONVECTIVE ALERT MONITOR</h1>
+              <p className="text-[10px] text-[#607d8b]">IMD Station 43295 · Kempegowda International Airport Bengaluru · Runway 09L/27R Sector</p>
             </div>
-
             <div className="flex items-center gap-6">
-              <button
-                onClick={onExitAtc}
-                className="px-6 py-3 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 hover:bg-cyan-500/40 transition-all text-sm font-bold flex items-center gap-2 shadow-[0_0_25px_rgba(56,189,248,0.35)]"
-              >
-                <span>⬅</span>
-                <span>RETURN TO DASHBOARD</span>
+              <div className="text-right font-mono">
+                <div className="text-lg font-bold text-white">{istTime}</div>
+                <div className="text-[10px] text-[#607d8b]">GEN: {liveData?.generated_at ?? '—'}</div>
+              </div>
+              <button onClick={onExitAtc}
+                className="px-5 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 hover:bg-cyan-500/40 transition-all text-sm font-bold flex items-center gap-2">
+                <span>⬅</span><span>RETURN TO DASHBOARD</span>
               </button>
-
               <div className="text-right">
-                <div className={`text-4xl font-extrabold font-display ${isAlert ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                <div className={`text-3xl font-extrabold ${isAlert ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
                   {isAlert ? 'CONVECTIVE ALERT' : 'ALL CLEAR'}
                 </div>
-                <div className="text-xs text-[#607d8b] uppercase tracking-wider font-bold mt-1">
+                <div className="text-[10px] text-[#607d8b] font-bold mt-0.5">
                   {isAlert ? 'OPERATIONAL ACTION REQUIRED' : 'STATUS NOMINAL'}
+                  {isSatOverride && <span className="ml-2 text-orange-400">· SAT OVERRIDE</span>}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto w-full my-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-6">
-            
-            {/* Massive Probability Card */}
-            <div className="p-10 rounded-3xl atc-card flex flex-col items-center justify-center text-center shadow-2xl min-h-[420px]">
-              <span className="text-sm text-[#607d8b] font-bold uppercase tracking-widest">
-                CURRENT SLOT: {currentSlot.label} ({currentSlot.time})
-              </span>
-              
-              {/* Massive 8.5rem Font Size Number inside ATC card */}
-              <div className="text-[8.5rem] font-extrabold text-white my-2 leading-none font-mono tracking-tighter drop-shadow-2xl">
-                {(currentSlot.ts_probability * 100).toFixed(1)}%
-              </div>
+          {/* ── Main grid ── */}
+          <div className="flex-1 grid grid-cols-12 gap-4 px-8 py-4 overflow-hidden">
 
-              <span className={`px-6 py-2 rounded-full text-base font-bold border mt-2 ${
-                isAlert ? 'bg-red-500/30 text-red-300 border-red-500/60 animate-pulse' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
-              }`}>
-                {isAlert ? 'OPERATIONAL DECISION LIMIT EXCEEDED' : 'LOW RISK STATE — BELOW THRESHOLD'}
-              </span>
-            </div>
-
-            {/* Essential Readings Card */}
-            <div className="p-10 rounded-3xl atc-card space-y-6 shadow-2xl min-h-[420px] flex flex-col justify-center">
-              <h3 className="text-base text-cyan-300 font-bold uppercase tracking-wider border-b border-[#172338] pb-3">
-                ESSENTIAL METEOROLOGICAL READINGS
-              </h3>
-
-              <div className="grid grid-cols-2 gap-6 text-base">
-                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                  <span className="text-xs text-[#607d8b] block font-bold">WIND SURFACE</span>
-                  <span className="text-xl font-extrabold text-white">{liveData?.metar?.wind_dir != null ? `${liveData.metar.wind_dir}° / ${liveData.metar.wind_speed_kt} kts` : '260° / 13 kts'}</span>
+            {/* Left: big probability */}
+            <div className="col-span-4 flex flex-col gap-4">
+              <div className="flex-1 rounded-2xl atc-card flex flex-col items-center justify-center text-center p-6">
+                <div className="text-xs text-[#607d8b] font-bold uppercase tracking-widest mb-1">
+                  SLOT 0{currentSlot.slot + 1} · {currentSlot.label}
                 </div>
-                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                  <span className="text-xs text-[#607d8b] block font-bold">VISIBILITY</span>
-                  <span className="text-xl font-extrabold text-white">{liveData?.metar?.visibility_km != null ? `${liveData.metar.visibility_km} km` : '10 km'}</span>
+                <div className="text-[10px] text-cyan-300 font-bold mb-2">{currentSlot.time}</div>
+                <div className={`text-[7rem] font-extrabold leading-none tracking-tighter drop-shadow-2xl ${
+                  isAlert ? 'text-red-400 animate-pulse' : 'text-white'
+                }`}>
+                  {(currentSlot.ts_probability * 100).toFixed(1)}%
                 </div>
-                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                  <span className="text-xs text-[#607d8b] block font-bold">CAPE STABILITY</span>
-                  <span className="text-xl font-extrabold text-white">{liveData?.met_parameters?.ua_cape_jkg ?? '—'} J/kg</span>
-                </div>
-                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
-                  <span className="text-xs text-[#607d8b] block font-bold">K-INDEX</span>
-                  <span className="text-xl font-extrabold text-white">{liveData?.met_parameters?.ua_k_index ?? '—'}</span>
+                <span className={`px-5 py-1.5 rounded-full text-sm font-bold border mt-3 ${
+                  isAlert ? 'bg-red-500/30 text-red-300 border-red-500/60 animate-pulse' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                }`}>
+                  {isAlert ? 'DECISION LIMIT EXCEEDED' : 'BELOW THRESHOLD'}
+                </span>
+                <div className="mt-3 flex items-center gap-2 text-[10px]">
+                  <span className="text-[#607d8b]">MODEL</span>
+                  <span className="text-amber-300 font-bold">{modelLabel}</span>
+                  <span className="text-[#607d8b]">· LIMIT</span>
+                  <span className="text-white font-bold">{(currentSlot.threshold * 100).toFixed(0)}%</span>
                 </div>
               </div>
+
+              {/* Next slot */}
+              {nextSlot && (
+                <div className="rounded-2xl atc-card p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-[9px] text-[#607d8b] font-bold">NEXT SLOT</div>
+                    <div className="text-xs text-white font-bold">{nextSlot.label}</div>
+                    <div className="text-[9px] text-cyan-300">{nextSlot.time}</div>
+                  </div>
+                  <div className={`text-2xl font-extrabold ${
+                    nextSlot.ts_probability >= nextSlot.threshold ? 'text-red-400' :
+                    nextSlot.ts_probability >= 0.15 ? 'text-amber-400' : 'text-emerald-400'
+                  }`}>
+                    {(nextSlot.ts_probability * 100).toFixed(1)}%
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Centre: met readings */}
+            <div className="col-span-5 flex flex-col gap-3">
+              <div className="rounded-2xl atc-card p-4">
+                <h3 className="text-[10px] text-cyan-300 font-bold uppercase tracking-wider border-b border-[#172338] pb-2 mb-3">
+                  ESSENTIAL METEOROLOGICAL READINGS
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'WIND SURFACE', value: liveData?.metar?.wind_dir != null ? `${liveData.metar.wind_dir}° / ${liveData.metar.wind_speed_kt} kts` : '—' },
+                    { label: 'VISIBILITY', value: liveData?.metar?.visibility_km != null ? `${liveData.metar.visibility_km} km` : '—' },
+                    { label: 'TEMPERATURE', value: liveData?.metar?.temp_c != null ? `${liveData.metar.temp_c}°C` : '—' },
+                    { label: 'REL. HUMIDITY', value: liveData?.metar?.rh_pct != null ? `${liveData.metar.rh_pct.toFixed(0)}%` : '—' },
+                    { label: 'CAPE', value: liveData?.met_parameters?.ua_cape_jkg != null ? `${liveData.met_parameters.ua_cape_jkg} J/kg` : (liveData?.met_parameters?.CAPE != null ? `${liveData.met_parameters.CAPE.toFixed(0)} J/kg` : '—') },
+                    { label: 'K-INDEX', value: liveData?.met_parameters?.ua_k_index ?? liveData?.met_parameters?.K_INDEX?.toFixed(1) ?? '—' },
+                    { label: 'LIFTED INDEX', value: liveData?.met_parameters?.ua_lifted_index ?? liveData?.met_parameters?.LIFTED_INDEX?.toFixed(2) ?? '—' },
+                    { label: 'TOTALS-TOTALS', value: liveData?.met_parameters?.ua_totals_totals ?? liveData?.met_parameters?.TOTALS_TOTALS?.toFixed(1) ?? '—' },
+                  ].map(item => (
+                    <div key={item.label} className="p-3 rounded-xl bg-[#050811] border border-[#172338]">
+                      <span className="text-[9px] text-[#607d8b] block font-bold">{item.label}</span>
+                      <span className="text-base font-extrabold text-white">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Flight category + METAR */}
+              <div className="rounded-2xl atc-card p-4 flex items-center justify-between">
+                <div>
+                  <div className="text-[9px] text-[#607d8b] font-bold">FLIGHT CATEGORY</div>
+                  <div className={`text-2xl font-extrabold ${fcColor}`}>{flightCat}</div>
+                  <div className="text-[9px] text-[#607d8b] mt-0.5">VOBL · METAR</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[9px] text-[#607d8b] font-bold">S-BAND RADAR</div>
+                  <div className="text-sm font-bold text-white">BENGALURU ACTIVE</div>
+                  <div className="text-[9px] text-[#607d8b]">CSIR/IMD STATION 43295</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: situational awareness */}
+            <div className="col-span-3 flex flex-col gap-3">
+
+              {/* Monsoon phase */}
+              <div className="rounded-2xl atc-card p-4">
+                <div className="text-[9px] text-[#607d8b] font-bold mb-2">MONSOON PHASE</div>
+                <div className={`text-xl font-extrabold ${phaseColor}`}>
+                  {monsoonPhase ?? liveData?.synoptic_regime?.regime_name ?? 'DETECTING...'}
+                </div>
+                {monsoonIndex !== null && (
+                  <div className="text-[9px] text-[#607d8b] mt-1">
+                    Index: <span className="text-white font-bold">{typeof monsoonIndex === 'number' ? monsoonIndex.toFixed(2) : monsoonIndex}</span>
+                  </div>
+                )}
+                <div className="text-[9px] text-[#607d8b] mt-0.5">
+                  {liveData?.synoptic_regime?.description ?? ''}
+                </div>
+              </div>
+
+              {/* Himawari state */}
+              <div className={`rounded-2xl atc-card p-4 ${stormDetected ? 'border-orange-500/50' : ''}`}>
+                <div className="text-[9px] text-[#607d8b] font-bold mb-2">HIMAWARI-9 SATELLITE</div>
+                <div className={`text-base font-extrabold ${stormDetected ? 'text-orange-400 animate-pulse' : 'text-emerald-400'}`}>
+                  {stormDetected ? '⚡ STORM DETECTED' : '✓ CLEAR'}
+                </div>
+                <div className="mt-2 space-y-0.5 text-[9px]">
+                  <div className="flex justify-between">
+                    <span className="text-[#607d8b]">MIN BT (50km)</span>
+                    <span className={`font-bold ${minBT !== null && minBT < -40 ? 'text-red-400' : 'text-white'}`}>
+                      {minBT !== null ? `${minBT.toFixed(1)}°C` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#607d8b]">COLD PIXELS</span>
+                    <span className={`font-bold ${coldPx >= 50 ? 'text-orange-400' : 'text-white'}`}>{coldPx}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#607d8b]">OVERRIDE</span>
+                    <span className={`font-bold ${isSatOverride ? 'text-orange-400' : 'text-emerald-400'}`}>
+                      {isSatOverride ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* All slots summary */}
+              <div className="rounded-2xl atc-card p-4 flex-1">
+                <div className="text-[9px] text-[#607d8b] font-bold mb-2">ALL SLOTS</div>
+                <div className="space-y-2">
+                  {slots && slots.map(s => {
+                    const isActive = s.slot === currentSlot.slot;
+                    const exceeded = s.ts_probability >= s.threshold;
+                    return (
+                      <div key={s.slot} className={`flex items-center justify-between p-2 rounded-lg ${
+                        isActive ? 'bg-cyan-500/15 border border-cyan-500/40' : 'bg-[#050811] border border-[#172338]'
+                      }`}>
+                        <div>
+                          <div className={`text-[9px] font-bold ${isActive ? 'text-cyan-300' : 'text-[#607d8b]'}`}>
+                            {isActive ? '▶ ' : ''}{s.label}
+                          </div>
+                          <div className="text-[8px] text-[#607d8b]">{s.time}</div>
+                        </div>
+                        <div className={`text-sm font-extrabold ${
+                          exceeded ? 'text-red-400' : s.ts_probability >= 0.15 ? 'text-amber-400' : 'text-emerald-400'
+                        }`}>
+                          {(s.ts_probability * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="text-center text-xs text-[#607d8b] border-t border-[#172338] pt-4 flex justify-between items-center">
-            <span>FULLSCREEN ATC VIEW ACTIVE — PRESS ESC OR CLICK BUTTON ABOVE TO EXIT</span>
-            <button onClick={onExitAtc} className="text-cyan-400 font-bold underline hover:text-cyan-300">
-              EXIT ATC VIEW ✖
-            </button>
+          {/* ── Footer ── */}
+          <div className="px-8 py-3 border-t border-[#172338] flex justify-between items-center text-[10px] text-[#607d8b]">
+            <span>FULLSCREEN ATC VIEW · PRESS ESC OR CLICK BUTTON ABOVE TO EXIT</span>
+            <button onClick={onExitAtc} className="text-cyan-400 font-bold hover:text-cyan-300">EXIT ATC VIEW ✖</button>
           </div>
         </div>
       );
@@ -3146,6 +3375,7 @@
           {/* Fullscreen ATC Mode Overlay */}
           {isAtcMode && (
             <AtcViewFullscreen 
+              slots={currentSlots}
               currentSlot={currentSlots[selectedSlotIndex]} 
               onExitAtc={handleExitAtc}
               liveData={liveData}
