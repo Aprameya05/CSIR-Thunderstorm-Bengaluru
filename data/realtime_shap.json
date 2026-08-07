@@ -7,13 +7,13 @@
     "top_features": [
       {
         "feature": "ERA5_u_850hPa",
-        "shap": -1.16989,
+        "shap": -1.17504,
         "value": 16.3204,
         "direction": "decreases_risk"
       },
       {
         "feature": "PRECIP_WATER",
-        "shap": 0.77552,
+        "shap": 0.77625,
         "value": 108.1569,
         "direction": "increases_risk"
       },
@@ -31,25 +31,25 @@
       },
       {
         "feature": "cape_x_kindex",
-        "shap": -0.557,
+        "shap": -0.54494,
         "value": 0.0,
         "direction": "decreases_risk"
       },
       {
         "feature": "LABEL_lag1",
-        "shap": -0.53029,
+        "shap": -0.52747,
         "value": 0.0,
         "direction": "decreases_risk"
       },
       {
         "feature": "TOTALS_TOTALS",
-        "shap": -0.50882,
+        "shap": -0.5064,
         "value": 38.4096,
         "direction": "decreases_risk"
       },
       {
         "feature": "ERA5_V10",
-        "shap": -0.48454,
+        "shap": -0.48486,
         "value": 1.5995,
         "direction": "decreases_risk"
       },
@@ -61,12 +61,12 @@
       },
       {
         "feature": "CAPE",
-        "shap": -0.46576,
+        "shap": -0.46741,
         "value": 0.0,
         "direction": "decreases_risk"
       }
     ],
-    "computed_at": "2026-07-26 23:18 IST"
+    "computed_at": "2026-08-08 00:05 IST"
   },
   "1": {
     "slot": 1,
@@ -76,7 +76,7 @@
     "top_features": [
       {
         "feature": "DRNRF",
-        "shap": -0.69858,
+        "shap": -0.73,
         "value": 0.0,
         "direction": "decreases_risk"
       },
@@ -94,7 +94,7 @@
       },
       {
         "feature": "RF",
-        "shap": -0.56989,
+        "shap": -0.57314,
         "value": 0.0,
         "direction": "decreases_risk"
       },
@@ -135,7 +135,7 @@
         "direction": "increases_risk"
       }
     ],
-    "computed_at": "2026-07-26 23:18 IST"
+    "computed_at": "2026-08-08 00:05 IST"
   },
   "2": {
     "slot": 2,
@@ -145,66 +145,66 @@
     "top_features": [
       {
         "feature": "K_INDEX",
-        "shap": -1.16134,
+        "shap": -1.17872,
         "value": 28.6967,
         "direction": "decreases_risk"
       },
       {
         "feature": "TOTALS_TOTALS",
-        "shap": -1.09035,
+        "shap": -1.11235,
         "value": 38.4096,
         "direction": "decreases_risk"
       },
       {
         "feature": "cape_x_kindex",
-        "shap": -1.01114,
+        "shap": -1.10083,
         "value": 0.0,
         "direction": "decreases_risk"
       },
       {
         "feature": "ERA5_T2M",
-        "shap": 0.8235,
+        "shap": 0.82241,
         "value": 293.7296,
         "direction": "increases_risk"
       },
       {
         "feature": "CAPE",
-        "shap": -0.76177,
-        "value": 0.0,
-        "direction": "decreases_risk"
-      },
-      {
-        "feature": "ERA5_CAPE",
-        "shap": -0.43453,
+        "shap": -0.79038,
         "value": 0.0,
         "direction": "decreases_risk"
       },
       {
         "feature": "MIN",
-        "shap": -0.43376,
+        "shap": -0.43727,
         "value": 20.0,
         "direction": "decreases_risk"
       },
       {
+        "feature": "ERA5_CAPE",
+        "shap": -0.43391,
+        "value": 0.0,
+        "direction": "decreases_risk"
+      },
+      {
         "feature": "thetae_850",
-        "shap": -0.42709,
+        "shap": -0.43023,
         "value": 318.6697,
         "direction": "decreases_risk"
       },
       {
         "feature": "LIFTED_INDEX",
-        "shap": -0.37313,
+        "shap": -0.37539,
         "value": 0.23,
         "direction": "decreases_risk"
       },
       {
         "feature": "wind_shear_700_850",
-        "shap": -0.34182,
+        "shap": -0.3461,
         "value": 7.9148,
         "direction": "decreases_risk"
       }
     ],
-    "computed_at": "2026-07-26 23:18 IST"
+    "computed_at": "2026-08-08 00:05 IST"
   },
   "3": {
     "slot": 3,
@@ -273,6 +273,6 @@
         "direction": "increases_risk"
       }
     ],
-    "computed_at": "2026-07-26 23:18 IST"
+    "computed_at": "2026-08-08 00:05 IST"
   }
 }
