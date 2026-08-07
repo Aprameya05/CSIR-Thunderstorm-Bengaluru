@@ -7,7 +7,7 @@
 ### AI-Powered Operational Thunderstorm Nowcasting for Bengaluru Airport
 #### IMD Station 43295 — Kempegowda International Airport (VOBL)
 
-*Developed in collaboration with Dr. Geeta Agnihotri, Scientist F, IMD Bengaluru*
+
 
 <p>
   <img src="https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white" />
@@ -480,17 +480,6 @@ curl -X POST https://csir-thunderstorm-api.onrender.com/rag/explain \
 
 ---
 
-## Team
-
-| Member | Role | Key Contributions |
-|--------|------|------------------|
-| **Aprameya Bharadwaj** | ML Lead & Architect | A1–A5, A100 ensemble training, v4/v5 models, Himawari correction model, threshold optimization, pipeline, RAG, dashboard (8 pages), CI/CD, GFS fetcher, SHAP, convective timer, live METAR, regime detection, Live API UX, lightning WebSocket, Skew-T diagram, logical consistency audit |
-| **Atul Denny** | Data & Pipeline Lead | GFS fetcher (all 4 slots, UTC date fix), MetPy upper-air stability indices, u/v wind components, Himawari-9 satellite fetcher (NOAA S3), historical Himawari BT archive (in progress) |
-| **Satvik** | Deployment Lead | FastAPI on Render, 10 endpoints including RAG + correction status + slot explain + WS lightning proxy, Render WebSocket deployment |
-| **Vidhi** | ERA5 Data | 6-hourly ERA5 2015–2025 (16,072 rows, zero nulls), CAPE climatology by month |
-| **Sneha** | Verification Lead | EDA charts, ForecastLogger, `verify_today.py`, `build_actual_log_historical.py`, `compute_skill_scores.py`, actual_log 2015-2025 (15,280 rows, 898 storm slots) |
-
----
 
 ## Acknowledgements
 
