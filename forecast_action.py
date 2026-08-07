@@ -72,30 +72,6 @@ def compute_derived(obs, slot_id):
     obs['moisture_flux_700']  = q700 * (u700**2 + v700**2)**0.5
     obs['thickness_500_850']  = t850 - t500
     obs['mid_level_drying']   = q700 / (q850 + 1e-9)
-
-    # v5 temporal features — atmospheric lags and rolling stats
-    # These use met_history loaded from forecast_log.csv
-    cape_now  = obs.get('ERA5_CAPE', obs.get('CAPE', 0.0))
-    ki_now    = obs.get('K_INDEX', 30.0)
-    pwat_now  = obs.get('PRECIP_WATER', 40.0)
-    shear_now = obs.get('shear_850_500',
-                        ((obs.get('ERA5_u_500hPa',5)-obs.get('ERA5_u_850hPa',-3))**2 +
-                         (obs.get('ERA5_v_500hPa',2)-obs.get('ERA5_v_850hPa',2))**2)**0.5)
-
-    for w in [3, 7, 14]:
-        obs[f'CAPE_roll{w}']  = get_roll('ERA5_CAPE', w, cape_now)
-        obs[f'KI_roll{w}']    = get_roll('K_INDEX',   w, ki_now)
-        obs[f'PWAT_roll{w}']  = get_roll('PRECIP_WATER', w, pwat_now)
-        obs[f'shear_roll{w}'] = get_roll('shear_850_500', w, shear_now)
-    for lag in [1, 2, 3]:
-        obs[f'CAPE_lag{lag}']  = get_lag('ERA5_CAPE',    lag, cape_now)
-        obs[f'KI_lag{lag}']    = get_lag('K_INDEX',      lag, ki_now)
-        obs[f'LI_lag{lag}']    = get_lag('LIFTED_INDEX', lag, obs.get('LIFTED_INDEX',-2.0))
-        obs[f'PWAT_lag{lag}']  = get_lag('PRECIP_WATER', lag, pwat_now)
-        obs[f'shear_lag{lag}'] = get_lag('shear_850_500', lag, shear_now)
-    obs['CAPE_trend3'] = cape_now - obs.get('CAPE_roll3', cape_now)
-    obs['KI_trend3']   = ki_now   - obs.get('KI_roll3',   ki_now)
-    obs['PWAT_trend3'] = pwat_now - obs.get('PWAT_roll3',  pwat_now)
     return obs
 
 now      = datetime.now()
@@ -113,49 +89,6 @@ if ua_path.exists():
         upper_air[int(row['slot'])] = row.to_dict()
     print(f"Upper air loaded: {list(upper_air.keys())}")
 
-# Load rolling met history for temporal features (last 14 days from forecast_log)
-met_history = {}  # {feature: [val_t-1, val_t-2, val_t-3]} oldest first
-flog_path = DATA / 'forecast_log.csv'
-if flog_path.exists():
-    try:
-        flog = pd.read_csv(flog_path)
-        flog['date'] = pd.to_datetime(flog['date'])
-        # Get last 14 days of Slot 2 (most complete met data)
-        recent = flog[flog['slot']==2].sort_values('date').tail(14)
-        for feat in ['ERA5_CAPE','K_INDEX','LIFTED_INDEX','PRECIP_WATER']:
-            if feat in recent.columns:
-                vals = recent[feat].fillna(0).tolist()
-                met_history[feat] = vals  # oldest to newest
-    except Exception as _e:
-        pass
-
-def get_lag(feat, lag, default=0.0):
-    vals = met_history.get(feat, [])
-    if len(vals) >= lag:
-        return float(vals[-lag])
-    return default
-
-def get_roll(feat, window, default=0.0):
-    vals = met_history.get(feat, [])
-    if len(vals) >= 1:
-        return float(np.mean(vals[-window:]))
-    return default
-
-# ── Monsoon phase detection ──────────────────────────────────────────────────
-monsoon_phase    = 'NEUTRAL'
-monsoon_index    = 0.0
-phase_detector   = {}
-phase_det_path   = MODELS / 'monsoon_phase_detector.json'
-if phase_det_path.exists():
-    try:
-        with open(phase_det_path) as _f:
-            phase_detector = json.load(_f)
-        # Compute monsoon index from latest GFS/upper-air values
-        # Will be updated after GFS loads — placeholder here
-        monsoon_phase = 'NEUTRAL'
-    except Exception as _e:
-        pass
-
 # Load GFS data if available
 gfs_df   = pd.DataFrame()
 gfs_path = DATA / 'gfs_realtime_43295.csv'
@@ -167,45 +100,11 @@ slots_output = []
 results      = {}
 
 for slot_id in range(4):
-    # Best model per slot (empirically validated on 2024-2025 test set):
-    # Slot 0: v4_ensemble  AUROC=0.8484
-    # Slot 1: v5_temporal  AUROC=0.8317
-    # Slot 2: v3_calibrated AUROC=0.8710 (best)
-    # Slot 3: v3_calibrated AUROC=0.8710 (best)
-    v4_path = MODELS / f'nowcast_slot{slot_id}_xgb_v4_ensemble.pkl'
-    v5_path = MODELS / f'nowcast_slot{slot_id}_xgb_v5_temporal.pkl'
-    v3_path = MODELS / f'nowcast_slot{slot_id}_xgb_v3_calibrated.pkl'
+    model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v3_calibrated.pkl'
+    if not model_path.exists():
+        model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v2_calibrated.pkl'
 
-    # Slot 1 uses v5; Slots 2/3 use v3; Slot 0 uses v4
-    # IMPORTANT: store full artifact dict in artifact_model, not just calibrated model
-    if slot_id == 1 and v5_path.exists():
-        artifact_model = joblib.load(v5_path)  # full dict with 'calibrated'+'features'
-        model_path = None
-        auroc_str = f"{artifact_model.get('auroc',0):.4f}" if isinstance(artifact_model,dict) else '?'
-        print(f'  [v5 temporal] Slot {slot_id} | AUROC={auroc_str} | features={len(artifact_model.get("features",[]))}')
-    elif slot_id in [2, 3] and v3_path.exists():
-        model_path     = v3_path
-        artifact_model = None
-        # Apply phase-specific threshold for monsoon months (Jun-Sep, Slot 2)
-        if (now.month in [6,7,8,9] and phase_detector and
-                'phase_thresholds' in phase_detector and slot_id == 2):
-            phase_thr = phase_detector['phase_thresholds'].get(monsoon_phase)
-            if phase_thr:
-                threshold = phase_thr
-        print(f'  [v3 calibrated] Slot {slot_id} | AUROC=0.8710 | phase={monsoon_phase} thr={threshold}')
-    elif v4_path.exists():
-        artifact_model = joblib.load(v4_path)  # full dict with 'calibrated'+'features'
-        model_path = None
-        auroc_str = f"{artifact_model.get('auroc',0):.4f}" if isinstance(artifact_model,dict) else '?'
-        print(f'  [v4 ensemble] Slot {slot_id} | AUROC={auroc_str}')
-    else:
-        model_path     = v3_path
-        artifact_model = None
-        if not model_path.exists():
-            model_path = MODELS / f'nowcast_slot{slot_id}_xgb_v2_calibrated.pkl'
-        print(f'  [v3 fallback] Slot {slot_id}')
-
-    if model_path is not None and not model_path.exists():
+    if not model_path.exists():
         clim = {0:0.037, 1:0.011, 2:0.063, 3:0.059}
         prob = clim[slot_id]
         results[slot_id] = prob
@@ -220,25 +119,10 @@ for slot_id in range(4):
         })
         continue
 
-    artifact     = artifact_model if artifact_model is not None else joblib.load(model_path)
-    # Artifact formats:
-    # v3: dict with keys 'model', 'feature_cols', 'threshold'
-    # v4/v5: dict with keys 'calibrated', 'features', 'auroc'  OR CalibratedClassifierCV directly
-    if isinstance(artifact, dict) and 'model' in artifact:
-        # v3 format
-        model        = artifact['model']
-        feature_cols = artifact['feature_cols']
-        threshold    = artifact.get('threshold', THRESHOLDS[slot_id])
-    elif isinstance(artifact, dict) and 'calibrated' in artifact:
-        # v4/v5 format
-        model        = artifact['calibrated']
-        feature_cols = artifact.get('features', None)
-        threshold    = THRESHOLDS[slot_id]
-    else:
-        # CalibratedClassifierCV directly (old v4 without dict wrapper)
-        model        = artifact
-        feature_cols = None
-        threshold    = THRESHOLDS[slot_id]
+    artifact     = joblib.load(model_path)
+    model        = artifact['model']
+    feature_cols = artifact['feature_cols']
+    threshold    = artifact['threshold']
 
     obs = {
         'month':month,'doy':doy,
@@ -269,26 +153,6 @@ for slot_id in range(4):
             if col in row.index and pd.notna(row[col]):
                 obs[col] = float(row[col])
 
-    # ── Update monsoon phase using actual GFS values ─────────────────────────
-    if phase_detector and len(gfs_df) > 0:
-        try:
-            _row    = gfs_df.iloc[0]
-            _ki     = float(_row.get('K_INDEX',       phase_detector.get('ki_mean',   36.45)))
-            _q500   = float(_row.get('ERA5_q_500hPa', phase_detector.get('q500_mean', 0.004)))
-            _t500   = float(_row.get('ERA5_t_500hPa', phase_detector.get('t500_mean', 269.3)))
-            _z_ki   = (_ki   - phase_detector['ki_mean'])   / (phase_detector['ki_std']   + 1e-9)
-            _z_q500 = (_q500 - phase_detector['q500_mean']) / (phase_detector['q500_std'] + 1e-9)
-            _z_t500 = (phase_detector['t500_mean'] - _t500) / (phase_detector['t500_std'] + 1e-9)
-            _mi = 0.60 * _z_ki + 0.20 * _z_q500 + 0.20 * _z_t500
-            monsoon_index = round(float(_mi), 3)
-            monsoon_phase = ('ACTIVE'  if _mi > phase_detector['active_threshold']
-                            else 'BREAK' if _mi < phase_detector['break_threshold']
-                            else 'NEUTRAL')
-            print(f"  [MONSOON] Phase={monsoon_phase} Index={monsoon_index:.2f} "
-                  f"KI={_ki:.1f} q500={_q500:.5f} t500={_t500:.1f}")
-        except Exception as _e:
-            print(f"  [MONSOON] Phase detection error: {_e}")
-
     if slot_id in upper_air:
         ua = upper_air[slot_id]
         for col in ['CAPE','CIN','K_INDEX','LIFTED_INDEX','TOTALS_TOTALS','PRECIP_WATER',
@@ -297,34 +161,9 @@ for slot_id in range(4):
                 obs[col] = float(ua[col])
 
     obs  = compute_derived(obs, slot_id)
-    # v4 ensemble: feature_cols is None — use model's own feature names if available
-    if feature_cols is None:
-        # v4 ensemble trained on numpy arrays — no feature names stored
-        # Use the v4 feature list (same 54 features used in Cell 2 training)
-        fc = [
-            'ERA5_CAPE','ERA5_T2M','ERA5_D2M','ERA5_U10','ERA5_V10','ERA5_SP',
-            'ERA5_t_500hPa','ERA5_t_700hPa','ERA5_t_850hPa',
-            'ERA5_q_500hPa','ERA5_q_700hPa','ERA5_q_850hPa',
-            'ERA5_u_500hPa','ERA5_u_700hPa','ERA5_u_850hPa',
-            'ERA5_v_500hPa','ERA5_v_700hPa','ERA5_v_850hPa',
-            'K_INDEX','LIFTED_INDEX','TOTALS_TOTALS','PRECIP_WATER','CIN',
-            'MAX','MIN','DTR','RF','EVP','SSH','DRNRF',
-            'RF_3d','RF_7d','MAX_3d_avg','MIN_3d_avg','RF_lag1','MAX_lag1','MIN_lag1','LABEL_lag1',
-            'MONTH_sin','MONTH_cos','DOY_sin','DOY_cos','SEASON',
-            'cold_top_proxy','mid_moisture','lapse_rate_850_500','shear_850_500',
-            'cape_x_ki','cape_x_tt','rh_proxy','wind_speed_850','wind_speed_500',
-            'theta_e_proxy','moisture_flux_850',
-        ]
-    else:
-        fc = feature_cols
-    X    = np.array([[float(obs.get(c, 0.0)) for c in fc]])
-    # v3: dict with 'model' key — needs apply_calibrator
-    # v4/v5: dict with 'calibrated' key OR direct CalibratedClassifierCV — already calibrated
-    if isinstance(artifact, dict) and 'model' in artifact:
-        raw = float(model.predict_proba(X)[0][1])
-        cal = apply_calibrator(artifact, raw)
-    else:
-        cal = float(model.predict_proba(X)[0][1])
+    X    = np.array([[float(obs.get(c, 0.0)) for c in feature_cols]])
+    raw  = float(model.predict_proba(X)[0][1])
+    cal  = apply_calibrator(artifact, raw)
     results[slot_id] = cal
 
     slots_output.append({
@@ -342,10 +181,10 @@ for slot_id in range(4):
     })
     print(f"Slot {slot_id}: {cal*100:.1f}%")
 
-alert_active     = any(s["ts_predicted"] for s in slots_output)
+alert_active     = any(s['ts_predicted'] for s in slots_output)
 peak_slot        = max(results, key=results.get)
 peak_probability = results[peak_slot]
-met_slot         = next((s for s in slots_output if s["slot"] == 2), slots_output[0])
+met_slot         = next((s for s in slots_output if s['slot'] == 2), slots_output[0])
 
 # ── Pull wind values for met_parameters ──────────────────────────────────────
 # Try Slot 2 first (afternoon peak), fall back through 3→1→0 so real values
@@ -361,22 +200,13 @@ def _wind(key):
     except (TypeError, ValueError):
         return 0.0
 
-himawari_override_active = False
-himawari_override_slots  = []
-himawari_boost_value     = 0.0
-
 forecast = {
     "date":             date_str,
     "generated_at":     now.strftime('%Y-%m-%d %H:%M IST'),
     "alert_active":     alert_active,
     "peak_slot":        peak_slot,
     "peak_probability": round(float(peak_probability), 4),
-    "model_version":    "v4_ensemble_A100",
-    "himawari_override_active": himawari_override_active,
-    "himawari_override_slots":  himawari_override_slots,
-    "himawari_boost_value":     himawari_boost_value,
-    "monsoon_phase":            monsoon_phase,
-    "monsoon_index":            monsoon_index,
+    "model_version":    "v3_calibrated",
     "slots":            slots_output,
     "met_parameters": {
         "ua_cape_jkg":       met_slot.get('cape', 0),
@@ -420,140 +250,6 @@ if himawari_hist_path.exists():
     except Exception:
         pass
 
-# ── HIMAWARI CORRECTION MODEL (TRAINED, CV AUROC=0.8812) ─────────────────────
-# Replaces heuristic boost with calibrated logistic correction model
-# Trained on 2015-2025 ERA5+IMD data. ERA5 proxies for Himawari BT.
-CORRECTION_MODEL_PATH = BASE / 'models' / 'himawari_correction_model.pkl'
-CORRECTION_META_PATH  = BASE / 'models' / 'correction_model_meta.json'
-HIMAWARI_BT_THRESHOLD = -45.0
-HIMAWARI_PIXEL_MIN    = 50
-HIMAWARI_DIST_MAX_KM  = 100.0
-CORRECTION_MIN_UPLIFT = 0.05    # only override if correction gives ≥5% uplift
-
-# Load trained correction model
-_correction_model = None
-_t500_clim_mean   = 268.80
-_correction_auroc = 0.0
-try:
-    _correction_model = joblib.load(CORRECTION_MODEL_PATH)
-    with open(CORRECTION_META_PATH) as _f:
-        _cmeta = json.load(_f)
-    _t500_clim_mean   = _cmeta.get('t500_climatological_mean', 268.80)
-    _correction_auroc = _cmeta.get('cv_auroc_mean', 0.0)
-    print(f"[CORRECTION MODEL] Loaded — CV AUROC={_correction_auroc:.4f}")
-except Exception as _e:
-    print(f"[CORRECTION MODEL] Not found ({_e}) — using heuristic fallback")
-
-def _build_correction_features(ua_row, himawari_obs=None):
-    era5_cape  = float(ua_row.get('ERA5_CAPE', ua_row.get('CAPE', 0)) or 0)
-    era5_t500  = float(ua_row.get('ERA5_t_500hPa', _t500_clim_mean) or _t500_clim_mean)
-    era5_t850  = float(ua_row.get('ERA5_t_850hPa', 294.0) or 294.0)
-    era5_q700  = float(ua_row.get('ERA5_q_700hPa', 0.008) or 0.008)
-    era5_u500  = float(ua_row.get('ERA5_u_500hPa', 0) or 0)
-    era5_v500  = float(ua_row.get('ERA5_v_500hPa', 0) or 0)
-    era5_u850  = float(ua_row.get('ERA5_u_850hPa', 0) or 0)
-    era5_v850  = float(ua_row.get('ERA5_v_850hPa', 0) or 0)
-    k_idx      = float(ua_row.get('K_INDEX', 30) or 30)
-    li         = float(ua_row.get('LIFTED_INDEX', -2) or -2)
-    tt         = float(ua_row.get('TOTALS_TOTALS', 42) or 42)
-    pwat       = float(ua_row.get('PRECIP_WATER', 40) or 40)
-    m          = now.month
-    month_sin  = math.sin(2 * math.pi * m / 12)
-    month_cos  = math.cos(2 * math.pi * m / 12)
-    cold_top   = _t500_clim_mean - era5_t500
-    mid_moist  = era5_q700 * 1000
-    lapse      = era5_t850 - era5_t500
-    shear      = math.sqrt((era5_u500-era5_u850)**2 + (era5_v500-era5_v850)**2)
-    cape_x_ki  = era5_cape * k_idx
-    # V4 features — real Himawari BT (defaults to neutral when unavailable)
-    h = himawari_obs or {}
-    min_bt     = float(h.get('min_bt_50km', 0) or 0)
-    cold_px    = float(h.get('cold_pixels_count', 0) or 0)
-    near_dist  = float(h.get('nearest_pixel_dist_km', 999) or 999)
-    storm_flag = float(1 if h.get('storm_detected', False) else 0)
-    return [era5_cape, cold_top, mid_moist, lapse, shear,
-            k_idx, li, tt, pwat, cape_x_ki, month_sin, month_cos,
-            min_bt, cold_px, near_dist, storm_flag]
-
-def _heuristic_boost(bt, cpx, dist):
-    bt_f = min(max((abs(bt)-45)/25, 0), 1.0)
-    px_f = min(max((cpx-50)/250, 0), 1.0)
-    d_f  = max(1.0 - dist/100.0, 0)
-    return round(min(0.35 + 0.40*(bt_f*0.5 + px_f*0.3 + d_f*0.2), 0.75), 3)
-
-if himawari:
-    h_storm = himawari.get("storm_detected", False)
-    h_bt    = himawari.get("min_bt_50km") or 0
-    h_cpx   = himawari.get("cold_pixels_count") or 0
-    h_dist  = himawari.get("nearest_pixel_dist_km") or 999
-
-    if (h_storm and h_bt < HIMAWARI_BT_THRESHOLD and
-            h_cpx >= HIMAWARI_PIXEL_MIN and h_dist < HIMAWARI_DIST_MAX_KM):
-
-        himawari_override_active = True
-
-        # Get best available upper-air row for feature extraction
-        _ua = upper_air.get(2) or upper_air.get(3) or upper_air.get(1) or upper_air.get(0) or {}
-
-        # Compute corrected probability
-        if _correction_model is not None:
-            try:
-                _feat = _build_correction_features(_ua, himawari)
-                _corrected = float(_correction_model.predict_proba([_feat])[0][1])
-                _method = f"trained_model(AUROC={_correction_auroc:.3f})"
-            except Exception as _ex:
-                _corrected = _heuristic_boost(h_bt, h_cpx, h_dist)
-                _method = f"heuristic_fallback({_ex})"
-        else:
-            _corrected = _heuristic_boost(h_bt, h_cpx, h_dist)
-            _method = "heuristic_boost"
-
-        ist_hour = now.hour
-        if   0  <= ist_hour < 6:  affected = [3]
-        elif 6  <= ist_hour < 12: affected = [0, 1]
-        elif 12 <= ist_hour < 18: affected = [2]
-        else:                     affected = [2, 3]
-
-        for s in slots_output:
-            if s["slot"] in affected:
-                original_prob = s["ts_probability"]
-                boosted_prob  = round(min(max(original_prob, _corrected), 0.95), 4)
-                if boosted_prob - original_prob >= CORRECTION_MIN_UPLIFT:
-                    s["ts_probability"]    = boosted_prob
-                    s["ts_predicted"]      = boosted_prob >= s["threshold"]
-                    s["himawari_override"] = True
-                    s["himawari_boost"]    = boosted_prob
-                    s["original_prob"]     = original_prob
-                    s["correction_method"] = _method
-                    himawari_override_slots.append(s["slot"])
-                    results[s["slot"]]     = boosted_prob
-                    himawari_boost_value   = boosted_prob
-                    print(f"  [HIMAWARI CORRECTION] Slot {s['slot']}: {original_prob*100:.1f}% -> {boosted_prob*100:.1f}%"
-                          f" | {_method} | BT={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km")
-                else:
-                    print(f"  [HIMAWARI] Slot {s['slot']}: correction={_corrected*100:.1f}% no uplift over base={original_prob*100:.1f}%")
-
-        if himawari_override_slots:
-            print(f"[HIMAWARI] Correction active — slots {himawari_override_slots} | method={_method}")
-        else:
-            print(f"[HIMAWARI] Storm detected but no slots needed correction")
-    else:
-        print(f"[HIMAWARI] No correction — storm={h_storm} bt={h_bt:.1f}C px={h_cpx} dist={h_dist:.1f}km")
-
-    # Update alert and peak after correction
-    alert_active     = any(s["ts_predicted"] for s in slots_output)
-    peak_slot        = max(results, key=results.get)
-    peak_probability = results[peak_slot]
-    # Patch forecast dict with post-override values
-    forecast["alert_active"]              = alert_active
-    forecast["peak_slot"]                 = peak_slot
-    forecast["peak_probability"]          = round(float(peak_probability), 4)
-    forecast["himawari_override_active"]  = himawari_override_active
-    forecast["himawari_override_slots"]   = himawari_override_slots
-    forecast["himawari_boost_value"]      = himawari_boost_value
-    forecast["monsoon_phase"]             = monsoon_phase
-    forecast["monsoon_index"]             = monsoon_index
-
 forecast["satellite"] = {
     "himawari9": {
         "timestamp_utc":         himawari.get("timestamp_utc"),
@@ -587,6 +283,16 @@ import math as _math
 now_hour_ist = now.hour + now.minute / 60.0
 
 gfs_row = gfs_df.iloc[0] if len(gfs_df) > 0 else {}
+
+# GFS daily temperature + rainfall — added 2026-08-08
+# TMP_2m is in Kelvin; APCP_surface is 24h precip accumulation in mm
+# Falls back to ERA5_T2M if TMAX/TMIN not in the GFS file
+gfs_tmax_k         = float(gfs_row.get('TMAX_2m', gfs_row.get('ERA5_T2M', 302.0))) if len(gfs_df) > 0 else 302.0
+gfs_tmin_k         = float(gfs_row.get('TMIN_2m', gfs_row.get('ERA5_T2M', 295.0))) if len(gfs_df) > 0 else 295.0
+gfs_apcp_mm        = float(gfs_row.get('APCP_surface', gfs_row.get('RF', 0.0)))     if len(gfs_df) > 0 else 0.0
+gfs_valid_date_str = datetime.now().strftime('%d %b %Y')
+gfs_cycle_str      = "00Z"
+
 cape_now = float(gfs_row.get('CAPE', 0)) if len(gfs_df) > 0 else 0
 ki_now   = float(gfs_row.get('K_INDEX', 30)) if len(gfs_df) > 0 else 30
 li_now   = float(gfs_row.get('LIFTED_INDEX', 0)) if len(gfs_df) > 0 else 0
@@ -661,15 +367,9 @@ if multiday_path.exists():
             d_prob       = min(round(d_score / 100.0 * 0.6, 3), 0.95)
             risk = "HIGH" if d_score >= 70 else "MODERATE" if d_score >= 45 else "LOW" if d_score >= 25 else "MINIMAL"
 
-            # Compute date dynamically from today + forecast hour (fixes stale date bug)
-            fhour = int(day_row.get('fhour', 24))
-            from datetime import timedelta
-            dynamic_date = (now + timedelta(hours=fhour)).strftime('%Y-%m-%d')
-            day_label_dynamic = 'tomorrow' if fhour <= 30 else 'day_after'
-
             multiday_outlook.append({
-                "date":              dynamic_date,
-                "day_label":         day_label_dynamic,
+                "date":              day_row.get('date'),
+                "day_label":         day_row.get('day_label'),
                 "cape":              round(day_cape, 1),
                 "k_index":           round(day_ki, 2),
                 "lifted_index":      round(day_li, 2),
@@ -877,6 +577,13 @@ try:
         print(f"SHAP computed: {len(realtime_shap)} slots")
 except Exception as e:
     print(f"SHAP computation error: {e}")
+
+# GFS daily weather summary — added 2026-08-08 per Aprameya
+forecast["gfs_tmax_c"]      = round(float(gfs_tmax_k - 273.15), 1)
+forecast["gfs_tmin_c"]      = round(float(gfs_tmin_k - 273.15), 1)
+forecast["gfs_rainfall_mm"] = round(float(gfs_apcp_mm), 1)
+forecast["gfs_valid_date"]  = gfs_valid_date_str
+forecast["gfs_cycle"]       = gfs_cycle_str
 
 with open('forecast.json', 'w') as f:
     json.dump(forecast, f, indent=2)
