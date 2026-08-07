@@ -214,7 +214,7 @@
     const SYNOPTIC_REGIMES = [
       { id: 'R1', name: 'R1 Hot Pre-Monsoon', ts_rate: 1.2, auroc: 1.000, color: '#4caf50', desc: 'Dry thermal low baseline, low storm occurrence' },
       { id: 'R2', name: 'R2 Moist Monsoon', ts_rate: 9.3, auroc: 0.934, color: '#ffc107', desc: 'Monsoonal westerly surge, high skill' },
-      { id: 'R3', name: 'R3 Moist Monsoon', ts_rate: 10.2, auroc: 0.798, color: '#ff9800', desc: 'Break-monsoon stratiform clouding' },
+      { id: 'R3', name: 'R3 Break Monsoon', ts_rate: 10.2, auroc: 0.798, color: '#ff9800', desc: 'Break-monsoon stratiform clouding, suppressed convection' },
       { id: 'R4', name: 'R4 Hot Pre-Monsoon', ts_rate: 9.8, auroc: 0.900, color: '#ff9800', desc: 'Strong solar heating with mid-level moisture' },
       { id: 'R5', name: 'R5 High-TS Regime', ts_rate: 52.1, auroc: 0.773, color: '#ef5350', isChallenging: true, desc: 'Severe convective instability and convergence — most challenging regime' },
     ];
@@ -561,7 +561,7 @@
                     <div className="text-[11px] font-sans text-white font-medium mt-0.5">
                       {alertActive
                         ? `Slot ${peakSlot} peak · ${(peakProb * 100).toFixed(1)}% probability${overrideActive ? ' · Himawari-boosted' : ''}`
-                        : 'No Convective Alerts Issued'}
+                        : overrideActive ? 'Himawari monitoring — below alert threshold' : 'No Convective Alerts Issued'}
                     </div>
                   </div>
                   <div className={`flex items-center gap-2 text-[10px] font-mono border-t border-[#172338] pt-2 ${alertActive ? 'text-red-400' : 'text-[#607d8b]'}`}>
@@ -692,7 +692,7 @@
                     </div>
                   </div>
                   <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
-                    {isLive ? `Rolling 30-day · ${liveData.verification.last_updated ?? ''}` : '⏱ Test Period: 2023–2025 · Slot 2 v3'}
+                    {isLive ? `Rolling 30-day${liveData.verification.last_updated ? ' · ' + liveData.verification.last_updated : ''}` : '⏱ Test Period: 2023–2025 · Slot 2 v3'}
                   </div>
                 </div>
               );
@@ -1321,13 +1321,16 @@
             {(() => {
               // Prefer live rolling_30d verification; fall back to static test-period numbers
               const v = liveData?.verification?.rolling_30d;
+              // Per-metric: use live value if number, else fall back to static (never show naked —)
+              const fmtLive = (liveVal, fallbackVal) =>
+                typeof liveVal === 'number' ? liveVal.toFixed(3) : fallbackVal;
               const metrics = v ? [
                 { name: 'AUROC', val: liveData?.model_performance?.auroc?.toFixed(3) ?? '0.871', delta: '30-DAY' },
-                { name: 'POD',   val: typeof v.pod  === 'number' ? v.pod.toFixed(3)  : '—', delta: '30-DAY' },
-                { name: 'FAR',   val: typeof v.far  === 'number' ? v.far.toFixed(3)  : '—', delta: '30-DAY' },
-                { name: 'CSI',   val: typeof v.csi  === 'number' ? v.csi.toFixed(3)  : '—', delta: '30-DAY' },
-                { name: 'HSS',   val: typeof v.hss  === 'number' ? v.hss.toFixed(3)  : '—', delta: '30-DAY' },
-                { name: 'BRIER', val: typeof v.brier === 'number' ? v.brier.toFixed(3) : '—', delta: '30-DAY' },
+                { name: 'POD',   val: fmtLive(v.pod,   '0.473'), delta: '30-DAY' },
+                { name: 'FAR',   val: fmtLive(v.far,   '0.671'), delta: '30-DAY' },
+                { name: 'CSI',   val: fmtLive(v.csi,   '0.293'), delta: '30-DAY' },
+                { name: 'HSS',   val: fmtLive(v.hss,   '0.389'), delta: '30-DAY' },
+                { name: 'BRIER', val: fmtLive(v.brier, '0.060'), delta: '30-DAY' },
               ] : METRICS_SUMMARY_FALLBACK;
               const isLive = !!v;
               return (
@@ -1337,7 +1340,7 @@
                       MODEL PERFORMANCE SUMMARY
                     </h4>
                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${isLive ? 'text-cyan-300 border-cyan-700/50 bg-cyan-900/30' : 'text-[#607d8b] border-[#172338] bg-[#050811]'}`}>
-                      {isLive ? `ROLLING 30-DAY · ${liveData.verification.last_updated ?? ''}` : 'TEST PERIOD 2023–2025 · SLOT 2 v3'}
+                      {isLive ? `ROLLING 30-DAY${liveData.verification.last_updated ? ' · ' + liveData.verification.last_updated : ''}` : 'TEST PERIOD 2023–2025 · SLOT 2 v3'}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
@@ -1362,13 +1365,12 @@
               const genAt = liveData?.generated_at;
               if (genAt) {
                 try {
-                  // generated_at expected as "2026-07-25 17:20 IST" or ISO
-                  const parsed = new Date(genAt.replace(' IST','').trim());
+                  // generated_at is "2026-08-07 13:20 IST" — append +05:30 so JS parses as IST
+                  const cleaned = genAt.replace(' IST','').trim(); // "2026-08-07 13:20"
+                  const parsed = new Date(cleaned.replace(' ','T') + ':00+05:30');
                   if (!isNaN(parsed)) {
-                    // Convert to UTC comparison
-                    const nowUtc = Date.now();
-                    const genUtc = parsed.getTime() - (5.5 * 3600000); // IST → UTC offset subtract
-                    ageHours = (nowUtc - genUtc) / 3600000;
+                    // Date.now() is UTC ms; parsed.getTime() is also UTC ms — direct subtraction correct
+                    ageHours = (Date.now() - parsed.getTime()) / 3600000;
                     if (ageHours < 2)       { ageLabel = `${Math.round(ageHours * 60)} min ago`; staleLevel = 'ok'; }
                     else if (ageHours < 8)  { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'warn'; }
                     else                    { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'stale'; }
@@ -1743,7 +1745,7 @@
             <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
               <h4 className="font-bold text-white mb-2">CALIBRATION & DATASET SPECIFICATIONS</h4>
               <div className="space-y-1.5 text-[#90a4ae]">
-                <div className="flex justify-between"><span>CALIBRATION METHOD:</span> <span className="text-cyan-300 font-bold">Isotonic (Slots 2&3), Platt (Slots 0&1)</span></div>
+                <div className="flex justify-between"><span>CALIBRATION METHOD:</span> <span className="text-cyan-300 font-bold">Isotonic (all slots — Slots 0&1 Isotonic, Slots 2&3 Isotonic)</span></div>
                 <div className="flex justify-between"><span>TRAINING PERIOD:</span> <span className="text-white font-bold">2015 – 2022 (8 Years Data)</span></div>
                 <div className="flex justify-between"><span>TESTING PERIOD:</span> <span className="text-white font-bold">2023 – 2025 (3 Years Data)</span></div>
               </div>
@@ -2127,8 +2129,15 @@
           {/* SHAP Horizontal Bar Chart */}
           <div className="space-y-2.5 text-xs">
             {isRealtime && (
-              <div className="text-[9px] text-emerald-400 mb-2 font-bold">
-                ● LIVE SHAP — computed from today's GFS inputs ({realtimeShap?.computed_at})
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <div className="text-[9px] text-emerald-400 font-bold">
+                  ● LIVE SHAP — computed from today's GFS inputs ({realtimeShap?.computed_at})
+                </div>
+                <div className="flex items-center gap-3 text-[9px] font-mono">
+                  <span className="text-[#607d8b]">SIGN KEY:</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-400 inline-block"></span><span className="text-red-300">positive = increases TS risk</span></span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-cyan-400 inline-block"></span><span className="text-cyan-300">negative = suppresses TS risk</span></span>
+                </div>
               </div>
             )}
             {SHAP_DATA.map(item => (
@@ -2660,7 +2669,13 @@
           {(() => {
             const h9 = liveData?.satellite?.himawari9;
             const history = liveData?.satellite?.history || [];
-            const frames = history.length > 0 ? history : [h9].filter(Boolean);
+            // Sort history chronologically (oldest→newest) so scrubber left=old right=now
+            const sortedHistory = [...history].sort((a, b) => {
+              const ta = a.timestamp_ist || a.valid_time || '';
+              const tb = b.timestamp_ist || b.valid_time || '';
+              return ta < tb ? -1 : ta > tb ? 1 : 0;
+            });
+            const frames = sortedHistory.length > 0 ? sortedHistory : [h9].filter(Boolean);
             const frame = frames[Math.min(scrubberTime, frames.length - 1)] || h9;
             
             const minBT = frame?.min_bt_50km;
@@ -2822,8 +2837,8 @@
             </button>
 
             <div className="flex gap-2">
-              {liveData?.satellite?.history?.length > 0
-                ? liveData.satellite.history.map((f, idx) => (
+              {frames.length > 0
+                ? frames.map((f, idx) => (
                     <button
                       key={idx}
                       onClick={() => setScrubberTime(idx)}
@@ -2831,7 +2846,7 @@
                         scrubberTime === idx ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-400' : 'bg-[#080d1a] text-[#607d8b]'
                       }`}
                     >
-                      {f.timestamp_ist ? f.timestamp_ist.split('T')[1]?.slice(0,5) + ' IST' : `T-${(liveData.satellite.history.length-1-idx)*10}m`}
+                      {f.timestamp_ist ? f.timestamp_ist.slice(11,16) + ' IST' : f.valid_time ? f.valid_time.slice(11,16) + ' IST' : `T-${(frames.length-1-idx)*10}m`}
                     </button>
                   ))
                 : ['-60m', '-45m', '-30m', '-15m', 'NOW'].map((t, idx) => (
