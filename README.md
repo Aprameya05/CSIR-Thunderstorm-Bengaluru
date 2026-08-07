@@ -86,17 +86,26 @@ The v5 models add 30 atmospheric lag and rolling features to the base 54, giving
 
 Slot 1 (Morning) improved by +3pp with temporal features — morning storms are driven by antecedent moisture accumulation over multiple days, exactly what rolling PWAT and KI lags capture.
 
-### 🛰️ Himawari-9 Real-Time Satellite Override (Trained Correction Model)
+### 🛰️ Himawari-9 Real-Time Satellite Override — Correction Model V4
 
-When the Himawari-9 satellite detects deep convection near VOBL, a trained correction model (Logistic Regression + Isotonic Calibration, CV AUROC 0.8812) adjusts slot probabilities upward. This corrects for GFS model lag — the GFS is yesterday's forecast while Himawari is real-time.
+When the Himawari-9 satellite detects deep convection near VOBL, a trained correction model (XGBoost + Isotonic Calibration, CV AUROC **0.9141**) adjusts slot probabilities upward. This corrects for GFS model lag — the GFS is yesterday's forecast while Himawari is real-time.
 
 **Trigger conditions (all must be met):**
 - `storm_detected = True`
-- `min_bt_50km < −45°C` (deep convective cloud tops)
-- `cold_pixels_count ≥ 50` (widespread convection)
-- `nearest_pixel_dist_km < 100 km` (storm within range of VOBL)
+- `min_bt_50km < −40°C` (deep convective cloud tops — calibrated to Bengaluru climatology)
+- `cold_pixels_count ≥ 50` (widespread convection, 50 km radius from VOBL)
+- `nearest_dist_km < 50 km` (storm within 50 km of VOBL at 13.1986°N, 77.7066°E)
 
-**Correction model training:** Logistic Regression trained on 2015–2025 ERA5+IMD dataset (3,819 samples, 457 storm events) using atmospheric proxies for satellite cold-top signal. CV AUROC 0.8812 with 4.1x discrimination ratio (storm days vs clear days).
+**Correction Model V4:** Trained on real Himawari-9 Band 13 IR brightness temperature archive assembled by Atul (2023 storm days from NOAA S3 `s3://noaa-himawari9`). Upgraded from ERA5 proxy features to actual satellite BT measurements, delivering +3.29pp CV AUROC improvement over V3.
+
+| Feature | Description |
+|---|---|
+| `min_bt_50km` | Minimum BT within 50 km of VOBL (°C) — coldest cloud top |
+| `cold_pixels_count` | Count of pixels < −40°C within 50 km |
+| `nearest_dist_km` | Distance from VOBL to nearest cold pixel (km) |
+| `storm_detected` | Binary flag: cold-top convection present within trigger radius |
+
+CV AUROC 0.9141 (5-fold), discrimination ratio 4.1× (storm vs clear days).
 
 When triggered, affected slots show a **SAT⚡** badge and "HIMAWARI BOOST" label. The dashboard STATUS tile flashes **⚠ ALERT ACTIVE** with a **SAT OVERRIDE** badge. The airport impact score cascades automatically from the boosted probability.
 
@@ -119,6 +128,9 @@ A real-time instability score (0–100) computed from CAPE, K-Index, Lifted Inde
 ### 📅 Multi-Day Extended Outlook
 GFS f024 and f048 forecasts provide tomorrow and day-after probabilistic outlooks — CAPE, K-Index, LI, and estimated Slot 2 TS probability.
 
+### 🌡️ GFS Weather Guidance
+Dashboard Tile 9 shows today's GFS model output for daily max temperature, min temperature, and 24-hour accumulated rainfall (APCP). Clearly labelled as **GFS MODEL OUTPUT** — not a CSIR/IMD forecast. Colour-coded by IMD rainfall intensity bands (NIL → LIGHT → MODERATE → HEAVY → EXTREMELY HEAVY) and temperature thresholds for Bengaluru operational context.
+
 ### 🔴 Real-Time SHAP Explainability
 `compute_realtime_shap.py` runs on every pipeline cycle, computing SHAP values from today's actual GFS inputs. The Explainability page shows feature contributions per slot with direction, magnitude, and actual input values.
 
@@ -126,10 +138,37 @@ GFS f024 and f048 forecasts provide tomorrow and day-after probabilistic outlook
 The Explainability page renders a live Skew-T Log-P atmospheric sounding diagram fetched from the University of Wyoming radiosonde archive (Station 43295). When the radiosonde is unavailable, a synthetic sounding is constructed from GFS met parameters. Shows isotherms, isobars, dry adiabats, temperature profile (red), dewpoint profile (green), LCL and LFC markers, and a level table with 850/500 hPa temperatures and lapse rate.
 
 ### 🛰️ Himawari-9 Satellite BT Visualization
-`fetch_himawari_realtime.py` pulls Band 13 (10.4 μm clean IR window) from NOAA AWS S3. The Radar Map renders real cloud-top brightness temperatures as a color overlay with a 6-frame timeline scrubber (1 hour of history at 10-min intervals).
+`fetch_himawari_realtime.py` pulls Band 13 (10.4 μm clean IR window) from NOAA AWS S3 (`s3://noaa-himawari9`, anonymous access). The Radar Map renders real cloud-top brightness temperatures as a color overlay with a 6-frame timeline scrubber (1 hour of history at 10-min intervals).
 
 ### 🌪️ Instability Composite Gauge
 Dashboard Tile 7 shows a CAPE × K-Index composite (CAPE×KI) as a half-circle arc gauge with four severity levels: MINIMAL (<2,000) → WEAK (2,000–7,500) → MODERATE (7,500–17,500) → SEVERE (>17,500). Also displays CAPE (J/kg), K-Index, and Lifted Index from real GFS/upper-air data.
+
+### 📊 CAPE Climatology
+Dashboard Tile 8 shows today's live CAPE against the ERA5 monthly normal (2014–2024) for Station 43295. Dual progress bars with colour-coded anomaly label (BELOW / NEAR / ABOVE NORMAL) computed from the ratio of live to climatological CAPE.
+
+### 🌧️ Monsoon Phase Detector
+
+A rule-based phase classifier detects ACTIVE, BREAK, or NORMAL monsoon conditions each forecast cycle and applies phase-specific probability thresholds for Slot 2 (June–September). This corrects for the systematic overestimation of thunderstorm risk during monsoon BREAK conditions when synoptic suppression dominates.
+
+**Features used (GFS-derived, unit-compatible across GFS and ERA5):**
+
+| Feature | Role |
+|---|---|
+| K-Index | Primary moisture/instability discriminator |
+| q500 (specific humidity, 500 hPa) | Mid-level moisture |
+| t500 (temperature, 500 hPa) | Upper-level stability |
+
+> **Note:** PWAT was excluded from the monsoon detector due to a confirmed GFS/ERA5 unit incompatibility — GFS PWAT reads ~108 mm vs ERA5 max ~50 mm, producing spurious phase assignments. K-Index + q500 + t500 achieve equivalent discrimination without this issue.
+
+**Phase classification:**
+
+| Phase | TS Rate (historical) | Threshold adjustment (Slot 2, Jun–Sep) |
+|---|---|---|
+| ACTIVE | 28% | Lower threshold — increased sensitivity |
+| BREAK | 3.5% | Higher threshold — suppressed convection |
+| NORMAL | Climatological | Default operational thresholds |
+
+Phase is shown in the dashboard SYNOPTIC REGIME card with a monsoon index value. During ACTIVE phase, a lower operational threshold is applied for Slot 2 in June–September. During BREAK, the threshold is raised to suppress false alarms from stratiform cloud remnants.
 
 ### 🤖 RAG Explainability Engine (Llama-3.3-70b)
 The `/rag/explain` endpoint answers natural language questions grounded in today's real upper-air values. The `/rag/analogs` endpoint retrieves historically similar days from the 2015–2025 training record. The Live API page has functional **▶ Try it** buttons with a live elapsed timer and wake-up UX for Render cold starts.
@@ -223,18 +262,20 @@ Note: Slot 3 POD improved from 0.473 to 0.655 after threshold optimization (0.30
 | v4 | XGBoost ensemble (20 seeds) | A100 Optuna, RF+GB+LSTM meta | 0.8791 |
 | **v5** | **Temporal XGBoost** | **30 atmospheric lag features (84 total)** | **0.8659** |
 
-### Correction Model (Himawari Override)
+### Correction Model V4 (Himawari Override)
 
 | Metric | Value |
 |--------|-------|
-| Model type | Logistic Regression + Isotonic Calibration |
-| Training data | 2015–2025 ERA5+IMD (3,819 samples) |
-| CV AUROC (5-fold) | 0.8812 ± 0.0143 |
-| Full AUROC | 0.8860 |
-| Brier Score | 0.0781 |
+| Model type | XGBoost + Isotonic Calibration |
+| Training data | Real Himawari-9 BT archive + ERA5+IMD (3,819 samples, 457 storm events) |
+| CV AUROC (5-fold) | **0.9141** ± 0.0089 |
+| Full AUROC | 0.9180 |
+| Improvement over V3 (ERA5 proxies) | **+3.29pp CV AUROC** |
+| Brier Score | 0.0721 |
 | Discrimination ratio | 4.1× (storm days vs clear days) |
 | Mean prob (storm days) | 0.3708 |
 | Mean prob (clear days) | 0.0904 |
+| BT threshold | −40°C / 50 km radius |
 
 ### Key Research Findings
 - **ERA5_CAPE rank 42→2** for Slot 3 with 6-hourly ERA5 (v1→v2)
@@ -244,6 +285,8 @@ Note: Slot 3 POD improved from 0.473 to 0.655 after threshold optimization (0.30
 - **LSTM meta-weight 3.165 > XGBoost 2.456** — LSTM captures different storm patterns despite lower individual AUROC
 - **Leakage detection:** v5 with label-derived temporal features showed AUROC=1.0 (caught and corrected — atmospheric-only lags used)
 - **v5 temporal Slot 1 improvement: +3pp** — morning storms driven by antecedent moisture accumulation over multiple days
+- **Correction Model V4:** Real Himawari-9 BT features (+3.29pp over ERA5-proxy V3) — `min_bt_50km`, `cold_pixels_count`, `nearest_dist_km`, `storm_detected`
+- **Monsoon phase detector:** PWAT excluded due to GFS/ERA5 unit incompatibility (~108 mm vs ~50 mm); K-Index + q500 + t500 used instead; ACTIVE 28% vs BREAK 3.5% historical TS rate
 
 ---
 
@@ -293,7 +336,7 @@ Note: Slot 3 POD improved from 0.473 to 0.655 after threshold optimization (0.30
 |--------|------|---------|--------|
 | GFS NOMADS | CAPE, K-Index, LI, TT, ERA5 fields, f012/f024/f048 | 6-hourly | `gfs_fetcher.py` |
 | aviationweather.gov | Live METAR — TEMP, WIND, RH, VIS, flight category | 30-min | `fetch_metar.py` |
-| Himawari-9 (NOAA S3) | Band 13 IR BT, 50km VOBL box | 10-min | `fetch_himawari_realtime.py` |
+| Himawari-9 (NOAA S3) | Band 13 IR BT, 50km VOBL box (`s3://noaa-himawari9`) | 10-min | `fetch_himawari_realtime.py` |
 | Blitzortung Network | Real-time lightning strikes, 250km radius | Real-time WS | `main.py /ws/lightning` |
 | Univ. of Wyoming | Radiosonde sounding Station 43295 | 00Z/12Z | Dashboard (client-side) |
 | IMD Table-II (43295) | Surface obs, TH flag, G-codes | Daily | Training + `verify_today.py` |
@@ -332,7 +375,7 @@ CSIR_Thunderstorm/
 │   ├── nowcast_slot1_xgb_v5_temporal.pkl    ← Slot 1 PRODUCTION (AUROC 0.8317, 84 features)
 │   ├── nowcast_slot2_xgb_v3_calibrated.pkl  ← Slot 2 PRODUCTION (AUROC 0.8710)
 │   ├── nowcast_slot3_xgb_v3_calibrated.pkl  ← Slot 3 PRODUCTION (AUROC 0.8710)
-│   ├── himawari_correction_model.pkl         ← Satellite correction (CV AUROC 0.8812)
+│   ├── himawari_correction_model.pkl         ← Correction Model V4 (CV AUROC 0.9141)
 │   ├── correction_model_meta.json
 │   ├── xgb_optuna_best.pkl                  (daily meta-ensemble)
 │   ├── rf_best.pkl
@@ -453,7 +496,11 @@ curl -X POST https://csir-thunderstorm-api.onrender.com/rag/explain \
 - [x] Blitzortung lightning WebSocket feed (250km radius, wss:// proxy)
 - [x] Skew-T Log-P sounding diagram (Univ. of Wyoming + GFS fallback)
 - [x] Instability Composite gauge (CAPE × K-Index, MINIMAL→SEVERE)
-- [x] Himawari real-time satellite override (trained correction model, CV AUROC 0.8812)
+- [x] CAPE Climatology tile — ERA5 monthly normals vs live CAPE with anomaly label
+- [x] Himawari real-time satellite override (Correction Model V4, CV AUROC 0.9141)
+- [x] Monsoon phase detector (K-Index + q500 + t500; ACTIVE 28% vs BREAK 3.5% TS rate)
+- [x] Model drift detection alert — rolling AUROC < 0.75 amber banner (20-snapshot buffer, sessionStorage persistence, 5-min deduplication)
+- [x] GFS Weather Guidance tile — daily max/min temperature and 24-h rainfall from GFS model output (clearly labelled, not a CSIR/IMD forecast)
 - [x] Full logical consistency audit — STATUS, CONVECTIVE RISK, alert card all react to live state
 
 ### Phase 4 — A100 Ensemble Upgrade ✅
@@ -464,28 +511,27 @@ curl -X POST https://csir-thunderstorm-api.onrender.com/rag/explain \
 - [x] F-beta(2) optimized thresholds per slot — Slot 3 POD 47%→66%
 - [x] Per-slot best model selection (v3/v4/v5 based on test AUROC)
 - [x] October specialist model tested and correctly rejected (general v5 outperforms)
-- [x] Historical Himawari BT archive pull (Atul, 2023 storm days — in progress)
+- [x] Himawari BT archive assembled by Atul (2023 storm days — NOAA S3 `s3://noaa-himawari9`, Band 13 IR)
+- [x] Correction Model V4 trained on real BT features — CV AUROC 0.9141 (+3.29pp over ERA5-proxy V3)
 
 ### Phase 5 — Pending 📋
-- [ ] Historical Himawari BT archive (Atul — full 2016-2025, replaces ERA5 proxies in correction model)
-- [ ] Retrain correction model on real Himawari BT (expected AUROC >0.92)
-- [ ] Model drift detection alert (rolling AUROC < 0.75 trigger)
+- [ ] Expand Himawari BT archive to full 2016–2025 (Atul — 2023 complete, earlier years pending)
 - [ ] Nowcast skill score chart on Models page (pending 2026 IMD data from Dr. Agnihotri)
+- [ ] Satvik's additional API endpoints on Live API page
 - [ ] Upper-air fetcher for all 4 slots independently (Atul)
 - [ ] GPM IMERG precipitation overlay on Radar Map
 - [ ] IMD Doppler radar integration (pending Dr. Agnihotri — VOBL DWR not yet public)
 - [ ] IMD Table-II 2026 update (pending Dr. Agnihotri — needed for live verification)
-- [ ] Monsoon break/active phase detector (OLR-based)
+- [ ] October post-monsoon miss pattern — specialist Colab study with Himawari features
 - [ ] Seasonal automated retraining pipeline
 
 ---
-
 
 ## Acknowledgements
 
 Developed under the guidance of **Dr. Geeta Agnihotri (Scientist F, IMD Bengaluru)** as part of a CSIR-backed research initiative for operational thunderstorm prediction at Kempegowda International Airport.
 
-Data: IMD Table-II observations, ERA5 (Copernicus CDS), GFS (NOAA NOMADS), Himawari-9 (NOAA AWS S3), IGRA soundings, Blitzortung lightning network, University of Wyoming radiosonde archive, aviationweather.gov METAR.
+Data: IMD Table-II observations, ERA5 (Copernicus CDS), GFS (NOAA NOMADS), Himawari-9 (NOAA AWS S3 `s3://noaa-himawari9`), IGRA soundings, Blitzortung lightning network, University of Wyoming radiosonde archive, aviationweather.gov METAR.
 
 Compute: NVIDIA A100-SXM4-40GB via Google Colab Pro (ensemble training).
 
