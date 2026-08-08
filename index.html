@@ -225,7 +225,7 @@
       { method: 'POST', path: '/predict',                    desc: 'Daily thunderstorm forecast prediction payload', isPost: true, exampleBody: '{}' },
       { method: 'POST', path: '/nowcast/predict/slot/{id}',  desc: 'Single slot prediction (IDs 0–3). Replace {id} with 0, 1, 2, or 3', isPost: true, exampleBody: '{"slot_id": 2}' },
       { method: 'POST', path: '/nowcast/predict/all',        desc: 'All 4 slots batch prediction output', isPost: true, exampleBody: '{}' },
-      { method: 'POST', path: '/rag/explain',                desc: 'Llama-3.3-70b physical explanation grounded in today's GFS inputs', isPost: true, exampleBody: '{"query": "Why did Slot 2 fire today?", "date": "2026-08-08"}' },
+      { method: 'POST', path: '/rag/explain',                desc: 'Llama-3.3-70b physical explanation grounded in today GFS inputs', isPost: true, exampleBody: '{"query": "Why did Slot 2 fire today?", "date": "2026-08-08"}' },
       { method: 'POST', path: '/rag/analogs',                desc: 'Historical analog retrieval — finds similar atmospheric days from 2015–2025 record', isPost: true, exampleBody: '{"cape": 350, "k_index": 38, "lifted_index": -3}' },
       { method: 'POST', path: '/rag/question',               desc: 'Meteorological Q&A conversational endpoint powered by RAG', isPost: true, exampleBody: '{"question": "What conditions favour afternoon thunderstorms at VOBL?"}' },
     ];
