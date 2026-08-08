@@ -120,6 +120,9 @@ for slot_id in range(4):
         continue
 
     artifact     = joblib.load(model_path)
+    # Force operational threshold — overrides any value baked into the pickle
+    if slot_id == 1:
+        artifact['threshold'] = 0.15   # v5 Temporal operational threshold
     model        = artifact['model']
     feature_cols = artifact['feature_cols']
     threshold    = artifact['threshold']
