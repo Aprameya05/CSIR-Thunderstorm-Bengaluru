@@ -19,7 +19,7 @@ DATA   = BASE / 'data'
 
 SLOT_NAMES  = {0:"0001-0600 IST",1:"0601-1200 IST",2:"1201-1800 IST",3:"1801-2400 IST"}
 SLOT_LABELS = {0:"Late Night",1:"Morning",2:"Afternoon",3:"Evening"}
-THRESHOLDS  = {0:0.24, 1:0.38, 2:0.16, 3:0.39}
+THRESHOLDS  = {0:0.24, 1:0.15, 2:0.16, 3:0.39}  # Slot 1 updated to v5 Temporal threshold
 
 def apply_calibrator(artifact, raw_prob):
     cal = artifact.get('calibrator')
@@ -287,9 +287,28 @@ gfs_row = gfs_df.iloc[0] if len(gfs_df) > 0 else {}
 # GFS daily temperature + rainfall — added 2026-08-08
 # TMP_2m is in Kelvin; APCP_surface is 24h precip accumulation in mm
 # Falls back to ERA5_T2M if TMAX/TMIN not in the GFS file
-gfs_tmax_k         = float(gfs_row.get('TMAX_2m', gfs_row.get('ERA5_T2M', 302.0))) if len(gfs_df) > 0 else 302.0
-gfs_tmin_k         = float(gfs_row.get('TMIN_2m', gfs_row.get('ERA5_T2M', 295.0))) if len(gfs_df) > 0 else 295.0
-gfs_apcp_mm        = float(gfs_row.get('APCP_surface', gfs_row.get('RF', 0.0)))     if len(gfs_df) > 0 else 0.0
+# GFS Tmax/Tmin: fetch TMP_2maboveground across f006/f012/f018/f024 and take max/min
+# This gives a proper daily temperature range instead of a single snapshot.
+# gfs_df may have multiple rows (one per forecast hour) if gfs_fetcher writes them;
+# if only one row exists (current behaviour), fall back to ERA5_T2M ± a climatological spread.
+if len(gfs_df) > 0:
+    tmp_cols = [c for c in gfs_df.columns if 'TMP' in c or 'ERA5_T2M' in c]
+    tmp_vals = []
+    for col in ['TMP_f006','TMP_f012','TMP_f018','TMP_f024']:
+        if col in gfs_df.columns:
+            tmp_vals.append(float(gfs_df.iloc[0][col]))
+    if not tmp_vals:
+        # Only one TMP value available — apply ±5K spread as proxy for diurnal range
+        base_k = float(gfs_row.get('ERA5_T2M', 302.0))
+        tmp_vals = [base_k - 5.0, base_k, base_k + 3.0, base_k + 5.0]
+    gfs_tmax_k = max(tmp_vals)
+    gfs_tmin_k = min(tmp_vals)
+    # APCP: prefer 24h accumulation field; fall back to 0
+    gfs_apcp_mm = float(gfs_row.get('APCP_surface', gfs_row.get('APCP_24h', gfs_row.get('RF', 0.0))))
+else:
+    gfs_tmax_k  = 307.0   # ~33.8°C — Bengaluru Aug climatology
+    gfs_tmin_k  = 295.0   # ~21.8°C
+    gfs_apcp_mm = 0.0
 gfs_valid_date_str = datetime.now().strftime('%d %b %Y')
 gfs_cycle_str      = "00Z"
 
@@ -352,6 +371,12 @@ if multiday_path.exists():
     try:
         with open(multiday_path) as f:
             multiday_data = json.load(f)
+
+        # Filter out stale dates — only keep rows from today onwards
+        from datetime import date as _date
+        today_str = datetime.now().strftime('%Y-%m-%d')
+        multiday_data = [r for r in multiday_data
+                         if str(r.get('date', '9999')) >= today_str]
 
         for day_row in multiday_data:
             day_cape = float(day_row.get('CAPE', 0))
