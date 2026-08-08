@@ -213,19 +213,21 @@
       { id: 'R1', name: 'R1 Hot Pre-Monsoon', ts_rate: 1.2, auroc: 1.000, color: '#4caf50', desc: 'Dry thermal low baseline, low storm occurrence' },
       { id: 'R2', name: 'R2 Moist Monsoon', ts_rate: 9.3, auroc: 0.934, color: '#ffc107', desc: 'Monsoonal westerly surge, high skill' },
       { id: 'R3', name: 'R3 Break Monsoon', ts_rate: 10.2, auroc: 0.798, color: '#ff9800', desc: 'Break-monsoon stratiform clouding, suppressed convection' },
-      { id: 'R4', name: 'R4 Hot Pre-Monsoon', ts_rate: 9.8, auroc: 0.900, color: '#ff9800', desc: 'Strong solar heating with mid-level moisture' },
+      { id: 'R4', name: 'R4 Solar Convective', ts_rate: 9.8, auroc: 0.900, color: '#ff9800', desc: 'Strong solar heating with mid-level moisture' },
       { id: 'R5', name: 'R5 High-TS Regime', ts_rate: 52.1, auroc: 0.773, color: '#ef5350', isChallenging: true, desc: 'Severe convective instability and convergence — most challenging regime' },
     ];
 
     const API_ENDPOINTS = [
-      { method: 'GET', path: '/', desc: 'System health check & API status', isPost: false },
-      { method: 'POST', path: '/predict', desc: 'Daily forecast prediction payload', isPost: true },
-      { method: 'GET', path: '/nowcast/slots/info', desc: '6-hour slot metadata & operational thresholds', isPost: false },
-      { method: 'POST', path: '/nowcast/predict/slot/{id}', desc: 'Single slot prediction (IDs 0-3)', isPost: true },
-      { method: 'POST', path: '/nowcast/predict/all', desc: 'All 4 slots predictions batch output', isPost: true },
-      { method: 'POST', path: '/rag/explain', desc: 'RAG forecast physical explanation engine', isPost: true },
-      { method: 'POST', path: '/rag/question', desc: 'Meteorological Q&A conversational endpoint', isPost: true },
-      { method: 'POST', path: '/rag/analogs', desc: 'Historical analog search engine (2015-2025)', isPost: true }
+      { method: 'GET',  path: '/',                          desc: 'System health check & API status', isPost: false },
+      { method: 'GET',  path: '/nowcast/slots/info',         desc: '6-hour slot metadata & operational thresholds', isPost: false },
+      { method: 'GET',  path: '/correction/status',          desc: 'Correction model metadata, Himawari-9 override status, active slots, boost value, and current satellite info', isPost: false },
+      { method: 'GET',  path: '/nowcast/explain/2',          desc: 'Human-readable explanation for Slot 2 — probability, risk level, top SHAP feature, atmospheric conditions, Himawari override status', isPost: false },
+      { method: 'POST', path: '/predict',                    desc: 'Daily thunderstorm forecast prediction payload', isPost: true, exampleBody: '{}' },
+      { method: 'POST', path: '/nowcast/predict/slot/{id}',  desc: 'Single slot prediction (IDs 0–3). Replace {id} with 0, 1, 2, or 3', isPost: true, exampleBody: '{"slot_id": 2}' },
+      { method: 'POST', path: '/nowcast/predict/all',        desc: 'All 4 slots batch prediction output', isPost: true, exampleBody: '{}' },
+      { method: 'POST', path: '/rag/explain',                desc: 'Llama-3.3-70b physical explanation grounded in today's GFS inputs', isPost: true, exampleBody: '{"query": "Why did Slot 2 fire today?", "date": "2026-08-08"}' },
+      { method: 'POST', path: '/rag/analogs',                desc: 'Historical analog retrieval — finds similar atmospheric days from 2015–2025 record', isPost: true, exampleBody: '{"cape": 350, "k_index": 38, "lifted_index": -3}' },
+      { method: 'POST', path: '/rag/question',               desc: 'Meteorological Q&A conversational endpoint powered by RAG', isPost: true, exampleBody: '{"question": "What conditions favour afternoon thunderstorms at VOBL?"}' },
     ];
 
     const getRiskBadge = (prob) => {
@@ -1370,7 +1372,7 @@
                     // Date.now() is UTC ms; parsed.getTime() is also UTC ms — direct subtraction correct
                     ageHours = (Date.now() - parsed.getTime()) / 3600000;
                     if (ageHours < 2)       { ageLabel = `${Math.round(ageHours * 60)} min ago`; staleLevel = 'ok'; }
-                    else if (ageHours < 8)  { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'warn'; }
+                    else if (ageHours < 14) { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'warn'; }
                     else                    { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'stale'; }
                   }
                 } catch(_) {}
@@ -1800,8 +1802,9 @@
                       const x = toX(idx) - barW / 2;
                       const y = toY(val);
                       const barH = toY(cfg.min) - y;
-                      const isLow = wfMetric === 'auroc' ? val < 0.85 : val < 0.30;
-                      const fill = isLow ? '#ef5350' : cfg.color;
+                      const isDrift    = wfMetric === 'auroc' ? val < 0.75 : val < 0.20;
+                      const isBelowMean = wfMetric === 'auroc' ? val < 0.87 : val < 0.35;
+                      const fill = isDrift ? '#ef5350' : isBelowMean ? '#ff9800' : cfg.color;
                       const isHovered = hoveredIdx === idx;
                       return (
                         <g key={d.year}
@@ -2253,7 +2256,7 @@
             
             {/* Slot Switcher */}
             <div className="flex items-center gap-1 text-xs">
-              {['Slot 1 (Late Night)', 'Slot 2 (Morning)', 'Slot 3 (Afternoon)', 'Slot 4 (Evening)'].map((sLabel, idx) => (
+              {['Slot 0 (Late Night)', 'Slot 1 (Morning)', 'Slot 2 (Afternoon)', 'Slot 3 (Evening)'].map((sLabel, idx) => (
                 <button
                   key={idx}
                   onClick={() => setShapSlot(idx)}
@@ -2564,6 +2567,13 @@
 
                   <p className="text-xs text-[#90a4ae]">{ep.desc}</p>
 
+                  {/* Example body for POST endpoints */}
+                  {ep.isPost && ep.exampleBody && (
+                    <div className="text-[9px] font-mono bg-[#080d1a] border border-[#172338] rounded p-2 text-[#607d8b]">
+                      <span className="text-amber-400 font-bold">EXAMPLE BODY: </span>
+                      <span className="text-[#90a4ae]">{ep.exampleBody}</span>
+                    </div>
+                  )}
                   <div className="flex justify-end border-t border-[#172338] pt-2">
                     <button
                       onClick={() => handleTryIt(ep)}
@@ -2842,6 +2852,9 @@
             const meanBT = frame?.mean_bt_50km;
             const coldPx = frame?.cold_pixels_count || 0;
             const stormDetected = frame?.storm_detected;
+            // Banner always shows live state (h9), not scrubber frame state
+            const liveStormDetected = h9?.storm_detected;
+            const liveColdPx = h9?.cold_pixels_count || 0;
 
             // BT to color mapping (cold = red/orange, warm = blue/black)
             const btToColor = (bt) => {
@@ -2965,9 +2978,9 @@
                   </div>
                 </div>
                 {/* Storm alert overlay */}
-                {stormDetected && (
+                {liveStormDetected && (
                   <div className="absolute top-4 right-4 px-3 py-1.5 rounded bg-red-500/20 border border-red-500/50 text-red-400 text-xs font-bold font-mono animate-pulse">
-                    ⚡ DEEP CONVECTION DETECTED — {coldPx} COLD PIXELS
+                    ⚡ DEEP CONVECTION DETECTED — {liveColdPx} COLD PIXELS (LIVE)
                   </div>
                 )}
 
