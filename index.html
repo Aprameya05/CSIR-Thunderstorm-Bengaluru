@@ -202,11 +202,46 @@
     
 
     const SYNOPTIC_REGIMES = [
-      { id: 'R1', name: 'R1 Hot Pre-Monsoon', ts_rate: 1.2, auroc: 1.000, color: '#4caf50', desc: 'Dry thermal low baseline, low storm occurrence' },
-      { id: 'R2', name: 'R2 Moist Monsoon', ts_rate: 9.3, auroc: 0.934, color: '#ffc107', desc: 'Monsoonal westerly surge, high skill' },
-      { id: 'R3', name: 'R3 Break Monsoon', ts_rate: 10.2, auroc: 0.798, color: '#ff9800', desc: 'Break-monsoon stratiform clouding, suppressed convection' },
-      { id: 'R4', name: 'R4 Solar Convective', ts_rate: 9.8, auroc: 0.900, color: '#ff9800', desc: 'Strong solar heating with mid-level moisture' },
-      { id: 'R5', name: 'R5 High-TS Regime', ts_rate: 52.1, auroc: 0.773, color: '#ef5350', isChallenging: true, desc: 'Severe convective instability and convergence — most challenging regime' },
+      {
+        id: 'R1', name: 'R1 Hot Pre-Monsoon', ts_rate: 1.2, auroc: 1.000, color: '#4caf50',
+        desc: 'Dry thermal low baseline, low storm occurrence',
+        months: 'Feb – Apr',
+        seasonal: 'Pre-monsoon dry phase. Surface heating high but moisture absent. Model performs perfectly (AUROC 1.0) because storms are rare and well-separated from clear days.',
+        octNote: null,
+        threshold_behaviour: 'Default',
+      },
+      {
+        id: 'R2', name: 'R2 Moist Monsoon', ts_rate: 9.3, auroc: 0.934, color: '#ffc107',
+        desc: 'Monsoonal westerly surge, high skill',
+        months: 'Jun – Sep',
+        seasonal: 'Active monsoon westerly flow. PWAT and K-Index both elevated. Model skill peaks here — monsoonal storms are consistent and thermodynamically predictable.',
+        octNote: null,
+        threshold_behaviour: 'ACTIVE phase lowers Slot 2 threshold for increased sensitivity',
+      },
+      {
+        id: 'R3', name: 'R3 Break Monsoon', ts_rate: 10.2, auroc: 0.798, color: '#ff9800',
+        desc: 'Break-monsoon stratiform clouding, suppressed convection',
+        months: 'Jul – Oct',
+        seasonal: 'Monsoon break phase — synoptic suppression despite surface instability. High cloud cover without deep convection creates ambiguity. Lowest model skill of non-challenging regimes.',
+        octNote: 'October miss pattern confirmed here. DOY_sin seasonal suppression causes the model to underpredict post-monsoon convection in October. A specific threshold correction (0.226 → 0.10) has been applied for October Slot 2 to compensate. POD improved from 38% to 62%.',
+        threshold_behaviour: 'BREAK phase raises Slot 2 threshold to suppress false alarms. October exception: threshold lowered.',
+      },
+      {
+        id: 'R4', name: 'R4 Solar Convective', ts_rate: 9.8, auroc: 0.900, color: '#ff9800',
+        desc: 'Strong solar heating with mid-level moisture',
+        months: 'Apr – Jun, Oct',
+        seasonal: 'Afternoon solar heating drives forced convection. Different triggering mechanism from monsoon — CAPE builds rapidly from surface heating rather than moisture flux. ERA5_T2M is the dominant SHAP feature.',
+        octNote: 'Post-monsoon October storms frequently fall in this regime — forced convection with moderate CAPE (mean 327 J/kg on miss days) rather than monsoon-driven instability.',
+        threshold_behaviour: 'Default — model relies on cape_x_kindex and ERA5_T2M interaction',
+      },
+      {
+        id: 'R5', name: 'R5 High-TS Regime', ts_rate: 52.1, auroc: 0.773, color: '#ef5350', isChallenging: true,
+        desc: 'Severe convective instability and convergence — most challenging regime',
+        months: 'May – Jun',
+        seasonal: 'Peak pre-monsoon instability. CAPE frequently exceeds 1000 J/kg. Despite the highest TS rate (52%), model skill is lowest here because storm occurrence is so unpredictable — even high-CAPE days sometimes do not storm.',
+        octNote: null,
+        threshold_behaviour: 'Default — but high false alarm risk due to extreme instability',
+      },
     ];
 
     const API_ENDPOINTS = [
@@ -1999,6 +2034,41 @@
               </div>
             );
           })()}
+
+          {/* October Miss Pattern Research Findings */}
+          <div className="p-4 rounded-xl bg-[#050811] border border-amber-500/30">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div>
+                <h4 className="text-xs font-bold text-amber-300">OCTOBER POST-MONSOON MISS PATTERN — RESEARCH FINDINGS</h4>
+                <p className="text-[9px] text-[#607d8b]">Walk-forward SHAP analysis · CSIR_October_PostMonsoon_Analysis.ipynb · Aug 2026</p>
+              </div>
+              <span className="text-[9px] text-emerald-300 font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">FIX APPLIED IN PRODUCTION</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[9px] font-mono mb-3">
+              {[
+                { label: 'October TS Rate', value: '19.5%', note: 'Higher than Jun-Sep avg', color: 'text-amber-300' },
+                { label: 'Miss-Day CAPE', value: '327 J/kg', note: 'vs 611 J/kg on hit days', color: 'text-red-400' },
+                { label: 'Previous Oct POD', value: '38%', note: 'Before threshold fix', color: 'text-red-400' },
+                { label: 'Corrected Oct POD', value: '62%', note: 'Threshold 0.226 → 0.10', color: 'text-emerald-400' },
+              ].map(m => (
+                <div key={m.label} className="p-2.5 rounded bg-[#080d1a] border border-[#172338] text-center">
+                  <div className="text-[#607d8b] text-[8px] mb-1">{m.label}</div>
+                  <div className={`text-base font-extrabold ${m.color}`}>{m.value}</div>
+                  <div className="text-[#3d5066] text-[8px] mt-0.5">{m.note}</div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[9px]">
+              <div className="p-3 rounded bg-[#080d1a] border border-[#172338]">
+                <div className="text-amber-300 font-bold mb-1.5">ROOT CAUSE</div>
+                <p className="text-[#90a4ae] leading-relaxed">DOY_sin seasonal encoding suppresses Slot 2 probabilities in October — the model learned a seasonal prior that overrides thermodynamic signals. All 41 October misses had predicted probabilities of 5–15%, clustered just below the 16% threshold. Miss-day CAPE of 327 J/kg is sufficient for convection but the model discounts it due to the seasonal suppression.</p>
+              </div>
+              <div className="p-3 rounded bg-[#080d1a] border border-[#172338]">
+                <div className="text-emerald-300 font-bold mb-1.5">FIX APPLIED + LONG-TERM PLAN</div>
+                <p className="text-[#90a4ae] leading-relaxed">October-specific threshold of 0.10 applied in <span className="text-white font-bold">october_threshold_fix.py</span>. Specialist V6 retrain was tested and rejected — AUROC dropped 13pp due to small per-year sample size (8–12 October TS events). Long-term fix: expand Himawari archive to 2016–2025 October months and retrain correction model V5 with October-specific weighting.</p>
+              </div>
+            </div>
+          </div>
         </div>
       );
     }
@@ -2412,6 +2482,68 @@
             ))}
           </div>
 
+          {/* SHAP All-Slots Overview Panel */}
+          <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div>
+                <h4 className="text-xs font-bold text-white">SHAP FEATURE IMPORTANCE — ALL 4 SLOTS OVERVIEW</h4>
+                <p className="text-[9px] text-[#607d8b]">Computed from trained models on 2015–2025 dataset · Each bar = mean absolute SHAP value · Top 12 features per slot</p>
+              </div>
+              <span className="text-[9px] text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">STATIC · Aug 2026 Analysis</span>
+            </div>
+            <img
+              src="./assets/shap_all_slots.png"
+              alt="SHAP Feature Importance — All 4 Slots"
+              className="w-full rounded-lg border border-[#172338]"
+              style={{ maxHeight: '420px', objectFit: 'contain', background: '#0a0f1e' }}
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-[9px] font-mono">
+              {[
+                { slot: 'SLOT 0 · LATE NIGHT', color: 'text-cyan-300', top: 'LIFTED_INDEX', insight: 'Stability-driven. Strong instability needed to overcome nocturnal layer.' },
+                { slot: 'SLOT 1 · MORNING', color: 'text-purple-300', top: 'LIFTED_INDEX + LI_lag2', insight: 'Persistence + temporal momentum. 2-3 days of building instability required.' },
+                { slot: 'SLOT 2 · AFTERNOON', color: 'text-amber-300', top: 'cape_x_kindex', insight: 'Purely thermodynamic. CAPE × K-Index interaction dominates. Cleanest signal.' },
+                { slot: 'SLOT 3 · EVENING', color: 'text-emerald-300', top: 'ERA5_T2M', insight: 'Temperature-anomaly driven. Warm surface needed to sustain convection past peak.' },
+              ].map(s => (
+                <div key={s.slot} className="p-2.5 rounded bg-[#080d1a] border border-[#172338]">
+                  <div className={`font-bold mb-1 ${s.color}`}>{s.slot}</div>
+                  <div className="text-[#607d8b] mb-0.5">Top feature: <span className="text-white">{s.top}</span></div>
+                  <div className="text-[#3d5066] leading-tight">{s.insight}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* SHAP All-Slots Overview Panel */}
+          <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <div>
+                <h4 className="text-xs font-bold text-white">SHAP FEATURE IMPORTANCE — ALL 4 SLOTS OVERVIEW</h4>
+                <p className="text-[9px] text-[#607d8b]">Computed from trained models on 2015–2025 dataset · Each bar = mean absolute SHAP value · Top 12 features per slot</p>
+              </div>
+              <span className="text-[9px] text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">STATIC · Aug 2026 Analysis</span>
+            </div>
+            <img
+              src="./assets/shap_all_slots.png"
+              alt="SHAP Feature Importance — All 4 Slots"
+              className="w-full rounded-lg border border-[#172338]"
+              style={{ maxHeight: '420px', objectFit: 'contain', background: '#0a0f1e' }}
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-[9px] font-mono">
+              {[
+                { slot: 'SLOT 0 · LATE NIGHT', color: 'text-cyan-300', top: 'LIFTED_INDEX (0.739)', insight: 'Stability-driven. Strong instability needed to overcome nocturnal layer.' },
+                { slot: 'SLOT 1 · MORNING', color: 'text-purple-300', top: 'LIFTED_INDEX + LI_lag2', insight: 'Persistence and temporal momentum. 2-3 days of building instability required.' },
+                { slot: 'SLOT 2 · AFTERNOON', color: 'text-amber-300', top: 'cape_x_kindex (0.760)', insight: 'Purely thermodynamic. CAPE x K-Index interaction dominates. Cleanest signal.' },
+                { slot: 'SLOT 3 · EVENING', color: 'text-emerald-300', top: 'ERA5_T2M (1.506)', insight: 'Temperature-anomaly driven. Warm surface needed to sustain convection past peak.' },
+              ].map(s => (
+                <div key={s.slot} className="p-2.5 rounded bg-[#080d1a] border border-[#172338]">
+                  <div className={`font-bold mb-1 ${s.color}`}>{s.slot}</div>
+                  <div className="text-[#607d8b] mb-0.5">Top: <span className="text-white">{s.top}</span></div>
+                  <div className="text-[#3d5066] leading-tight">{s.insight}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* RAG Explainability Terminal Panel */}
           <div className="p-4 rounded-xl bg-[#020409] border border-[#172338]">
             <div className="flex justify-between items-center text-xs font-bold text-cyan-300 border-b border-[#172338] pb-2 mb-3">
@@ -2554,14 +2686,51 @@
                     <div className="text-[9px] text-[#607d8b]">Historical TS rate</div>
                   </div>
 
-                  <div className="border-t border-[#172338] pt-2 text-[10px] text-[#90a4ae] space-y-1">
+                  <div className="border-t border-[#172338] pt-2 text-[10px] text-[#90a4ae] space-y-1.5">
                     <div>AUROC SCORE: <span className="text-white font-bold">{reg.auroc.toFixed(3)}</span></div>
-                    <div>{reg.desc}</div>
+                    <div className="text-[#607d8b]">{reg.desc}</div>
+                    {reg.months && (
+                      <div className="text-[8px] text-[#3d5066]">
+                        <span className="text-[#607d8b] font-bold">ACTIVE: </span>{reg.months}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Seasonal context + October note for today's regime */}
+          {todayRegime && (() => {
+            const reg = SYNOPTIC_REGIMES.find(r => r.id === todayRegimeId);
+            if (!reg) return null;
+            return (
+              <div className="space-y-3">
+                {/* Seasonal behaviour */}
+                <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+                  <div className="text-[9px] text-cyan-300 font-bold mb-1 uppercase tracking-wider">
+                    {reg.id} · SEASONAL BEHAVIOUR
+                  </div>
+                  <p className="text-[10px] text-[#90a4ae] leading-relaxed">{reg.seasonal}</p>
+                  <div className="mt-2 text-[9px] text-[#607d8b]">
+                    <span className="font-bold">THRESHOLD BEHAVIOUR: </span>
+                    <span className="text-[#90a4ae]">{reg.threshold_behaviour}</span>
+                  </div>
+                </div>
+
+                {/* October note — only shown if relevant */}
+                {reg.octNote && (
+                  <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/40">
+                    <div className="flex items-center gap-2 text-[9px] font-bold text-amber-300 mb-2 uppercase tracking-wider">
+                      <span>⚠</span>
+                      <span>OCTOBER POST-MONSOON NOTE</span>
+                    </div>
+                    <p className="text-[10px] text-amber-200/80 leading-relaxed">{reg.octNote}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       );
     }
