@@ -78,7 +78,7 @@
       -webkit-filter: none !important;
       z-index: 0;
       pointer-events: none;
-      transition: opacity 1s ease-in-out;
+      transition: opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     /* Fix 4: Panel cards — background: rgba(6,10,20,0.88) on all panel cards */
@@ -115,14 +115,6 @@
       50% { opacity: 0.8; }
       100% { transform: translateY(100vh) translateX(-60px); opacity: 0; }
     }
-    .rain-streak {
-      position: absolute;
-      width: 1.5px;
-      height: 40px;
-      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.6), transparent);
-      animation: fallRain 1.2s linear infinite;
-    }
-
     /* Twinkle stars animation */
     @keyframes starTwinkle {
       0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -178,10 +170,10 @@
 
     // --- DEFAULT DATA & DEMO CONSTANTS ---
     const DEFAULT_SLOTS = [
-      { slot: 0, label: "LATE NIGHT", time: "00:00 - 06:00 IST", ts_probability: 0.015, ts_predicted: false, threshold: 0.29, icon: "🌙" },
-      { slot: 1, label: "MORNING", time: "06:00 - 12:00 IST", ts_probability: 0.015, ts_predicted: false, threshold: 0.41, icon: "☀️" },
-      { slot: 2, label: "AFTERNOON", time: "12:00 - 18:00 IST", ts_probability: 0.194, ts_predicted: false, threshold: 0.34, icon: "⛅", primary: true },
-      { slot: 3, label: "EVENING", time: "18:00 - 24:00 IST", ts_probability: 0.096, ts_predicted: false, threshold: 0.60, icon: "🌆" }
+      { slot: 0, label: "LATE NIGHT", time: "00:00 - 06:00 IST", ts_probability: 0.015, ts_predicted: false, threshold: 0.15, icon: "🌙" },
+      { slot: 1, label: "MORNING", time: "06:00 - 12:00 IST", ts_probability: 0.015, ts_predicted: false, threshold: 0.15, icon: "☀️" },
+      { slot: 2, label: "AFTERNOON", time: "12:00 - 18:00 IST", ts_probability: 0.194, ts_predicted: false, threshold: 0.226, icon: "⛅", primary: true },
+      { slot: 3, label: "EVENING", time: "18:00 - 24:00 IST", ts_probability: 0.096, ts_predicted: false, threshold: 0.163, icon: "🌆" }
     ];
 
     // METRICS_SUMMARY — static fallback values (Slot 2 v3 calibrated, 2023-2025 test period)
@@ -340,22 +332,6 @@
             </svg>
           )}
 
-          {/* Continuous Diagonal Rain Particles */}
-          <div className="absolute inset-0 opacity-40">
-            {Array.from({ length: 25 }).map((_, i) => (
-              <div 
-                key={i} 
-                className="rain-streak" 
-                style={{ 
-                  left: `${(i * 4) + Math.random() * 2}%`, 
-                  top: `-${Math.random() * 20}%`,
-                  animationDelay: `${Math.random() * 1.5}s`,
-                  animationDuration: `${0.8 + Math.random() * 0.5}s`
-                }}
-              />
-            ))}
-          </div>
-
           {/* Twinkling Stars (Active for Night/Evening) */}
           {(selectedSlotIndex === 0 || selectedSlotIndex === 3) && (
             <div className="absolute inset-0">
@@ -439,7 +415,7 @@
     }
 
     // --- 1. DASHBOARD PAGE ---
-    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange, fetchLatencyMs }) {
+    function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange, fetchLatencyMs, mousePos }) {
       const currentSlot = slots[selectedSlotIndex] || slots[2];
       const photoInfo = SLOT_AIRPORT_PHOTOS[selectedSlotIndex] || SLOT_AIRPORT_PHOTOS[2];
       const riskInfo = getRiskBadge(currentSlot.ts_probability);
@@ -483,10 +459,11 @@
       const DRIFT_THRESHOLD = 0.75;
       const driftFlagged = rollingAuroc !== null && rollingAuroc < DRIFT_THRESHOLD;
 
-
       return (
-        <div className="space-y-4 max-w-[1750px] mx-auto">
+        <div className="space-y-4 max-w-[1750px] mx-auto relative">
           
+          {/* Subtle Scanline Texture Overlay */}
+          <div className="fixed inset-0 pointer-events-none z-[1] opacity-[0.03] bg-[repeating-linear-gradient(0deg,#000,#000_1px,transparent_1px,transparent_2px)] bg-[length:100%_2px]" />
 
           {/* DRIFT DETECTION ALERT BANNER */}
           {driftFlagged && !driftDismissed && (
@@ -527,7 +504,11 @@
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             
             {/* Tile 1: CONVECTIVE RISK — shows PEAK slot probability system-wide */}
-            <div className={`atc-card atc-card-hover p-3.5 rounded-xl flex flex-col items-center justify-between text-center min-h-[170px] ${systemAlertActive ? 'border-red-500/40' : ''}`}>
+            <div className={`atc-card atc-card-hover p-3.5 rounded-xl flex flex-col items-center justify-between text-center min-h-[190px] hover:border-cyan-500/30 transition-all duration-300 ${
+              peakSlotData.ts_probability >= (peakSlotData.threshold || 0.30)
+                ? 'border-red-500/40 shadow-[0_0_20px_rgba(239,83,80,0.3)] animate-pulse'
+                : ''
+            }`}>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-mono text-[#607d8b] font-bold uppercase tracking-wider">CONVECTIVE RISK</span>
                 {liveData?.himawari_override_active && <span className="text-[8px] text-orange-400 font-bold">SAT</span>}
@@ -548,7 +529,7 @@
               const peakSlot = liveData?.peak_slot ?? null;
               const peakProb = liveData?.peak_probability ?? 0;
               return (
-                <div className={`atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px] ${alertActive ? 'border-red-500/50 bg-red-950/10' : ''}`}>
+                <div className={`atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[190px] hover:border-cyan-500/30 transition-all duration-300 ${alertActive ? 'border-red-500/50 bg-red-950/10' : ''}`}>
                   <div className="flex items-center gap-2 text-xs font-mono text-[#607d8b] font-bold">
                     <span>🛡️</span>
                     <span>STATUS</span>
@@ -573,7 +554,7 @@
             })()}
 
             {/* Tile 3: LIVE WEATHER */}
-            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px]">
+            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between min-h-[170px] hover:border-cyan-500/30 transition-all duration-300">
               <div className="flex items-center gap-2 text-xs font-mono text-[#607d8b] font-bold">
                 <span>☁️</span>
                 <span>LIVE WEATHER</span>
@@ -596,14 +577,14 @@
                   <div className="text-sm font-bold text-white">{liveData?.metar?.visibility_km != null ? `${liveData.metar.visibility_km} km` : '10 km'}</div>
                 </div>
               </div>
-              <div className="text-[9px] font-mono text-[#607d8b] border-t border-[#172338] pt-1.5 flex items-center gap-1">
+              <div className="text-[9px] font-mono text-[#3d5066] border-t border-[#172338] pt-1.5 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 <span>{liveData?.metar?.flight_category ? `VOBL ${liveData.metar.flight_category} · METAR` : 'Updated 1 min ago'}</span>
               </div>
             </div>
 
             {/* Tile 4: LIVE TELEMETRY */}
-            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono text-xs min-h-[170px]">
+            <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono text-xs min-h-[170px] hover:border-cyan-500/30 transition-all duration-300">
               <div className="flex items-center gap-2 text-[#607d8b] font-bold">
                 <span>📶</span>
                 <span>LIVE TELEMETRY</span>
@@ -626,14 +607,14 @@
                   </span>
                 </div>
               </div>
-              <div className="flex justify-between items-center text-[10px] border-t border-[#172338] pt-1.5">
-                <span className="text-[#607d8b]">NEXT UPDATE</span>
+              <div className="flex justify-between items-center text-[10px] border-t border-[#172338] pt-1.5 text-[#3d5066]">
+                <span className="text-[#3d5066]">NEXT UPDATE</span>
                 <span className="text-cyan-300 font-bold">{liveTime}</span>
               </div>
             </div>
 
             {/* Tile 5: CONVECTIVE INITIATION TIMER */}
-            <div className={`atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px] ${liveData?.convective_initiation?.initiation_risk === 'HIGH' ? 'border-red-500/40' : liveData?.convective_initiation?.initiation_risk === 'MODERATE' ? 'border-orange-500/40' : ''}`}>
+            <div className={`atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px] hover:border-cyan-500/30 transition-all duration-300 ${liveData?.convective_initiation?.initiation_risk === 'HIGH' ? 'border-red-500/40' : liveData?.convective_initiation?.initiation_risk === 'MODERATE' ? 'border-orange-500/40' : ''}`}>
               <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
                 <span>⚡</span>
                 <span>CONVECTIVE INITIATION</span>
@@ -659,11 +640,11 @@
               <div className="grid grid-cols-2 text-[10px] text-center border-t border-[#172338] pt-1.5">
                 <div>
                   <div className="font-bold text-white">{liveData?.convective_initiation?.instability_score ?? '—'}</div>
-                  <div className="text-[8px] text-[#607d8b]">INSTABILITY</div>
+                  <div className="text-[8px] text-[#3d5066]">INSTABILITY</div>
                 </div>
                 <div>
                   <div className="font-bold text-white">{liveData?.convective_initiation?.peak_window_ist ?? '1300-1800'}</div>
-                  <div className="text-[8px] text-[#607d8b]">PEAK WINDOW</div>
+                  <div className="text-[8px] text-[#3d5066]">PEAK WINDOW</div>
                 </div>
               </div>
             </div>
@@ -678,7 +659,7 @@
               const csi   = v?.csi   ?? 0.293;
               const isLive = !!v;
               return (
-                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px] hover:border-cyan-500/30 transition-all duration-300">
                   <div className="flex items-center justify-between text-xs text-[#607d8b] font-bold">
                     <div className="flex items-center gap-2"><span>📈</span><span>MODEL PERFORMANCE</span></div>
                     {isLive && <span className="text-[8px] text-cyan-400 font-bold">30-DAY</span>}
@@ -691,7 +672,7 @@
                       <div><span className="text-[#607d8b]">CSI</span> <span className="text-white font-bold">{csi.toFixed(3)}</span></div>
                     </div>
                   </div>
-                  <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
+                  <div className="text-[9px] text-[#3d5066] border-t border-[#172338] pt-1.5 text-center">
                     {isLive ? `Rolling 30-day${liveData.verification.last_updated ? ' · ' + liveData.verification.last_updated : ''}` : '⏱ Test Period: 2023–2025 · Slot 2 v3'}
                   </div>
                 </div>
@@ -708,8 +689,6 @@
               const li   = slot2?.lifted_index ?? mp?.ua_lifted_index ?? null;
               const tt   = slot2?.totals_totals ?? mp?.ua_totals_totals ?? null;
 
-              // CAPE × K-Index composite — operationally used instability scalar
-              // Severe: CAPE>500 & KI>35 → product >17500
               const cki = (cape !== null && ki !== null) ? Math.round(cape * ki) : null;
               const ckiNorm = cki !== null ? Math.min(Math.max(cki, 0) / 25000, 1) : null;
 
@@ -734,7 +713,7 @@
               const fill = ckiNorm !== null ? ckiNorm * circ : 0;
 
               return (
-                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px] hover:border-cyan-500/30 transition-all duration-300">
                   <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
                     <span>🌩</span>
                     <span>INSTABILITY COMPOSITE</span>
@@ -774,7 +753,7 @@
                     </div>
                   </div>
 
-                  <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
+                  <div className="text-[9px] text-[#3d5066] border-t border-[#172338] pt-1.5 text-center">
                     CAPE×KI · Severe: &gt;17,500 · Mod: &gt;7,500 · Weak: &gt;2,000
                   </div>
                 </div>
@@ -815,9 +794,9 @@
                 : ratio > 0.75 ? '#ffc107'
                 : '#4caf50';
               return (
-                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px] hover:border-cyan-500/30 transition-all duration-300">
                   <div className="flex items-center gap-2 text-xs text-[#607d8b] font-bold">
-                    <span>&#x1F4CA;</span>
+                    <span>📊</span>
                     <span>CAPE CLIMATOLOGY</span>
                   </div>
                   <div className="my-1 space-y-2">
@@ -848,7 +827,7 @@
                       </span>
                     </div>
                   </div>
-                  <div className="text-[9px] text-[#607d8b] border-t border-[#172338] pt-1.5 text-center">
+                  <div className="text-[9px] text-[#3d5066] border-t border-[#172338] pt-1.5 text-center">
                     ERA5 · Station 43295
                   </div>
                 </div>
@@ -857,16 +836,14 @@
 
             {/* Tile 9: GFS WEATHER GUIDANCE */}
             {(() => {
-              // GFS model output — written by pipeline into forecast.json
-              // Keys: gfs_tmax_c, gfs_tmin_c, gfs_rainfall_mm, gfs_valid_date
-              // Falls back gracefully to '—' until pipeline populates these fields.
               const gfsTmax    = liveData?.gfs_tmax_c    ?? liveData?.gfs?.tmax_c    ?? null;
               const gfsTmin    = liveData?.gfs_tmin_c    ?? liveData?.gfs?.tmin_c    ?? null;
               const gfsRain    = liveData?.gfs_rainfall_mm ?? liveData?.gfs?.rainfall_mm ?? null;
               const gfsDate    = liveData?.gfs_valid_date ?? liveData?.gfs?.valid_date ?? null;
               const gfsCycle   = liveData?.gfs_cycle      ?? liveData?.gfs?.cycle      ?? '00Z';
 
-              // Temperature colour bands (Bengaluru operational context)
+              const isGfsEmpty = gfsTmax === null && gfsTmin === null && gfsRain === null;
+
               const tmaxColor = gfsTmax === null ? 'text-[#607d8b]'
                 : gfsTmax >= 36 ? 'text-red-400'
                 : gfsTmax >= 32 ? 'text-orange-400'
@@ -878,13 +855,12 @@
                 : gfsTmin >= 22 ? 'text-yellow-400'
                 : 'text-emerald-400';
 
-              // Rainfall colour bands (mm / 24-h)
               const rainColor = gfsRain === null ? 'text-[#607d8b]'
-                : gfsRain >= 64.5 ? 'text-red-400'     // extremely heavy
-                : gfsRain >= 15.6 ? 'text-orange-400'  // heavy
-                : gfsRain >= 7.6  ? 'text-yellow-400'  // moderate
-                : gfsRain >= 0.1  ? 'text-cyan-400'    // light
-                : 'text-emerald-400';                   // trace / nil
+                : gfsRain >= 64.5 ? 'text-red-400'
+                : gfsRain >= 15.6 ? 'text-orange-400'
+                : gfsRain >= 7.6  ? 'text-yellow-400'
+                : gfsRain >= 0.1  ? 'text-cyan-400'
+                : 'text-emerald-400';
 
               const rainLabel = gfsRain === null ? '—'
                 : gfsRain >= 64.5 ? 'EXTR. HEAVY'
@@ -893,7 +869,6 @@
                 : gfsRain >= 0.1  ? 'LIGHT'
                 : 'NIL / TRACE';
 
-              // Progress bar for rainfall (0–150 mm scale)
               const rainBarW   = gfsRain !== null ? Math.min((gfsRain / 150) * 100, 100) : 0;
               const rainBarCol = gfsRain === null ? '#38bdf8'
                 : gfsRain >= 64.5 ? '#ef5350'
@@ -903,7 +878,7 @@
                 : '#4caf50';
 
               return (
-                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px]">
+                <div className="atc-card atc-card-hover p-4 rounded-xl flex flex-col justify-between font-mono min-h-[170px] hover:border-cyan-500/30 transition-all duration-300">
 
                   {/* Header */}
                   <div className="flex items-center justify-between">
@@ -911,64 +886,66 @@
                       <span>🌡️</span>
                       <span>GFS WEATHER GUIDANCE</span>
                     </div>
-                    {/* Prominent model-output badge — not our prediction */}
                     <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-sky-900/50 text-sky-400 border border-sky-700/50 tracking-wider">
                       GFS MODEL OUTPUT
                     </span>
                   </div>
 
-                  {/* Temperature row */}
-                  <div className="flex items-center justify-around my-1">
-                    {/* Max temp */}
-                    <div className="text-center">
-                      <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">MAX TEMP</div>
-                      <div className={`text-xl font-extrabold tracking-tight ${tmaxColor}`}>
-                        {gfsTmax !== null ? `${gfsTmax.toFixed(1)}°C` : '—'}
+                  {isGfsEmpty ? (
+                    <div className="my-auto py-3 text-center text-[10px] font-mono text-[#607d8b]">
+                      GFS data updating · next pipeline run at 15:45 or 21:45 IST
+                    </div>
+                  ) : (
+                    <>
+                      {/* Temperature row */}
+                      <div className="flex items-center justify-around my-1">
+                        <div className="text-center">
+                          <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">MAX TEMP</div>
+                          <div className={`text-xl font-extrabold tracking-tight ${tmaxColor}`}>
+                            {gfsTmax !== null ? `${gfsTmax.toFixed(1)}°C` : '—'}
+                          </div>
+                          <div className="text-[8px] text-[#3d5066] mt-0.5">TMP 2m ↑</div>
+                        </div>
+
+                        <div className="h-10 w-px bg-[#172338]" />
+
+                        <div className="text-center">
+                          <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">MIN TEMP</div>
+                          <div className={`text-xl font-extrabold tracking-tight ${tminColor}`}>
+                            {gfsTmin !== null ? `${gfsTmin.toFixed(1)}°C` : '—'}
+                          </div>
+                          <div className="text-[8px] text-[#3d5066] mt-0.5">TMP 2m ↓</div>
+                        </div>
+
+                        <div className="h-10 w-px bg-[#172338]" />
+
+                        <div className="text-center min-w-[52px]">
+                          <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">RAINFALL</div>
+                          <div className={`text-xl font-extrabold tracking-tight ${rainColor}`}>
+                            {gfsRain !== null ? `${gfsRain.toFixed(1)}` : '—'}
+                          </div>
+                          <div className="text-[8px] text-[#3d5066] mt-0.5">
+                            {gfsRain !== null ? 'mm / 24h' : 'mm / 24h'}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-[8px] text-[#607d8b] mt-0.5">TMP 2m ↑</div>
-                    </div>
 
-                    {/* Divider */}
-                    <div className="h-10 w-px bg-[#172338]" />
-
-                    {/* Min temp */}
-                    <div className="text-center">
-                      <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">MIN TEMP</div>
-                      <div className={`text-xl font-extrabold tracking-tight ${tminColor}`}>
-                        {gfsTmin !== null ? `${gfsTmin.toFixed(1)}°C` : '—'}
+                      {/* Rainfall progress bar + label */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[8px] text-[#607d8b] mb-0.5">
+                          <span>APCP</span>
+                          <span className={`font-bold ${rainColor}`}>{rainLabel}</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-[#172338] overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${rainBarW}%`, background: rainBarCol }} />
+                        </div>
                       </div>
-                      <div className="text-[8px] text-[#607d8b] mt-0.5">TMP 2m ↓</div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="h-10 w-px bg-[#172338]" />
-
-                    {/* Rainfall */}
-                    <div className="text-center min-w-[52px]">
-                      <div className="text-[8px] text-[#607d8b] font-bold mb-0.5">RAINFALL</div>
-                      <div className={`text-xl font-extrabold tracking-tight ${rainColor}`}>
-                        {gfsRain !== null ? `${gfsRain.toFixed(1)}` : '—'}
-                      </div>
-                      <div className="text-[8px] text-[#607d8b] mt-0.5">
-                        {gfsRain !== null ? 'mm / 24h' : 'mm / 24h'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Rainfall progress bar + label */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[8px] text-[#607d8b] mb-0.5">
-                      <span>APCP</span>
-                      <span className={`font-bold ${rainColor}`}>{rainLabel}</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-[#172338] overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${rainBarW}%`, background: rainBarCol }} />
-                    </div>
-                  </div>
+                    </>
+                  )}
 
                   {/* Footer */}
-                  <div className="text-[8px] text-[#607d8b] border-t border-[#172338] pt-1.5 flex items-center justify-between">
+                  <div className="text-[8px] text-[#3d5066] border-t border-[#172338] pt-1.5 flex items-center justify-between">
                     <span>NCEP GFS · {gfsCycle} run{gfsDate ? ` · ${gfsDate}` : ''}</span>
                     <span className="text-[7px] text-[#3d5066] italic">NOT a CSIR/IMD forecast</span>
                   </div>
@@ -995,11 +972,17 @@
                     const isSelected = selectedSlotIndex === s.slot;
                     const probPct = (s.ts_probability * 100).toFixed(1);
                     const isOverridden = liveData?.himawari_override_slots?.includes(s.slot);
+
+                    const leftBorderColor = s.ts_probability >= 0.50 ? 'border-l-red-500'
+                      : s.ts_probability >= 0.30 ? 'border-l-orange-400'
+                      : s.ts_probability >= 0.15 ? 'border-l-yellow-400'
+                      : 'border-l-emerald-400';
+
                     return (
                       <div
                         key={s.slot}
                         onClick={() => onSelectSlot(s.slot)}
-                        className={`p-3.5 rounded-xl border cursor-pointer transition-all duration-300 flex items-center justify-between ${
+                        className={`p-3.5 rounded-xl border border-l-2 ${leftBorderColor} cursor-pointer transition-all duration-300 flex items-center justify-between ${
                           isSelected 
                             ? 'slot-active-teal' 
                             : 'bg-[#060a14]/80 border-[#172338] hover:border-cyan-400/40'
@@ -1343,14 +1326,24 @@
                       {isLive ? `ROLLING 30-DAY${liveData.verification.last_updated ? ' · ' + liveData.verification.last_updated : ''}` : 'TEST PERIOD 2023–2025 · SLOT 2 v3'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
-                    {metrics.map(m => (
-                      <div key={m.name} className="p-2.5 rounded-xl bg-[#050811]/90 border border-[#172338]">
-                        <div className="text-[9px] text-[#607d8b] font-bold">{m.name}</div>
-                        <div className="text-base font-extrabold text-white my-0.5">{m.val}</div>
-                        <div className={`text-[9px] font-bold ${isLive ? 'text-cyan-400' : 'text-emerald-400'}`}>{m.delta}</div>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center items-stretch">
+                    {metrics.map(m => {
+                      const isHero = m.name === 'AUROC';
+                      return (
+                        <div 
+                          key={m.name} 
+                          className={`rounded-xl border transition-all ${
+                            isHero 
+                              ? 'p-3 bg-cyan-950/30 border-l-2 border-l-cyan-400 border-t border-r border-b border-cyan-500/30 shadow-[0_0_15px_rgba(56,189,248,0.15)] sm:scale-105' 
+                              : 'p-2.5 bg-[#050811]/90 border-[#172338]'
+                          }`}
+                        >
+                          <div className={`text-[9px] font-bold ${isHero ? 'text-cyan-300' : 'text-[#607d8b]'}`}>{m.name}</div>
+                          <div className={`font-extrabold my-0.5 ${isHero ? 'text-lg text-cyan-300' : 'text-base text-white'}`}>{m.val}</div>
+                          <div className={`text-[9px] font-bold ${isLive ? 'text-cyan-400' : 'text-emerald-400'}`}>{m.delta}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -1389,8 +1382,11 @@
                 : staleLevel === 'stale' ? 'bg-red-500'
                 : staleLevel === 'warn'  ? 'bg-amber-400'
                 : 'bg-emerald-500';
+              const cardLeftBorder = (!liveData || staleLevel === 'stale') ? 'border-l-4 border-l-red-500'
+                : staleLevel === 'warn' ? 'border-l-4 border-l-amber-400'
+                : 'border-l-4 border-l-emerald-500';
               return (
-                <div className={`lg:col-span-4 atc-card p-4 rounded-2xl flex flex-col justify-between ${staleLevel === 'stale' ? 'border-red-500/40' : staleLevel === 'warn' ? 'border-amber-500/30' : ''}`}>
+                <div className={`lg:col-span-4 atc-card p-4 rounded-2xl flex flex-col justify-between ${cardLeftBorder} ${staleLevel === 'stale' ? 'border-red-500/40' : staleLevel === 'warn' ? 'border-amber-500/30' : ''}`}>
                   <div>
                     <div className="flex items-center gap-2 text-xs font-bold text-[#607d8b] mb-2">
                       <span>📶</span>
@@ -1436,6 +1432,20 @@
     };
 
     function ForecastPage({ slots, selectedSlotIndex, onSelectSlot, liveData }) {
+      // Find peak slot index (highest ts_probability)
+      const maxProb = slots && slots.length > 0 ? Math.max(...slots.map(s => s.ts_probability)) : 0;
+      const peakSlotObj = slots ? slots.find(s => s.ts_probability === maxProb) : null;
+      const peakSlotId = peakSlotObj ? peakSlotObj.slot : null;
+
+      // Current IST time calculations
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const ist = new Date(utc + (3600000 * 5.5));
+      const istHours = ist.getHours();
+      const istMinutes = ist.getMinutes();
+      const timeInMinutes = istHours * 60 + istMinutes; // 0 to 1439
+      const activeSlotIdx = istHours < 6 ? 0 : istHours < 12 ? 1 : istHours < 18 ? 2 : 3;
+
       return (
         <div className="space-y-6 max-w-[1750px] mx-auto font-mono">
           <div className="atc-card p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1462,6 +1472,22 @@
               const isSelected = selectedSlotIndex === s.slot;
               const rInfo = getRiskBadge(s.ts_probability);
               const meta = SLOT_MODEL_META[s.slot];
+              const isPeak = s.slot === peakSlotId;
+              const isActiveNow = s.slot === activeSlotIdx;
+
+              // Trend calculation vs previous run
+              const current = s.ts_probability;
+              const prev = s.prev_probability !== undefined 
+                ? s.prev_probability 
+                : (s.trend_diff !== undefined ? current - s.trend_diff : current);
+              const deltaPp = (current - prev) * 100;
+              const isUnchanged = Math.abs(deltaPp) <= 0.5;
+              const isRising = deltaPp > 0.5;
+              const isFalling = deltaPp < -0.5;
+
+              const trendArrow = isRising ? '↑' : isFalling ? '↓' : '→';
+              const trendColor = isRising ? 'text-red-400' : isFalling ? 'text-emerald-400' : 'text-[#607d8b]';
+              const deltaText = isRising ? `+${deltaPp.toFixed(1)}pp` : isFalling ? `${deltaPp.toFixed(1)}pp` : `0.0pp`;
 
               return (
                 <div
@@ -1471,12 +1497,25 @@
                     isSelected ? 'slot-active-teal' : 'hover:border-cyan-400/50'
                   }`}
                 >
-                  {/* Header: slot number + label + risk badge */}
+                  {/* Header: slot number + label + PEAK SLOT badge (left) + risk badge (right) */}
                   <div className="relative z-20 flex justify-between items-start">
                     <div>
                       <div className="text-xs font-bold text-[#607d8b]">SLOT 0{s.slot + 1}</div>
-                      <h3 className="text-base font-extrabold text-white">{s.label}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-extrabold text-white">{s.label}</h3>
+                        {isPeak && (
+                          <span className="px-2 py-0.5 rounded text-[8px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 uppercase tracking-wider shadow-[0_0_10px_rgba(56,189,248,0.25)]">
+                            PEAK SLOT
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[11px] text-cyan-300 font-bold">{s.time}</div>
+                      {isActiveNow && (
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] mt-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                          <span>ACTIVE NOW</span>
+                        </div>
+                      )}
                     </div>
                     <span className={`px-2.5 py-1 rounded text-[10px] font-bold border ${rInfo.bg} ${rInfo.color} border-current/30`}>
                       {rInfo.text}
@@ -1491,9 +1530,14 @@
                     <span className="ml-1.5 text-[9px] text-[#607d8b]">AUROC {meta.auroc.toFixed(4)} · {meta.features} features</span>
                   </div>
 
-                  {/* Probability gauge */}
+                  {/* Probability gauge + Trend Arrow & Delta */}
                   <div className="relative z-20 my-3 text-center">
                     <CircularArcGauge probability={s.ts_probability} threshold={s.threshold} size={130} />
+                    <div className="flex items-center justify-center gap-1.5 text-xs font-bold font-mono mt-2">
+                      <span className={trendColor}>{trendArrow}</span>
+                      <span className={trendColor}>{deltaText}</span>
+                      <span className="text-[9px] text-[#607d8b] font-normal">vs prev run</span>
+                    </div>
                   </div>
 
                   {/* Footer: threshold + model calibration */}
@@ -1520,23 +1564,65 @@
 
           {/* 24-Hour Timeline Bar */}
           <div className="atc-card p-6 rounded-2xl">
-            <h3 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider mb-4 border-b border-[#172338] pb-2">
-              24-HOUR DIURNAL RISK TIMELINE (TAP SEGMENT TO SWITCH BG)
-            </h3>
+            <div className="flex justify-between items-center mb-3 border-b border-[#172338] pb-2">
+              <h3 className="text-xs font-bold text-[#607d8b] uppercase tracking-wider">
+                24-HOUR DIURNAL RISK TIMELINE (TAP SEGMENT TO SWITCH BG)
+              </h3>
+              <span className="text-xs font-mono font-bold text-cyan-300">
+                CURRENT IST: {ist.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+
+            {/* Thin Progress line showing current IST time position across 24h span */}
+            <div className="mb-4 space-y-1">
+              <div className="flex justify-between text-[9px] font-mono text-[#607d8b] px-0.5">
+                <span>00:00 IST</span>
+                <span>06:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+                <span>24:00 IST</span>
+              </div>
+              <div className="relative h-2.5 w-full bg-[#050811] border border-[#172338] rounded-full overflow-hidden">
+                <div className="absolute inset-0 flex opacity-30">
+                  {slots.map(sl => {
+                    const r = getRiskBadge(sl.ts_probability);
+                    return <div key={sl.slot} className={`h-full flex-1 ${r.bar}`} />;
+                  })}
+                </div>
+                <div 
+                  className="absolute top-0 bottom-0 left-0 bg-cyan-400/60 transition-all duration-1000" 
+                  style={{ width: `${Math.min(Math.max((timeInMinutes / 1440) * 100, 0), 100)}%` }} 
+                />
+                <div 
+                  className="absolute top-0 bottom-0 w-1 bg-cyan-300 shadow-[0_0_8px_#38bdf8] transition-all duration-1000" 
+                  style={{ left: `calc(${Math.min(Math.max((timeInMinutes / 1440) * 100, 0), 100)}% - 2px)` }} 
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-4 gap-2">
               {slots.map((s) => {
                 const rInfo = getRiskBadge(s.ts_probability);
                 const isSelected = selectedSlotIndex === s.slot;
+                const isActiveNow = s.slot === activeSlotIdx;
+                const riskBorderTop = s.ts_probability >= 0.50 ? 'border-t-2 border-t-red-500'
+                  : s.ts_probability >= 0.30 ? 'border-t-2 border-t-orange-400'
+                  : s.ts_probability >= 0.15 ? 'border-t-2 border-t-yellow-400'
+                  : 'border-t-2 border-t-emerald-400';
+
                 return (
                   <div
                     key={s.slot}
                     onClick={() => onSelectSlot(s.slot)}
-                    className={`p-3 rounded-xl cursor-pointer text-center transition-all ${
-                      isSelected ? 'bg-cyan-500/20 border-2 border-cyan-400' : 'bg-[#050811] border border-[#172338]'
+                    className={`p-3 rounded-xl cursor-pointer text-center transition-all ${riskBorderTop} ${
+                      isSelected ? 'bg-cyan-500/20 border-l border-r border-b border-cyan-400' : 'bg-[#050811] border-l border-r border-b border-[#172338]'
                     }`}
                   >
-                    <div className="text-xs font-bold text-white">{s.label}</div>
-                    <div className="text-[10px] text-[#607d8b]">{s.time}</div>
+                    <div className="text-xs font-bold text-white flex items-center justify-center gap-1">
+                      {s.label}
+                      {isActiveNow && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />}
+                    </div>
+                    <div className="text-[10px] text-[#3d5066] mt-0.5">{s.time}</div>
                     <div className={`text-sm font-extrabold mt-1 ${rInfo.color}`}>
                       {(s.ts_probability * 100).toFixed(1)}%
                     </div>
@@ -1723,7 +1809,7 @@
             const cfg = metricConfig[wfMetric];
 
             // SVG chart dimensions
-            const W = 580, H = 180, PAD = { t: 16, r: 20, b: 28, l: 44 };
+            const W = 580, H = 130, PAD = { t: 16, r: 20, b: 28, l: 44 };
             const chartW = W - PAD.l - PAD.r;
             const chartH = H - PAD.t - PAD.b;
             const barW = chartW / WF_DATA.length * 0.55;
@@ -3135,7 +3221,7 @@
                   SLOT 0{currentSlot.slot + 1} · {currentSlot.label}
                 </div>
                 <div className="text-[10px] text-cyan-300 font-bold mb-2">{currentSlot.time}</div>
-                <div className={`text-[7rem] font-extrabold leading-none tracking-tighter drop-shadow-2xl ${
+                <div className={`${(currentSlot.ts_probability * 100 < 10) ? 'text-[8rem]' : 'text-[6.5rem]'} font-extrabold leading-none tracking-tighter drop-shadow-2xl ${
                   isAlert ? 'text-red-400 animate-pulse' : 'text-white'
                 }`}>
                   {(currentSlot.ts_probability * 100).toFixed(1)}%
@@ -3307,6 +3393,24 @@
       const [activeNavTab, setActiveNavTab] = useState('DASHBOARD');
       const [isAtcMode, setIsAtcMode] = useState(false);
 
+      // Fix 2: Parallax Mouse Tracking State & Effect
+      const [mousePos, setMousePos] = React.useState({ x: 0.5, y: 0.5 });
+
+      React.useEffect(() => {
+        const handler = (e) => {
+          const x = e.clientX / window.innerWidth;
+          const y = e.clientY / window.innerHeight;
+          setMousePos({ x, y });
+        };
+        window.addEventListener('mousemove', handler);
+        return () => window.removeEventListener('mousemove', handler);
+      }, []);
+
+      const isTouch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
+      const bgTransform = isTouch
+        ? 'scale(1.05)'
+        : `translate(${(0.5 - mousePos.x) * 16}px, ${(0.5 - mousePos.y) * 10}px) scale(1.06)`;
+
       // Fetch forecast telemetry
       const fetchRealForecast = async () => {
         try {
@@ -3372,42 +3476,58 @@
       };
 
       return (
-        <div className="min-h-screen text-[#e8eaf6] relative">
+        <div className="min-h-screen text-[#e8eaf6] relative overflow-hidden">
           
-          {/* Fix 1 & Fix 5: ALL 4 SLOT BACKGROUND DIVS RENDERED IN DOM WITH 1s OPACITY TRANSITION */}
+          {/* ALL 4 SLOT BACKGROUND DIVS — overflow:hidden clips parallax movement */}
+          <div className="fixed inset-0 overflow-hidden" style={{zIndex: 0, pointerEvents: 'none'}}>
           <div 
             className="slot-bg-common"
             style={{
               backgroundImage: `url('./night1.png')`,
-              opacity: selectedSlotIndex === 0 ? 1 : 0
+              opacity: selectedSlotIndex === 0 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           />
           <div 
             className="slot-bg-common"
             style={{
               backgroundImage: `url('./morning1.png')`,
-              opacity: selectedSlotIndex === 1 ? 1 : 0
+              opacity: selectedSlotIndex === 1 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           />
           <div 
             className="slot-bg-common"
             style={{
               backgroundImage: `url('./afternoon1.png')`,
-              opacity: selectedSlotIndex === 2 ? 1 : 0
+              opacity: selectedSlotIndex === 2 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           />
           <div 
             className="slot-bg-common"
             style={{
               backgroundImage: `url('./evening1.png')`,
-              opacity: selectedSlotIndex === 3 ? 1 : 0
+              opacity: selectedSlotIndex === 3 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           />
+          </div>
 
-          {/* Fix 2: ONE Overlay div only — rgba(0, 0, 0, 0.20) maximum, no bg-black, no blur */}
+          {/* Radial Vignette Depth Layer */}
+          <div 
+            className="fixed inset-0 pointer-events-none z-[2]" 
+            style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(4,7,17,0.7) 100%)' }}
+          />
+
+          {/* Overlay div */}
           <div className="overlay"></div>
 
-          {/* REAL-TIME ATMOSPHERIC WEATHER OVERLAY (LIGHTNING, RAIN, STARS — NO BLUR) */}
+          {/* REAL-TIME ATMOSPHERIC WEATHER OVERLAY */}
           <AtmosphericWeatherOverlay selectedSlotIndex={selectedSlotIndex} />
 
           {/* Foreground UI Content Container */}
@@ -3436,6 +3556,7 @@
                       liveData={liveData}
                       onNavTabChange={handleNavTabClick}
                       fetchLatencyMs={fetchLatencyMs}
+                      mousePos={mousePos}
                     />
                   </motion.div>
                 )}
