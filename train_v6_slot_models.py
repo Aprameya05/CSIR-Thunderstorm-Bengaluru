@@ -296,9 +296,9 @@ def train_slot(slot_id: int, df: pd.DataFrame, feature_cols: list,
         print(f"  Slot {slot_id}: no training data!")
         return {}
 
-    X_train = train_df[feature_cols].fillna(0).values
+    X_train = train_df[feature_cols].fillna(0)   # keep as DataFrame — preserves feature names in XGBoost booster
     y_train = train_df["ts_label"].values
-    X_test  = test_df[feature_cols].fillna(0).values
+    X_test  = test_df[feature_cols].fillna(0)
     y_test  = test_df["ts_label"].values
 
     n_pos = int(y_train.sum())
@@ -334,14 +334,15 @@ def train_slot(slot_id: int, df: pd.DataFrame, feature_cols: list,
         }
         skf    = StratifiedKFold(n_splits=N_CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
         scores = []
-        for tr_idx, val_idx in skf.split(X_train, y_train):
+        X_tr_arr = X_train.values  # numpy for indexing in CV
+        for tr_idx, val_idx in skf.split(X_tr_arr, y_train):
             m = make_xgb_es(params, use_gpu)
             sw = sample_weight[tr_idx] if has_sample_weights else None
-            m.fit(X_train[tr_idx], y_train[tr_idx],
-                  eval_set=[(X_train[val_idx], y_train[val_idx])],
+            m.fit(X_train.iloc[tr_idx], y_train[tr_idx],
+                  eval_set=[(X_train.iloc[val_idx], y_train[val_idx])],
                   sample_weight=sw,
                   verbose=False)
-            prob = m.predict_proba(X_train[val_idx])[:, 1]
+            prob = m.predict_proba(X_train.iloc[val_idx])[:, 1]
             if y_train[val_idx].sum() > 0:
                 scores.append(roc_auc_score(y_train[val_idx], prob))
         return float(np.mean(scores)) if scores else 0.5
@@ -369,11 +370,12 @@ def train_slot(slot_id: int, df: pd.DataFrame, feature_cols: list,
     print("  OOF calibration + threshold tuning...")
     skf_oof = StratifiedKFold(n_splits=N_CV_FOLDS, shuffle=True, random_state=RANDOM_STATE)
     oof_prob = np.zeros(len(y_train))
-    for tr_idx, val_idx in skf_oof.split(X_train, y_train):
+    X_tr_arr = X_train.values
+    for tr_idx, val_idx in skf_oof.split(X_tr_arr, y_train):
         m = make_xgb(best_params, use_gpu)
         sw_oof = sample_weight[tr_idx] if has_sample_weights else None
-        m.fit(X_train[tr_idx], y_train[tr_idx], sample_weight=sw_oof)
-        oof_prob[val_idx] = m.predict_proba(X_train[val_idx])[:, 1]
+        m.fit(X_train.iloc[tr_idx], y_train[tr_idx], sample_weight=sw_oof)
+        oof_prob[val_idx] = m.predict_proba(X_train.iloc[val_idx])[:, 1]
 
     calibrator = fit_isotonic_calibrator(oof_prob, y_train)
     oof_cal    = np.array([calibrate_prob(calibrator, p) for p in oof_prob])
@@ -382,7 +384,7 @@ def train_slot(slot_id: int, df: pd.DataFrame, feature_cols: list,
 
     # ── Test evaluation ───────────────────────────────────────────────────────
     if len(y_test) > 0 and y_test.sum() > 0:
-        raw_test_prob = model.predict_proba(X_test)[:, 1]
+        raw_test_prob = model.predict_proba(X_test.values)[:, 1]
         cal_test_prob = np.array([calibrate_prob(calibrator, p) for p in raw_test_prob])
         metrics = compute_metrics(y_test, cal_test_prob, threshold)
         print(f"  AUROC={metrics['AUROC']} POD={metrics['POD']} FAR={metrics['FAR']} "

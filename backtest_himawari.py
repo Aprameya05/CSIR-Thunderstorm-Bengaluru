@@ -49,11 +49,28 @@ logging.basicConfig(
 log = logging.getLogger("backtest")
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-LABEL_CSV   = Path("bengaluru_thunderstorm_features_merged.csv")
+# Try training CSV first, fall back to legacy merged CSV
+LABEL_CSV   = Path("data") / "bengaluru_6hr_training_dataset.csv"
+LABEL_CSV_LEGACY = Path("bengaluru_thunderstorm_features_merged.csv")
 OUT_DIR     = Path("data") / "backtest"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Peak convective hour to sample (UTC): 07:30 UTC = 13:00 IST
+# v6 training expects this merged output file
+V6_OUTPUT   = Path("data") / "himawari_backtest.csv"
+
+# One BT scene per slot, sampled at peak convective hour for that slot (UTC)
+# Slot 0 (0001-0600 IST) → 02:30 UTC (pre-dawn, low TS → sample at 21:00 UTC prev)
+# Slot 1 (0601-1200 IST) → 06:00 UTC (morning)
+# Slot 2 (1201-1800 IST) → 07:30 UTC = 13:00 IST (peak)
+# Slot 3 (1801-2400 IST) → 13:00 UTC = 18:30 IST (late afternoon)
+SLOT_UTC = {
+    0: (21, 30),   # 21:30 UTC prev-day ≈ 03:00 IST
+    1: ( 0, 30),   # 00:30 UTC ≈ 06:00 IST
+    2: ( 7, 30),   # 07:30 UTC ≈ 13:00 IST  ← original single-scene target
+    3: (12, 30),   # 12:30 UTC ≈ 18:00 IST
+}
+
+# Default (backward-compatible single-scene mode)
 TARGET_UTC_HOUR   = 7
 TARGET_UTC_MINUTE = 30
 
@@ -392,20 +409,33 @@ def main():
                         help="Parse CSV only, skip S3 fetches")
     parser.add_argument("--max-days", type=int, default=9999,
                         help="Max number of days to process (for testing)")
+    parser.add_argument("--per-slot", action="store_true",
+                        help="Fetch one scene per slot per day (4x slower, enables v6 training)")
     args = parser.parse_args()
 
     log.info("=" * 65)
     log.info("  Himawari-9 BT Proxy — Historical Backtest  (Step 4)")
     log.info("=" * 65)
 
-    # Load labels
-    if not LABEL_CSV.exists():
-        log.error(f"Label CSV not found: {LABEL_CSV}")
-        log.error("Run from the csir-repo directory where the CSV lives.")
+    # Load labels — try new training CSV first, fall back to legacy
+    csv_path = LABEL_CSV if LABEL_CSV.exists() else LABEL_CSV_LEGACY
+    if not csv_path.exists():
+        log.error(f"Label CSV not found: tried {LABEL_CSV} and {LABEL_CSV_LEGACY}")
+        log.error("Run from the csir-repo root directory.")
         return 1
 
-    df_all = pd.read_csv(LABEL_CSV, parse_dates=["date"])
-    log.info(f"Loaded {len(df_all)} rows from {LABEL_CSV}")
+    df_all = pd.read_csv(csv_path, parse_dates=["date"])
+    log.info(f"Loaded {len(df_all)} rows from {csv_path}")
+
+    # Normalise label column name
+    if "LABEL" not in df_all.columns and "ts_label" in df_all.columns:
+        df_all = df_all.rename(columns={"ts_label": "LABEL"})
+    if "LABEL" not in df_all.columns:
+        log.error("No LABEL or ts_label column found in CSV")
+        return 1
+
+    # For per-slot mode, deduplicate to one row per (date, slot)
+    has_slot = "slot" in df_all.columns
 
     # Filter date range
     start = datetime.datetime.strptime(args.start, "%Y-%m-%d")
@@ -423,42 +453,61 @@ def main():
         log.info("--dry-run: skipping S3 fetches. CSV parsed OK.")
         return 0
 
-    # Fetch BT for each date
+    # Fetch BT for each date (and optionally each slot)
     results = []
-    done = 0
-    for _, row in df.iterrows():
+    done    = 0
+    slots_to_fetch = list(SLOT_UTC.keys()) if (args.per_slot and has_slot) else [2]
+
+    unique_dates = df["date"].dt.date.unique()
+    log.info(f"Unique dates to process: {len(unique_dates)}")
+
+    for date in unique_dates:
         if done >= args.max_days:
             break
 
-        date  = row["date"].date()
-        label = int(row["LABEL"])
+        day_rows = df[df["date"].dt.date == date]
 
-        # Target scene: 07:30 UTC = 13:00 IST (peak convection)
-        target_dt = datetime.datetime(
-            date.year, date.month, date.day,
-            TARGET_UTC_HOUR, TARGET_UTC_MINUTE, 0)
+        for slot_id in slots_to_fetch:
+            if has_slot:
+                slot_rows = day_rows[day_rows["slot"] == slot_id]
+                if len(slot_rows) == 0:
+                    continue
+                label = int(slot_rows["LABEL"].iloc[0])
+            else:
+                label = int(day_rows["LABEL"].iloc[0])
+                slot_id = 2   # legacy single-scene mode
 
-        log.info(f"\n[{done+1}/{min(len(df), args.max_days)}]  {date}  "
-                 f"LABEL={label}  target={target_dt.strftime('%H:%M UTC')}")
+            utc_h, utc_m = SLOT_UTC[slot_id]
+            # Slot 0 samples the previous calendar day at 21:30 UTC
+            fetch_date = date - datetime.timedelta(days=1) if slot_id == 0 else date
+            target_dt  = datetime.datetime(
+                fetch_date.year, fetch_date.month, fetch_date.day,
+                utc_h, utc_m, 0)
 
-        bt = s3_fetch_scene(target_dt)
-        if bt is None:
-            log.warning(f"  No data for {date} — skipping")
-            results.append({"date": date, "LABEL": label, "fetch_ok": 0,
-                             **{k: np.nan for k in [
-                                 "bt_min_K","bt_min_C","bt_p5_K","bt_p10_K",
-                                 "area_deep_km2","area_strong_km2","area_mod_km2",
-                                 "n_pix_deep","n_pix_strong","n_pix_mod",
-                                 "nearest_storm_km","storm_within_50km","valid_pixels"
-                             ]}})
-        else:
-            feats = extract_features(bt)
-            log.info(f"  BT min={feats['bt_min_C']:.1f}°C  "
-                     f"n_deep={feats['n_pix_deep']}  "
-                     f"nearest={feats['nearest_storm_km']:.1f} km"
-                     if not np.isnan(feats['nearest_storm_km'])
-                     else f"  BT min={feats['bt_min_C']:.1f}°C  n_deep={feats['n_pix_deep']}  nearest=None")
-            results.append({"date": date, "LABEL": label, "fetch_ok": 1, **feats})
+            log.info(f"\n[{done+1}]  {date}  slot={slot_id}  LABEL={label}  "
+                     f"target={target_dt.strftime('%Y-%m-%d %H:%M UTC')}")
+
+            bt = s3_fetch_scene(target_dt)
+            if bt is None:
+                log.warning(f"  No data — skipping")
+                results.append({
+                    "date": str(date), "slot": slot_id, "LABEL": label, "fetch_ok": 0,
+                    **{k: np.nan for k in [
+                        "bt_min_K","bt_min_C","bt_p5_K","bt_p10_K",
+                        "area_deep_km2","area_strong_km2","area_mod_km2",
+                        "n_pix_deep","n_pix_strong","n_pix_mod",
+                        "nearest_storm_km","storm_within_50km","valid_pixels"
+                    ]}})
+            else:
+                feats = extract_features(bt)
+                nearest = feats.get("nearest_storm_km", float("nan"))
+                log.info(f"  BT min={feats['bt_min_C']:.1f}°C  "
+                         f"n_deep={feats['n_pix_deep']}  "
+                         f"nearest={'%.1f km' % nearest if not np.isnan(nearest) else 'None'}")
+                results.append({
+                    "date": str(date), "slot": slot_id, "LABEL": label, "fetch_ok": 1,
+                    **feats
+                })
 
         done += 1
 
@@ -467,6 +516,25 @@ def main():
     res_csv = OUT_DIR / "himawari_backtest_results.csv"
     df_res.to_csv(res_csv, index=False)
     log.info(f"\nResults saved → {res_csv}")
+
+    # ── v6 training output — rename columns to match train_v6_slot_models.py ──
+    v6_rows = df_res[df_res["fetch_ok"] == 1].copy()
+    if len(v6_rows) > 0:
+        v6_out = v6_rows.rename(columns={
+            "bt_min_C":          "min_bt_50km",
+            "n_pix_deep":        "cold_pixels_count",
+        })
+        # vobl_bt_celsius: use bt_p10_K converted to C as VOBL-centre proxy
+        if "bt_p10_K" in v6_out.columns:
+            v6_out["vobl_bt_celsius"] = v6_out["bt_p10_K"] - 273.15
+        # bt_trend_1h: not available from single-scene backtest — set NaN
+        v6_out["bt_trend_1h"] = np.nan
+
+        keep = ["date", "slot", "min_bt_50km", "cold_pixels_count",
+                "vobl_bt_celsius", "bt_trend_1h"]
+        keep = [c for c in keep if c in v6_out.columns]
+        v6_out[keep].to_csv(V6_OUTPUT, index=False)
+        log.info(f"v6 training CSV → {V6_OUTPUT}  ({len(v6_out)} rows)")
 
     # Compute metrics
     log.info("\n── Metric computation ──")

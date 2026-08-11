@@ -399,7 +399,9 @@ def main():
         results[slot_id] = cal
 
         # Determine model version label
-        if "v5" in model_name:
+        if "v6" in model_name:
+            model_ver = "v6_himawari" if "himawari" in model_name else "v6_temporal"
+        elif "v5" in model_name:
             model_ver = "v5_temporal"
         elif "v4_ensemble" in model_name:
             model_ver = "v4_ensemble"
@@ -429,6 +431,32 @@ def main():
         })
         print(f"  Slot {slot_id}: {model_ver}  raw={raw*100:.1f}%  cal={cal*100:.1f}%  "
               f"threshold={threshold}  predicted={'YES' if float(cal) >= threshold else 'NO'}")
+
+    # ── Load previous forecast for trend delta ────────────────────────────────
+    prev_probs = {}
+    forecast_path = BASE / "forecast.json"
+    if forecast_path.exists():
+        try:
+            with open(forecast_path) as f:
+                prev = json.load(f)
+            for s in prev.get("slots", []):
+                prev_probs[s["slot"]] = s.get("ts_probability", 0.0)
+        except Exception:
+            pass
+
+    # Inject trend delta into each slot
+    TREND_STABLE_BAND = 0.02   # ±2pp = STABLE
+    for s in slots_output:
+        prev_p = prev_probs.get(s["slot"])
+        if prev_p is not None:
+            delta = round(s["ts_probability"] - prev_p, 4)
+            s["prob_delta"] = delta
+            s["trend"] = ("RISING" if delta > TREND_STABLE_BAND
+                          else "FALLING" if delta < -TREND_STABLE_BAND
+                          else "STABLE")
+        else:
+            s["prob_delta"] = None
+            s["trend"] = "UNKNOWN"
 
     # ── Aggregate results ─────────────────────────────────────────────────────
     alert_active     = any(s["ts_predicted"] for s in slots_output)
