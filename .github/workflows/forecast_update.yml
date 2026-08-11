@@ -122,11 +122,17 @@ jobs:
           git config --global user.name  "CSIR Forecast Bot"
           git config --global user.email "bot@csir-thunderstorm.in"
 
-          # Always pull first to avoid non-fast-forward rejections
-          # forecast.json is auto-generated — always take the remote version on conflict
+          # Preserve the freshly generated forecast.json before pulling.
+          # Without this, git checkout --theirs on a merge conflict would
+          # overwrite our new file with the stale remote version.
+          cp forecast.json /tmp/forecast_generated.json
+
+          # Pull remote changes (handles code/README pushes between checkout and commit)
           git pull origin main --no-rebase || true
-          git checkout --theirs forecast.json 2>/dev/null || true
-          git add forecast.json 2>/dev/null || true
+
+          # Restore our generated forecast — it is always authoritative from Actions
+          cp /tmp/forecast_generated.json forecast.json
+          git add forecast.json
 
           # Stage all generated data files
           git add \
