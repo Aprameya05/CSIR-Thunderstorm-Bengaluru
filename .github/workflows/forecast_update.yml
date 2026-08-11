@@ -117,6 +117,41 @@ jobs:
         run: python populate_skill_scores.py
         continue-on-error: true
 
+      - name: Push alert notification
+        run: |
+          ALERT=$(python -c "
+          import json, sys
+          try:
+              d = json.load(open('forecast.json'))
+              if d.get('alert_active'):
+                  pk = d.get('peak_slot', '?')
+                  prob = round(d.get('peak_probability', 0)*100, 1)
+                  slot_names = {0:'00:01-06:00',1:'06:01-12:00',2:'12:01-18:00',3:'18:01-24:00'}
+                  window = slot_names.get(pk, str(pk))
+                  regime = d.get('convective_initiation', {}).get('monsoon_regime', '')
+                  cape = d.get('convective_initiation', {}).get('cape_now', 0)
+                  sigmet = d.get('sigmet_bulletin') or ''
+                  intensity = 'SEVERE' if prob >= 70 else 'MODERATE' if prob >= 40 else 'LIGHT'
+                  msg = f'VOBL TS ALERT {intensity} | Slot {pk} ({window} IST) | {prob}% probability | CAPE {cape:.0f} J/kg | Regime {regime}'
+                  if sigmet:
+                      msg += f'\n---\n{sigmet}'
+                  print(msg)
+          except Exception as e:
+              pass
+          ")
+          if [ -n \"\$ALERT\" ]; then
+            curl -s -o /dev/null -X POST \
+              -H "Title: VOBL Thunderstorm Alert" \
+              -H "Priority: high" \
+              -H "Tags: thunder,cloud,rotating_light" \
+              -d "\$ALERT" \
+              https://ntfy.sh/csir-vobl-thunderstorm || true
+            echo "Alert notification sent"
+          else
+            echo "No alert — notification skipped"
+          fi
+        continue-on-error: true
+
       - name: Commit and push forecast outputs
         run: |
           git config --global user.name  "CSIR Forecast Bot"
@@ -145,6 +180,8 @@ jobs:
             data/verification_today.json \
             data/pipeline_health.json \
             data/skill_scores.json \
+            data/forecast_log.csv \
+            data/alert_history.json \
             2>/dev/null || true
 
           # Only commit if there are staged changes

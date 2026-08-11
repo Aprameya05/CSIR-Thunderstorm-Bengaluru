@@ -1030,6 +1030,86 @@ def main():
           f"u850={forecast['met_parameters']['ERA5_u_850hPa']}")
     print("=" * 65)
 
+    # ── Append to forecast_log.csv (needed by verify_today + skill_scores) ────
+    try:
+        import csv
+        log_path = DATA / "forecast_log.csv"
+        log_cols = [
+            "date", "slot", "ts_probability", "ts_predicted", "threshold",
+            "model_used", "model_version", "source",
+            "cape", "k_index", "lifted_index", "totals_totals",
+            "monsoon_regime", "regime_adjustment", "cape_tendency_jkgh",
+            "alert_active", "generated_at",
+        ]
+        write_header = not log_path.exists()
+        with open(log_path, "a", newline="") as csvf:
+            writer = csv.DictWriter(csvf, fieldnames=log_cols, extrasaction="ignore")
+            if write_header:
+                writer.writeheader()
+            for s in slots_output:
+                writer.writerow({
+                    "date":               date_str,
+                    "slot":               s["slot"],
+                    "ts_probability":     s.get("ts_probability", 0),
+                    "ts_predicted":       int(s.get("ts_predicted", False)),
+                    "threshold":          s.get("threshold", 0),
+                    "model_used":         s.get("model_used", ""),
+                    "model_version":      s.get("model_version", ""),
+                    "source":             s.get("source", ""),
+                    "cape":               s.get("cape", 0),
+                    "k_index":            s.get("k_index", 0),
+                    "lifted_index":       s.get("lifted_index", 0),
+                    "totals_totals":      s.get("totals_totals", 0),
+                    "monsoon_regime":     monsoon_regime,
+                    "regime_adjustment":  regime_thresh_factor,
+                    "cape_tendency_jkgh": cape_tendency if cape_tendency is not None else "",
+                    "alert_active":       int(alert_active),
+                    "generated_at":       now.strftime("%Y-%m-%d %H:%M IST"),
+                })
+        print(f"  Forecast log appended → {log_path}")
+    except Exception as e:
+        print(f"  Forecast log error (non-fatal): {e}")
+
+    # ── Alert history log ─────────────────────────────────────────────────────
+    try:
+        alert_hist_path = DATA / "alert_history.json"
+        alert_history = []
+        if alert_hist_path.exists():
+            with open(alert_hist_path) as f:
+                alert_history = json.load(f)
+
+        if alert_active:
+            peak_s = next((s for s in slots_output if s["slot"] == peak_slot), {})
+            alert_history.append({
+                "date":             date_str,
+                "generated_at":     now.strftime("%Y-%m-%d %H:%M IST"),
+                "peak_slot":        peak_slot,
+                "peak_slot_label":  SLOT_LABELS.get(peak_slot, ""),
+                "peak_probability": round(float(peak_probability), 4),
+                "monsoon_regime":   monsoon_regime,
+                "cape":             peak_s.get("cape", 0),
+                "k_index":          peak_s.get("k_index", 0),
+                "metar_override":   metar_ts_override,
+                "sigmet_intensity": (
+                    "SEVERE"   if peak_probability >= 0.70 else
+                    "MODERATE" if peak_probability >= 0.40 else
+                    "LIGHT"    if peak_probability > 0    else None
+                ),
+            })
+            # Keep last 90 alert events
+            alert_history = alert_history[-90:]
+            with open(alert_hist_path, "w") as f:
+                json.dump(alert_history, f, indent=2)
+            print(f"  Alert history updated → {alert_hist_path}  "
+                  f"({len(alert_history)} events)")
+        else:
+            print(f"  No alert — history unchanged ({len(alert_history)} past events)")
+
+        forecast["alert_history_count"] = len(alert_history)
+        forecast["recent_alerts"] = alert_history[-5:]   # last 5 for dashboard
+    except Exception as e:
+        print(f"  Alert history error (non-fatal): {e}")
+
 
 if __name__ == "__main__":
     main()

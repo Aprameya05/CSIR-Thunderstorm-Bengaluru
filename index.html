@@ -3371,20 +3371,35 @@
       // Next slot (wraps around)
       const nextSlot = slots ? slots[(currentSlot.slot + 1) % slots.length] : null;
 
-      // Model version for active slot
-      const MODEL_LABELS = { 0: 'v4 Ensemble', 1: 'v5 Temporal', 2: 'v3 Calibrated', 3: 'v3 Calibrated' };
-      const modelLabel = MODEL_LABELS[currentSlot.slot] ?? 'v3 Calibrated';
+      // Model version for active slot (v6 temporal slots 0-3, v5 temporal slots 1-3, v4 ensemble slot 0)
+      const MODEL_LABELS = { 0: 'v6+v4 Ensemble', 1: 'v6 Temporal', 2: 'v6 Temporal', 3: 'v6 Temporal' };
+      const modelLabel = MODEL_LABELS[currentSlot.slot] ?? 'v6 Temporal';
 
-      // Monsoon phase
-      const monsoonPhase = liveData?.synoptic_regime?.monsoon_phase ?? liveData?.monsoon_phase ?? null;
+      // Monsoon phase — prefer new convective_initiation.monsoon_regime, fall back to synoptic_regime
+      const convInit = liveData?.convective_initiation ?? {};
+      const monsoonRegime = convInit.monsoon_regime ?? null;
+      const monsoonPhase = monsoonRegime ?? liveData?.synoptic_regime?.monsoon_phase ?? liveData?.monsoon_phase ?? null;
       const monsoonIndex = liveData?.synoptic_regime?.monsoon_index ?? null;
-      const phaseColor = monsoonPhase === 'ACTIVE' ? 'text-cyan-400' : monsoonPhase === 'BREAK' ? 'text-amber-400' : 'text-white';
+      const phaseColor = (monsoonPhase === 'ACTIVE' || monsoonPhase === 'ACTIVE_MODERATE') ? 'text-cyan-400'
+        : monsoonPhase === 'CONVECTIVE_BURST' ? 'text-red-400'
+        : monsoonPhase === 'BREAK' ? 'text-amber-400' : 'text-white';
+      const regimeFactor = convInit.regime_thresh_factor ?? currentSlot.regime_adjustment ?? null;
+      const capeTendency = convInit.cape_tendency_jkgh ?? null;
+      const capeTrend = convInit.cape_trend ?? null;
 
       // Himawari state
       const h9 = liveData?.satellite?.himawari9;
       const stormDetected = h9?.storm_detected ?? false;
       const minBT = h9?.min_bt_50km ?? null;
       const coldPx = h9?.cold_pixels_count ?? 0;
+      const btTrend1h = h9?.bt_trend_1h ?? null;
+
+      // METAR TS override and SIGMET
+      const metarTsOverride = liveData?.metar_ts_override ?? false;
+      const sigmetBulletin = liveData?.sigmet_bulletin ?? null;
+
+      // Recent alerts (last 5 from alert_history)
+      const recentAlerts = liveData?.recent_alerts ?? [];
 
       // Flight category colour
       const flightCat = liveData?.metar?.flight_category ?? '—';
@@ -3527,27 +3542,51 @@
 
               {/* Monsoon phase */}
               <div className="rounded-2xl atc-card p-4">
-                <div className="text-[9px] text-[#607d8b] font-bold mb-2">MONSOON PHASE</div>
-                <div className={`text-xl font-extrabold ${phaseColor}`}>
+                <div className="text-[9px] text-[#607d8b] font-bold mb-2">MONSOON REGIME</div>
+                <div className={`text-lg font-extrabold ${phaseColor}`}>
                   {monsoonPhase ?? liveData?.synoptic_regime?.regime_name ?? 'DETECTING...'}
                 </div>
-                {monsoonIndex !== null && (
-                  <div className="text-[9px] text-[#607d8b] mt-1">
-                    Index: <span className="text-white font-bold">{typeof monsoonIndex === 'number' ? monsoonIndex.toFixed(2) : monsoonIndex}</span>
-                  </div>
-                )}
-                <div className="text-[9px] text-[#607d8b] mt-0.5">
-                  {liveData?.synoptic_regime?.description ?? ''}
+                <div className="mt-2 space-y-0.5 text-[9px]">
+                  {regimeFactor !== null && (
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">THRESH FACTOR</span>
+                      <span className={`font-bold ${regimeFactor < 1 ? 'text-cyan-400' : regimeFactor > 1 ? 'text-amber-400' : 'text-white'}`}>
+                        ×{regimeFactor.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {capeTendency !== null && (
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">CAPE TENDENCY</span>
+                      <span className={`font-bold ${capeTendency > 50 ? 'text-red-400' : capeTendency < -50 ? 'text-emerald-400' : 'text-white'}`}>
+                        {capeTendency > 0 ? '+' : ''}{capeTendency.toFixed(0)} J/kg/h
+                      </span>
+                    </div>
+                  )}
+                  {capeTrend && (
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">CAPE TREND</span>
+                      <span className={`font-bold ${capeTrend === 'BUILDING' ? 'text-red-400' : capeTrend === 'WEAKENING' ? 'text-emerald-400' : 'text-white'}`}>
+                        {capeTrend}
+                      </span>
+                    </div>
+                  )}
+                  {monsoonIndex !== null && (
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">MONSOON IDX</span>
+                      <span className="font-bold text-white">{typeof monsoonIndex === 'number' ? monsoonIndex.toFixed(2) : monsoonIndex}</span>
+                    </div>
+                  )}
                 </div>
                 {/* Operational threshold note */}
                 <div className={`mt-2 pt-2 border-t border-[#172338] text-[8px] font-bold ${phaseColor}`}>
-                  {monsoonPhase === 'ACTIVE'
-                    ? 'ACTIVE: Slot 2 threshold lowered — increased sensitivity'
-                    : monsoonPhase === 'BREAK'
-                      ? 'BREAK: Slot 2 threshold raised — suppress false alarms'
-                      : liveData?.synoptic_regime?.regime_id === 'R3'
-                        ? 'BREAK: Slot 2 threshold raised — suppress false alarms'
-                        : 'NORMAL: Default operational thresholds applied'}
+                  {monsoonPhase === 'CONVECTIVE_BURST'
+                    ? 'BURST: All thresholds at 80% — maximum sensitivity'
+                    : (monsoonPhase === 'ACTIVE' || monsoonPhase === 'ACTIVE_MODERATE')
+                      ? 'ACTIVE: Thresholds lowered — increased sensitivity'
+                      : monsoonPhase === 'BREAK'
+                        ? 'BREAK: Thresholds raised — suppress false alarms'
+                        : 'NEUTRAL: Default operational thresholds applied'}
                 </div>
               </div>
 
@@ -3565,15 +3604,27 @@
                     </span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-[#607d8b]">BT TREND 1H</span>
+                    <span className={`font-bold ${btTrend1h !== null && btTrend1h < -3 ? 'text-red-400' : btTrend1h !== null && btTrend1h > 3 ? 'text-emerald-400' : 'text-white'}`}>
+                      {btTrend1h !== null ? `${btTrend1h > 0 ? '+' : ''}${btTrend1h.toFixed(1)}°C` : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-[#607d8b]">COLD PIXELS</span>
                     <span className={`font-bold ${coldPx >= 50 ? 'text-orange-400' : 'text-white'}`}>{coldPx}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#607d8b]">OVERRIDE</span>
+                    <span className="text-[#607d8b]">SAT OVERRIDE</span>
                     <span className={`font-bold ${isSatOverride ? 'text-orange-400' : 'text-emerald-400'}`}>
                       {isSatOverride ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                   </div>
+                  {metarTsOverride && (
+                    <div className="flex justify-between">
+                      <span className="text-[#607d8b]">METAR TS OVERRIDE</span>
+                      <span className="font-bold text-red-400 animate-pulse">ACTIVE</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3606,6 +3657,38 @@
               </div>
             </div>
           </div>
+
+          {/* ── SIGMET + Recent Alerts strip ── */}
+          {(sigmetBulletin || recentAlerts.length > 0) && (
+            <div className="px-8 pb-2 flex gap-4">
+              {sigmetBulletin && (
+                <div className="flex-1 rounded-xl bg-orange-500/10 border border-orange-500/40 p-3">
+                  <div className="flex items-center gap-2 mb-1 text-[9px] text-orange-300 font-bold">
+                    <span>📡</span>
+                    <span>AUTO-GENERATED SIGMET</span>
+                    <span className="ml-auto text-[8px] text-[#607d8b]">ADVISORY ONLY — NOT FOR OFFICIAL USE</span>
+                  </div>
+                  <pre className="text-[9px] text-orange-200 whitespace-pre-wrap leading-relaxed font-mono">{sigmetBulletin}</pre>
+                </div>
+              )}
+              {recentAlerts.length > 0 && (
+                <div className="w-64 rounded-xl bg-red-500/5 border border-red-500/30 p-3">
+                  <div className="text-[9px] text-red-300 font-bold mb-2">RECENT ALERTS (LAST {recentAlerts.length})</div>
+                  <div className="space-y-1">
+                    {recentAlerts.slice().reverse().map((a, i) => (
+                      <div key={i} className="flex justify-between text-[8px]">
+                        <span className="text-[#607d8b]">{a.date} S{a.peak_slot}</span>
+                        <span className={`font-bold ${a.peak_probability >= 0.7 ? 'text-red-400' : a.peak_probability >= 0.4 ? 'text-amber-400' : 'text-white'}`}>
+                          {(a.peak_probability * 100).toFixed(0)}%
+                        </span>
+                        <span className="text-[#607d8b] truncate max-w-[80px]">{a.monsoon_regime}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Footer ── */}
           <div className="px-8 py-3 border-t border-[#172338] flex justify-between items-center text-[10px] text-[#607d8b]">
