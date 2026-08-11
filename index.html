@@ -389,6 +389,88 @@
     }
 
     // --- FULL-WIDTH TOP HEADER BAR (ALL 8 PAGES) ---
+    // ── GLOBAL TOOLTIP COMPONENT ──────────────────────────────────────────────
+    const METRIC_GLOSSARY = {
+      'POD':   'Probability of Detection — fraction of actual thunderstorms correctly predicted (higher = better)',
+      'FAR':   'False Alarm Ratio — fraction of alerts that had no thunderstorm (lower = better)',
+      'HSS':   'Heidke Skill Score — forecast skill relative to random chance (1 = perfect, 0 = no skill)',
+      'CSI':   'Critical Success Index — hits / (hits + misses + false alarms); penalises both types of errors',
+      'AUROC': 'Area Under ROC Curve — overall discrimination ability across all thresholds (1 = perfect)',
+      'Brier': 'Brier Score — mean squared error of probability forecasts (lower = better, 0 = perfect)',
+      'CAPE':  'Convective Available Potential Energy — J/kg of buoyant energy in the atmosphere; >1000 = significant convection possible',
+      'K-Index': 'K-Index — thunderstorm potential index combining temperature lapse rate and moisture; >35 = high TS risk',
+      'LI':    'Lifted Index — stability measure; negative = unstable; LI < −4 = severe convection possible',
+      'TT':    'Total-Totals Index — combines vertical instability and moisture; >50 = moderate thunderstorm risk',
+      'PW':    'Precipitable Water — total column water vapour in mm; >50mm = heavy rainfall potential',
+      'SRH':   'Storm-Relative Helicity — m²/s²; measures rotational energy for supercell/tornado formation; >150 = significant',
+      'EHI':   'Energy-Helicity Index — CAPE × SRH composite; >1 = supercell possible; >2 = significant tornado risk',
+      'BRN':   'Bulk Richardson Number — ratio of buoyancy to wind shear; 10–45 = supercell range; <10 = extreme shear',
+      'PSI':   'Population Stability Index — measures feature distribution shift vs training data; >0.20 = significant drift',
+      'IST':   'India Standard Time — UTC + 5:30',
+      'GFS':   'Global Forecast System — NOAA numerical weather prediction model (~25km resolution)',
+      'METAR': 'METeorological Aerodrome Report — standardised real-time surface weather observation from airport',
+      'VOBL':  'ICAO code for Kempegowda International Airport, Bengaluru',
+      'IMD':   'India Meteorological Department',
+      'CSIR':  'Council of Scientific & Industrial Research',
+    };
+
+    function Tooltip({ term, children, className = '' }) {
+      const [visible, setVisible] = useState(false);
+      const [pos, setPos] = useState({ x: 0, y: 0 });
+      const glossary = METRIC_GLOSSARY;
+      const def = glossary[term];
+      if (!def) return <span className={className}>{children || term}</span>;
+      return (
+        <span
+          className={`relative cursor-help border-b border-dotted border-[#607d8b]/60 ${className}`}
+          onMouseEnter={e => { setVisible(true); setPos({ x: e.clientX, y: e.clientY }); }}
+          onMouseLeave={() => setVisible(false)}
+          onMouseMove={e => setPos({ x: e.clientX, y: e.clientY })}
+        >
+          {children || term}
+          {visible && (
+            <div
+              className="fixed z-[9999] max-w-xs px-3 py-2 rounded-lg bg-[#050d1a] border border-cyan-500/40 text-[10px] font-mono text-[#cfd8dc] shadow-lg pointer-events-none"
+              style={{ left: Math.min(pos.x + 12, window.innerWidth - 280), top: pos.y - 8, transform: 'translateY(-100%)' }}
+            >
+              <span className="font-bold text-cyan-300">{term}</span>
+              <span className="text-[#607d8b] mx-1">—</span>
+              {def}
+            </div>
+          )}
+        </span>
+      );
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // ── COLLAPSIBLE CARD ─────────────────────────────────────────────────────
+    function CollapsibleCard({ title, storageKey, children, className = '', defaultOpen = true }) {
+      const [open, setOpen] = useState(() => {
+        try {
+          const saved = localStorage.getItem(`csir_collapse_${storageKey}`);
+          return saved === null ? defaultOpen : saved === '1';
+        } catch { return defaultOpen; }
+      });
+      const toggle = () => {
+        const next = !open;
+        setOpen(next);
+        try { localStorage.setItem(`csir_collapse_${storageKey}`, next ? '1' : '0'); } catch {}
+      };
+      return (
+        <div className={`atc-card rounded-2xl font-mono overflow-hidden ${className}`}>
+          <button
+            onClick={toggle}
+            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/5 transition-colors"
+          >
+            <span className="text-[10px] font-bold text-white uppercase tracking-wider">{title}</span>
+            <span className={`text-[#607d8b] transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}>▾</span>
+          </button>
+          {open && <div className="px-4 pb-4">{children}</div>}
+        </div>
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     function HeaderBar({ liveTime, isLiveData, activeNavTab, onNavTabChange }) {
       const navTabs = ['DASHBOARD', 'FORECAST', 'RADAR MAP', 'MODELS', 'EXPLAINABILITY', 'REGIMES', 'LIVE API', 'ATC VIEW'];
       const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -742,9 +824,9 @@
                   <div className="my-1 flex items-center justify-between">
                     <HalfCircleAurocGauge value={auroc} size={80} />
                     <div className="text-[10px] text-right space-y-0.5">
-                      <div><span className="text-[#607d8b]">POD</span> <span className={`font-bold ${pod >= 0.5 ? 'text-emerald-400' : pod >= 0.3 ? 'text-amber-400' : 'text-red-400'}`}>{pod.toFixed(3)}</span></div>
-                      <div><span className="text-[#607d8b]">FAR</span> <span className={`font-bold ${far <= 0.5 ? 'text-emerald-400' : far <= 0.7 ? 'text-amber-400' : 'text-red-400'}`}>{far.toFixed(3)}</span></div>
-                      <div><span className="text-[#607d8b]">CSI</span> <span className="text-white font-bold">{csi.toFixed(3)}</span></div>
+                      <div><Tooltip term="POD" className="text-[#607d8b]">POD</Tooltip> <span className={`font-bold ${pod >= 0.5 ? 'text-emerald-400' : pod >= 0.3 ? 'text-amber-400' : 'text-red-400'}`}>{pod.toFixed(3)}</span></div>
+                      <div><Tooltip term="FAR" className="text-[#607d8b]">FAR</Tooltip> <span className={`font-bold ${far <= 0.5 ? 'text-emerald-400' : far <= 0.7 ? 'text-amber-400' : 'text-red-400'}`}>{far.toFixed(3)}</span></div>
+                      <div><Tooltip term="CSI" className="text-[#607d8b]">CSI</Tooltip> <span className="text-white font-bold">{csi.toFixed(3)}</span></div>
                     </div>
                   </div>
                   <div className="text-[9px] text-[#3d5066] border-t border-[#172338] pt-1.5 text-center">
@@ -1168,20 +1250,20 @@
                 </h4>
                 <div className="grid grid-cols-3 gap-3 text-center text-xs">
                   <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
-                    <div className="text-[9px] text-[#607d8b]">CAPE</div>
+                    <div className="text-[9px] text-[#607d8b]"><Tooltip term="CAPE">CAPE</Tooltip></div>
                     <div className="text-sm font-bold text-white">{liveData?.met_parameters?.ua_cape_jkg ?? liveData?.met_parameters?.cape_jkg ?? '—'}</div>
                     <div className="text-[8px] text-[#607d8b]">J/kg</div>
                   </div>
                   <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
-                    <div className="text-[9px] text-[#607d8b]">K-INDEX</div>
+                    <div className="text-[9px] text-[#607d8b]"><Tooltip term="K-Index">K-INDEX</Tooltip></div>
                     <div className="text-sm font-bold text-white">{liveData?.met_parameters?.ua_k_index ?? liveData?.met_parameters?.k_index ?? '—'}</div>
                   </div>
                   <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
-                    <div className="text-[9px] text-[#607d8b]">LIFTED INDEX</div>
+                    <div className="text-[9px] text-[#607d8b]"><Tooltip term="LI">LIFTED INDEX</Tooltip></div>
                     <div className="text-sm font-bold text-white">{liveData?.met_parameters?.ua_lifted_index ?? liveData?.met_parameters?.lifted_index ?? '—'}</div>
                   </div>
                   <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
-                    <div className="text-[9px] text-[#607d8b]">TOTALS-TOTALS</div>
+                    <div className="text-[9px] text-[#607d8b]"><Tooltip term="TT">TOTALS-TOTALS</Tooltip></div>
                     <div className="text-sm font-bold text-white">{liveData?.met_parameters?.ua_totals_totals ?? liveData?.met_parameters?.totals_totals ?? '—'}</div>
                   </div>
                   <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
@@ -1385,6 +1467,7 @@
 
 
           {/* BOTTOM ROW — 2 SUMMARY CARDS */}
+          <CollapsibleCard title="Model Performance &amp; Data Health" storageKey="bottom_row" defaultOpen={true}>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 font-mono">
             
             {/* Card 1: MODEL PERFORMANCE SUMMARY (6 Metrics in a row) */}
@@ -1503,8 +1586,10 @@
             })()}
 
           </div>
+          </CollapsibleCard>
 
           {/* ── PROBABILITY DAY-ARC CONE ── */}
+          {/* (wrapped inline — no CollapsibleCard needed, it's always compact) */}
           {(() => {
             const now2 = new Date();
             const utcMs = now2.getTime() + now2.getTimezoneOffset() * 60000;
@@ -2128,11 +2213,11 @@
                     <th className="text-left py-2 pr-3">SLOT</th>
                     <th className="text-left py-2 pr-3">WINDOW</th>
                     <th className="text-left py-2 pr-3">MODEL</th>
-                    <th className="text-center py-2 pr-3">AUROC</th>
-                    <th className="text-center py-2 pr-3">POD</th>
-                    <th className="text-center py-2 pr-3">FAR</th>
+                    <th className="text-center py-2 pr-3"><Tooltip term="AUROC">AUROC</Tooltip></th>
+                    <th className="text-center py-2 pr-3"><Tooltip term="POD">POD</Tooltip></th>
+                    <th className="text-center py-2 pr-3"><Tooltip term="FAR">FAR</Tooltip></th>
                     <th className="text-center py-2 pr-3">THRESHOLD</th>
-                    <th className="text-center py-2">BRIER</th>
+                    <th className="text-center py-2"><Tooltip term="Brier">BRIER</Tooltip></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2806,8 +2891,19 @@
           </div>
 
           {soundingStatus === 'loading' && (
-            <div className="h-48 flex items-center justify-center text-[#607d8b] text-xs">
-              Fetching radiosonde data from University of Wyoming...
+            <div className="h-56 p-4 space-y-2 overflow-hidden">
+              <div className="flex gap-3 items-center mb-3">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+                <span className="text-[10px] text-amber-400 font-mono animate-pulse">Fetching radiosonde data from University of Wyoming…</span>
+              </div>
+              {/* Skeleton bars */}
+              {[100, 80, 60, 45, 30, 20].map((w, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <div className="w-8 h-2.5 rounded bg-[#172338] animate-pulse shrink-0"></div>
+                  <div className="h-2.5 rounded animate-pulse" style={{ width: `${w}%`, background: 'linear-gradient(90deg, #172338 0%, #1e3050 50%, #172338 100%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite linear' }}></div>
+                </div>
+              ))}
+              <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
             </div>
           )}
 
@@ -3857,7 +3953,12 @@
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center text-[#607d8b] text-xs py-2">Satellite data unavailable — fetcher not yet run</div>
+                  <div className="space-y-2 py-2">
+                    <div className="text-[9px] text-[#3d5066] font-mono mb-1">Satellite data unavailable — fetcher not yet run</div>
+                    {[70, 50, 85, 40].map((w, i) => (
+                      <div key={i} className="h-2 rounded" style={{ width: `${w}%`, background: 'linear-gradient(90deg,#172338 0%,#1e3050 50%,#172338 100%)', backgroundSize:'200% 100%', animation:'shimmer 1.8s infinite linear' }} />
+                    ))}
+                  </div>
                 )}
 
                 {/* BT HISTORY SPARKLINE — animated trend over last N frames */}
@@ -4548,8 +4649,24 @@
       const [currentSlots, setCurrentSlots] = useState(DEFAULT_SLOTS);
       const [selectedSlotIndex, setSelectedSlotIndex] = useState(() => getInitialSlotByIstTime());
       const [liveTime, setLiveTime] = useState('');
-      const [activeNavTab, setActiveNavTab] = useState('DASHBOARD');
+      const NAV_TAB_LIST = ['DASHBOARD', 'FORECAST', 'RADAR MAP', 'MODELS', 'EXPLAINABILITY', 'REGIMES', 'LIVE API', 'ATC VIEW'];
+      const hashToTab = (h) => {
+        const map = { '#dashboard':'DASHBOARD','#forecast':'FORECAST','#radar':'RADAR MAP','#models':'MODELS','#explainability':'EXPLAINABILITY','#regimes':'REGIMES','#api':'LIVE API','#atc':'ATC VIEW' };
+        return map[h.toLowerCase()] || 'DASHBOARD';
+      };
+      const tabToHash = (t) => {
+        const map = { 'DASHBOARD':'#dashboard','FORECAST':'#forecast','RADAR MAP':'#radar','MODELS':'#models','EXPLAINABILITY':'#explainability','REGIMES':'#regimes','LIVE API':'#api','ATC VIEW':'#atc' };
+        return map[t] || '#dashboard';
+      };
+      const [activeNavTab, setActiveNavTab] = useState(() => {
+        if (typeof window !== 'undefined' && window.location.hash) return hashToTab(window.location.hash);
+        return 'DASHBOARD';
+      });
       const [isAtcMode, setIsAtcMode] = useState(false);
+      const [showKbHint, setShowKbHint] = useState(() => {
+        try { return !localStorage.getItem('csir_kb_hint_seen'); } catch { return true; }
+      });
+      const [copyFeedback, setCopyFeedback] = useState(false);
 
       // Fix 2: Parallax Mouse Tracking State & Effect
       const [mousePos, setMousePos] = React.useState({ x: 0.5, y: 0.5 });
@@ -4624,6 +4741,7 @@
 
       const handleNavTabClick = (tab) => {
         setActiveNavTab(tab);
+        if (typeof window !== 'undefined') window.location.hash = tabToHash(tab);
         if (tab === 'ATC VIEW') setIsAtcMode(true);
         else setIsAtcMode(false);
       };
@@ -4631,7 +4749,62 @@
       const handleExitAtc = () => {
         setIsAtcMode(false);
         setActiveNavTab('DASHBOARD');
+        if (typeof window !== 'undefined') window.location.hash = '#dashboard';
       };
+
+      // Keyboard shortcuts: 1-8 jump tabs
+      useEffect(() => {
+        const handler = (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+          const idx = parseInt(e.key) - 1;
+          if (!isNaN(idx) && idx >= 0 && idx < NAV_TAB_LIST.length) {
+            handleNavTabClick(NAV_TAB_LIST[idx]);
+          }
+          if (e.key === '?' || (e.key === '/' && !e.shiftKey)) {
+            setShowKbHint(v => !v);
+          }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+      }, []);
+
+      // Dismiss keyboard hint
+      const dismissKbHint = () => {
+        setShowKbHint(false);
+        try { localStorage.setItem('csir_kb_hint_seen', '1'); } catch {}
+      };
+
+      // Copy forecast summary
+      const copyForecastSummary = () => {
+        if (!liveData) return;
+        const slots = liveData.slots || currentSlots;
+        const regime = liveData.monsoon_regime?.regime || 'UNKNOWN';
+        const maxProb = Math.max(...slots.map(s => s.ts_probability ?? s.ts_prob ?? 0));
+        const slotLines = slots.map(s => {
+          const labels = ['00–06 IST','06–12 IST','12–18 IST','18–24 IST'];
+          const p = ((s.ts_probability ?? s.ts_prob ?? 0)*100).toFixed(1);
+          const pred = s.ts_predicted ? '⚡ ALERT' : 'STABLE';
+          return `  ${labels[s.slot] || `Slot ${s.slot}`}: ${p}% — ${pred}`;
+        }).join('\n');
+        const text = `CSIR Thunderstorm Nowcast — VOBL Bengaluru — ${liveData.date || new Date().toISOString().slice(0,10)}
+Regime: ${regime} | Max Prob: ${(maxProb*100).toFixed(1)}%
+${slotLines}
+Source: csir-thunderstorm-bengaluru.pages.dev`;
+        navigator.clipboard.writeText(text).then(() => {
+          setCopyFeedback(true);
+          setTimeout(() => setCopyFeedback(false), 2000);
+        });
+      };
+
+      // Data staleness check
+      const dataAgeHours = (() => {
+        if (!liveData?.generated_at) return null;
+        try {
+          const gen = new Date(liveData.generated_at.replace(' IST','').replace(' ','T'));
+          const now = new Date();
+          return (now - gen) / 3600000;
+        } catch { return null; }
+      })();
 
       return (
         <div className="min-h-screen text-[#e8eaf6] relative overflow-hidden">
@@ -4699,6 +4872,65 @@
               onNavTabChange={handleNavTabClick}
             />
 
+            {/* ── STALE DATA BANNER ── */}
+            {dataAgeHours !== null && dataAgeHours > 4 && (
+              <div className="relative z-30 flex items-center justify-between gap-3 px-4 py-2 bg-amber-950/80 border-b border-amber-500/50 font-mono text-xs backdrop-blur-sm">
+                <span className="flex items-center gap-2 text-amber-300">
+                  <span className="text-base">⚠</span>
+                  <span>FORECAST DATA IS <strong>{dataAgeHours.toFixed(1)}h OLD</strong> — Pipeline may have stalled. Last run: {liveData.generated_at}</span>
+                </span>
+                <span className="text-amber-500 text-[10px] shrink-0">Expected update every 6h</span>
+              </div>
+            )}
+
+            {/* ── COPY FORECAST + KEYBOARD HINT STRIP ── */}
+            <div className="relative z-30 flex items-center justify-between gap-3 px-4 py-1.5 bg-[#02060f]/60 border-b border-[#172338]/60 font-mono backdrop-blur-sm">
+              <div className="flex items-center gap-3 text-[9px] text-[#3d5066]">
+                <span className="hidden sm:inline">Press <kbd className="px-1 py-0.5 rounded bg-[#172338] text-[#607d8b] border border-[#263d55] text-[8px]">1</kbd>–<kbd className="px-1 py-0.5 rounded bg-[#172338] text-[#607d8b] border border-[#263d55] text-[8px]">8</kbd> to switch tabs</span>
+                <span className="hidden sm:inline text-[#263d55]">·</span>
+                <span className="hidden sm:inline">Press <kbd className="px-1 py-0.5 rounded bg-[#172338] text-[#607d8b] border border-[#263d55] text-[8px]">?</kbd> for shortcuts</span>
+                <span className="text-[#263d55]">·</span>
+                <span>VOBL / IMD 43295</span>
+              </div>
+              <button
+                onClick={copyForecastSummary}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded text-[10px] font-bold border transition-all ${
+                  copyFeedback
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-[#0a1628] text-[#607d8b] border-[#172338] hover:text-cyan-300 hover:border-cyan-500/30'
+                }`}
+              >
+                {copyFeedback ? '✓ COPIED' : '⎘ COPY FORECAST'}
+              </button>
+            </div>
+
+            {/* ── KEYBOARD SHORTCUTS OVERLAY ── */}
+            {showKbHint && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={dismissKbHint}>
+                <div className="atc-card rounded-2xl p-6 font-mono text-xs max-w-sm w-full mx-4 border border-cyan-500/30" onClick={e => e.stopPropagation()}>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-white tracking-wider">KEYBOARD SHORTCUTS</h3>
+                    <button onClick={dismissKbHint} className="text-[#607d8b] hover:text-white text-lg leading-none">✕</button>
+                  </div>
+                  <div className="space-y-2 mb-4">
+                    {NAV_TAB_LIST.map((tab, i) => (
+                      <div key={tab} className="flex items-center justify-between">
+                        <span className="text-[#90a4ae]">{tab}</span>
+                        <kbd className="px-2 py-1 rounded bg-[#172338] text-cyan-300 border border-[#263d55] font-bold">{i + 1}</kbd>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between border-t border-[#172338] pt-2 mt-2">
+                      <span className="text-[#90a4ae]">Toggle this panel</span>
+                      <kbd className="px-2 py-1 rounded bg-[#172338] text-cyan-300 border border-[#263d55] font-bold">?</kbd>
+                    </div>
+                  </div>
+                  <button onClick={dismissKbHint} className="w-full py-2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold hover:bg-cyan-500/30 transition-all">
+                    GOT IT — DON'T SHOW AGAIN
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Main Content Area */}
             <main className="flex-1 px-3 sm:px-4 lg:px-6 pt-4 pb-8 overflow-x-hidden">
               <AnimatePresence mode="wait">
@@ -4730,11 +4962,31 @@
                   </motion.div>
                 )}
 
-                {activeNavTab === 'RADAR MAP' && <RadarMapPage key="radar" liveData={liveData} />}
-                {activeNavTab === 'MODELS' && <ModelsPage key="models" liveData={liveData} />}
-                {activeNavTab === 'EXPLAINABILITY' && <ExplainabilityPage key="explain" liveData={liveData} />}
-                {activeNavTab === 'REGIMES' && <RegimesPage key="regimes" liveData={liveData} />}
-                {activeNavTab === 'LIVE API' && <LiveApiPage key="api" liveData={liveData} />}
+                {activeNavTab === 'RADAR MAP' && (
+                  <motion.div key="radar" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <RadarMapPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'MODELS' && (
+                  <motion.div key="models" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <ModelsPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'EXPLAINABILITY' && (
+                  <motion.div key="explain" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <ExplainabilityPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'REGIMES' && (
+                  <motion.div key="regimes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <RegimesPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'LIVE API' && (
+                  <motion.div key="api" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <LiveApiPage liveData={liveData} />
+                  </motion.div>
+                )}
               </AnimatePresence>
             </main>
 
