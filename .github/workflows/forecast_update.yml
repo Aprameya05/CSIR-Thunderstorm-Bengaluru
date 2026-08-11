@@ -1,18 +1,42 @@
 name: Update Forecast JSON
 
+# ── Cron schedule (UTC) ──────────────────────────────────────────────────────
+# 4 runs per day, one per slot (IST = UTC + 5:30).
+# Each run fires ~15 min before the slot window opens, after NOMADS posting.
+#
+#  Slot 0  0001-0600 IST → run at 17:45 UTC prev day   (23:15 IST prev day)
+#  Slot 1  0601-1200 IST → run at 23:45 UTC prev day   (05:15 IST)
+#  Slot 2  1201-1800 IST → run at 05:45 UTC             (11:15 IST)
+#  Slot 3  1801-2400 IST → run at 10:15 UTC             (15:45 IST)
+#
+# Plus an extra evening run at 16:15 UTC (21:45 IST) for the public dashboard
+# refresh after the peak afternoon slot.
+
 on:
   schedule:
-    - cron: "15 10,16 * * *"
+    - cron: "45 17 * * *"   # Slot 0  — 23:15 IST (prev-day 06Z cycle)
+    - cron: "45 23 * * *"   # Slot 1  — 05:15 IST (prev-day 12Z cycle)
+    - cron: "45  5 * * *"   # Slot 2  — 11:15 IST (prev-day 18Z cycle) ★ PRIMARY
+    - cron: "15 10 * * *"   # Slot 3  — 15:45 IST (same-day 00Z cycle)
+    - cron: "15 16 * * *"   # Extra   — 21:45 IST  dashboard refresh
   workflow_dispatch:
+    inputs:
+      slot:
+        description: "Force a specific slot (0-3, leave empty for auto)"
+        required: false
+        default: ""
 
 jobs:
   update-forecast:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Pull latest so we don't get non-fast-forward on forecast.json
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,32 +44,87 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt && pip install cfgrib eccodes xarray
+        run: |
+          pip install --upgrade pip
+          pip install \
+            "scikit-learn==1.7.2" \
+            "xgboost>=2.0.0" \
+            "joblib>=1.3.0" \
+            "shap>=0.45.0" \
+            "pandas>=2.0.0" \
+            "numpy>=1.24.0" \
+            "metpy>=1.6.0" \
+            "cfgrib>=0.9.10" \
+            "eccodes>=1.6.0" \
+            "xarray>=2024.0.0" \
+            "requests>=2.31.0" \
+            "pytz>=2024.1" \
+            "scipy>=1.12.0"
+          # eccodes system lib for cfgrib
+          sudo apt-get install -y libeccodes-dev 2>/dev/null || true
 
       - name: Fetch GFS real-time data
-        run: python gfs_fetcher.py
+        run: |
+          SLOT_ARG=""
+          if [ -n "${{ github.event.inputs.slot }}" ]; then
+            SLOT_ARG="--slot ${{ github.event.inputs.slot }}"
+          fi
+          python gfs_fetcher.py $SLOT_ARG
+        continue-on-error: true   # Don't abort if NOMADS is slow — fall back to climatology
 
       - name: Fetch Himawari-9 satellite data
         run: python fetch_himawari_realtime.py
+        continue-on-error: true
 
       - name: Run forecast pipeline
-        run: python forecast_action.py
+        run: |
+          SLOT_ARG=""
+          if [ -n "${{ github.event.inputs.slot }}" ]; then
+            SLOT_ARG="--slot ${{ github.event.inputs.slot }}"
+          fi
+          python forecast_action.py $SLOT_ARG
 
       - name: Fetch live METAR (VOBL)
         run: python fetch_metar.py
+        continue-on-error: true
 
       - name: Compute real-time SHAP
         run: python compute_realtime_shap.py
+        continue-on-error: true
 
       - name: Run daily verification
         run: python verify_today.py
+        continue-on-error: true
 
-      - name: Commit and push forecast.json
+      - name: Commit and push forecast outputs
         run: |
-          git config --global user.name "CSIR Forecast Bot"
+          git config --global user.name  "CSIR Forecast Bot"
           git config --global user.email "bot@csir-thunderstorm.in"
-          git add forecast.json data/verification_today.json
-          git diff --staged --quiet || (git commit -m "auto: forecast update $(date -u '+%Y-%m-%d %H:%M UTC')" && git push)
+
+          # Always pull first to avoid non-fast-forward rejections
+          # forecast.json is auto-generated — always take the remote version on conflict
+          git pull origin main --no-rebase || true
+          git checkout --theirs forecast.json 2>/dev/null || true
+          git add forecast.json 2>/dev/null || true
+
+          # Stage all generated data files
+          git add \
+            data/gfs_realtime_43295.csv \
+            data/upperair_realtime_43295.csv \
+            data/gfs_multiday_43295.json \
+            data/himawari_realtime.json \
+            data/himawari_history.json \
+            data/realtime_shap.json \
+            data/verification_today.json \
+            data/pipeline_health.json \
+            2>/dev/null || true
+
+          # Only commit if there are staged changes
+          git diff --staged --quiet || \
+            git commit -m "auto: forecast $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          # Push with lease — safer than bare --force
+          git push origin main --force-with-lease
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

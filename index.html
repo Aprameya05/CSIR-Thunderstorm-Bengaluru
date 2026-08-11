@@ -1066,7 +1066,7 @@
                         <div key={idx} className="flex items-center justify-between text-[10px] px-2 py-1.5 rounded bg-[#050811] border border-[#172338]">
                           <span className="text-white font-bold capitalize">{day.day_label?.replace('_',' ')}</span>
                           <span className="text-[#607d8b]">{day.date}</span>
-                          <span className="text-[#607d8b]">CAPE {day.cape} K {day.k_index}</span>
+                          <span className="text-[#607d8b]">CAPE {day.cape} K {day.k_index} TT {day.totals_totals ?? '—'}</span>
                           <span className={`font-bold ${riskColor}`}>{(day.ts_probability_slot2 * 100).toFixed(1)}%</span>
                           <span className={`font-bold text-[9px] ${riskColor}`}>{day.risk_level}</span>
                         </div>
@@ -1689,7 +1689,7 @@
                         </div>
                         <span className={`text-sm font-extrabold ${riskColor}`}>{day.risk_level}</span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-center text-[10px] mb-3">
+                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] mb-3">
                         <div className="p-1.5 rounded bg-[#020409] border border-[#172338]">
                           <div className="text-[8px] text-[#607d8b]">CAPE</div>
                           <div className="font-bold text-white">{day.cape}</div>
@@ -1701,6 +1701,12 @@
                         <div className="p-1.5 rounded bg-[#020409] border border-[#172338]">
                           <div className="text-[8px] text-[#607d8b]">LI</div>
                           <div className="font-bold text-white">{day.lifted_index}</div>
+                        </div>
+                        <div className="p-1.5 rounded bg-[#020409] border border-[#172338]">
+                          <div className="text-[8px] text-[#607d8b]">TT</div>
+                          <div className={`font-bold ${day.totals_totals >= 50 ? 'text-red-400' : day.totals_totals >= 44 ? 'text-amber-400' : 'text-white'}`}>
+                            {day.totals_totals ?? '—'}
+                          </div>
                         </div>
                       </div>
                       <div className="flex justify-between items-center text-xs border-t border-[#172338] pt-2">
@@ -2119,12 +2125,20 @@
         const mm   = String(now.getUTCMonth() + 1).padStart(2, '0');
         const dd   = String(now.getUTCDate()).padStart(2, '0');
         const url  = `https://weather.uwyo.edu/cgi-bin/bufrraob.py?datetime=${yyyy}-${mm}-${dd}+${hour}%3A00%3A00&id=43295&type=json`;
-        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const proxy = `https://corsproxy.io/?${encodeURIComponent(url)}`;
         try {
           const res = await fetch(proxy);
           if (!res.ok) throw new Error('proxy error');
-          const outer = await res.json();
-          const data = JSON.parse(outer.contents);
+          // corsproxy.io returns raw response; allorigins wraps in {contents}
+          const text = await res.text();
+          let data;
+          try {
+            const outer = JSON.parse(text);
+            // Handle both corsproxy.io (raw) and allorigins.win ({contents:...})
+            data = outer.contents ? JSON.parse(outer.contents) : outer;
+          } catch {
+            throw new Error('parse error');
+          }
           const levels = [];
           if (data && data.mandatory) {
             for (const lvl of data.mandatory) {
@@ -2752,8 +2766,8 @@
         return () => controller.abort();
       }, []);
 
+      const [postBodies, setPostBodies] = React.useState({});
       const handleTryIt = async (ep) => {
-        if (ep.isPost) return;
         const key = ep.path;
         setLoading(prev => ({ ...prev, [key]: true }));
         setResponses(prev => ({ ...prev, [key]: null }));
@@ -2768,7 +2782,13 @@
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         try {
-          const res = await fetch(`${API_BASE}${ep.path}`, { method: 'GET', signal: controller.signal });
+          const fetchOpts = ep.isPost
+            ? { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: postBodies[key] ?? ep.exampleBody ?? '{}', signal: controller.signal }
+            : { method: 'GET', signal: controller.signal };
+          // For /nowcast/predict/slot/{id}, replace {id} with 2
+          const resolvedPath = ep.path.replace('{id}', '2');
+          const res = await fetch(`${API_BASE}${resolvedPath}`, fetchOpts);
           const data = await res.json();
           setApiStatus('online');
           setResponses(prev => ({ ...prev, [key]: { ok: true, status: res.status, data, ms: Date.now() - startTime } }));
@@ -2810,7 +2830,7 @@
               const key = ep.path;
               const resp = responses[key];
               const isLoading = loading[key];
-              const canTry = !ep.isPost;
+              const canTry = true; // Both GET and POST are now callable
               return (
                 <div key={key} className="p-4 rounded-xl bg-[#050811] border border-[#172338] flex flex-col space-y-3">
                   <div className="flex items-center gap-3">
@@ -2822,26 +2842,30 @@
 
                   <p className="text-xs text-[#90a4ae]">{ep.desc}</p>
 
-                  {/* Example body for POST endpoints */}
+                  {/* Editable request body for POST endpoints */}
                   {ep.isPost && ep.exampleBody && (
-                    <div className="text-[9px] font-mono bg-[#080d1a] border border-[#172338] rounded p-2 text-[#607d8b]">
-                      <span className="text-amber-400 font-bold">EXAMPLE BODY: </span>
-                      <span className="text-[#90a4ae]">{ep.exampleBody}</span>
+                    <div className="space-y-1">
+                      <div className="text-[9px] text-amber-400 font-bold font-mono">REQUEST BODY (editable):</div>
+                      <textarea
+                        value={postBodies[ep.path] ?? ep.exampleBody}
+                        onChange={e => setPostBodies(prev => ({ ...prev, [ep.path]: e.target.value }))}
+                        rows={2}
+                        className="w-full bg-[#080d1a] text-[10px] text-emerald-300 border border-[#172338] rounded px-2 py-1.5 font-mono resize-none focus:outline-none focus:border-amber-500/50"
+                        spellCheck={false}
+                      />
                     </div>
                   )}
                   <div className="flex justify-end border-t border-[#172338] pt-2">
                     <button
                       onClick={() => handleTryIt(ep)}
-                      disabled={!canTry || isLoading}
+                      disabled={isLoading}
                       className={`px-3 py-1.5 rounded text-xs font-bold border transition-all ${
-                        !canTry
-                          ? 'bg-[#080d1a] text-[#607d8b] border-[#172338] cursor-not-allowed opacity-50'
-                          : isLoading
-                            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/40 cursor-wait'
-                            : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30 cursor-pointer'
+                        isLoading
+                          ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/40 cursor-wait'
+                          : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30 cursor-pointer'
                       }`}
                     >
-                      {!canTry ? 'POST — needs body' : isLoading ? `⟳ ${elapsed[key] || 0}s… ${elapsed[key] > 15 ? '(API waking)' : 'Calling...'}` : '▶ Try it'}
+                      {isLoading ? `⟳ ${elapsed[key] || 0}s… ${elapsed[key] > 15 ? '(API waking)' : 'Calling...'}` : '▶ Try it'}
                     </button>
                   </div>
 
@@ -3482,6 +3506,16 @@
                 )}
                 <div className="text-[9px] text-[#607d8b] mt-0.5">
                   {liveData?.synoptic_regime?.description ?? ''}
+                </div>
+                {/* Operational threshold note */}
+                <div className={`mt-2 pt-2 border-t border-[#172338] text-[8px] font-bold ${phaseColor}`}>
+                  {monsoonPhase === 'ACTIVE'
+                    ? 'ACTIVE: Slot 2 threshold lowered — increased sensitivity'
+                    : monsoonPhase === 'BREAK'
+                      ? 'BREAK: Slot 2 threshold raised — suppress false alarms'
+                      : liveData?.synoptic_regime?.regime_id === 'R3'
+                        ? 'BREAK: Slot 2 threshold raised — suppress false alarms'
+                        : 'NORMAL: Default operational thresholds applied'}
                 </div>
               </div>
 
