@@ -214,25 +214,57 @@ def s3_fetch_scene(target_dt: datetime.datetime) -> np.ndarray | None:
                                         connect_timeout=10,
                                         read_timeout=120))
 
+        # Resolution codes differ by satellite era
+        # H8 pre-2022: R10 (2km native), H9: R20 (2km) — try both
+        res_codes = ["R20", "R10"] if bucket == H8_BUCKET else ["R20"]
+
         for offset_min in range(0, 70, 10):   # ±60 min window
             for sign in [1, -1]:
                 t = target_dt + datetime.timedelta(minutes=sign * offset_min)
                 min_r = (t.minute // 10) * 10
                 scene = t.replace(minute=min_r, second=0, microsecond=0)
                 folder = scene.strftime("%Y/%m/%d/%H%M")
-                fname  = scene.strftime(
-                    f"HS_{sat}_%Y%m%d_%H%M_B13_FLDK_R20_S{VOBL_SEG:02d}10.DAT.bz2")
-                key = f"AHI-L1b-FLDK/{folder}/{fname}"
+                for res in res_codes:
+                    fname = scene.strftime(
+                        f"HS_{sat}_%Y%m%d_%H%M_B13_FLDK_{res}_S{VOBL_SEG:02d}10.DAT.bz2")
+                    key = f"AHI-L1b-FLDK/{folder}/{fname}"
+                    try:
+                        obj  = s3.get_object(Bucket=bucket, Key=key)
+                        data = obj["Body"].read()
+                        raw  = bz2.decompress(data)
+                        bt   = parse_hsd_bt(raw)
+                        log.debug(f"    S3 hit: {key}")
+                        return bt
+                    except Exception:
+                        continue
 
-                try:
-                    obj  = s3.get_object(Bucket=bucket, Key=key)
-                    data = obj["Body"].read()
-                    raw  = bz2.decompress(data)
-                    bt   = parse_hsd_bt(raw)
-                    log.debug(f"    S3 hit: {key}")
-                    return bt
-                except Exception:
-                    continue
+        # Last resort: list the folder and grab any B13 segment-5 file
+        try:
+            prefix = target_dt.strftime(f"AHI-L1b-FLDK/%Y/%m/%d/")
+            resp = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=200)
+            candidates = [
+                o["Key"] for o in resp.get("Contents", [])
+                if f"_B13_" in o["Key"] and f"_S{VOBL_SEG:02d}10" in o["Key"]
+            ]
+            if candidates:
+                # Pick closest to target time
+                def time_dist(key):
+                    try:
+                        part = key.split("/")[-1]
+                        t_str = part.split("_")[3]  # HHMM
+                        h, m = int(t_str[:2]), int(t_str[2:])
+                        return abs(h * 60 + m - (target_dt.hour * 60 + target_dt.minute))
+                    except Exception:
+                        return 9999
+                candidates.sort(key=time_dist)
+                obj  = s3.get_object(Bucket=bucket, Key=candidates[0])
+                data = obj["Body"].read()
+                raw  = bz2.decompress(data)
+                bt   = parse_hsd_bt(raw)
+                log.info(f"    S3 list-hit: {candidates[0]}")
+                return bt
+        except Exception:
+            pass
 
         return None
     except Exception as e:
