@@ -5201,32 +5201,40 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
           
           {/* ALL 4 SLOT BACKGROUND DIVS — overflow:hidden clips parallax movement */}
           <div className="fixed inset-0 overflow-hidden" style={{zIndex: 0, pointerEvents: 'none'}}>
-          {/* SLOT 0 — NIGHT (video) */}
-          <div className="slot-bg-common" style={{ opacity: selectedSlotIndex === 0 ? 1 : 0, transform: bgTransform, transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)', overflow:'hidden' }}>
-            <video autoPlay loop muted playsInline style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', minWidth:'100%', minHeight:'100%', width:'auto', height:'auto', objectFit:'cover' }}>
-              <source src="./night.mp4" type="video/mp4" />
-            </video>
-          </div>
-          {/* SLOT 1 — MORNING (video) */}
-          <div className="slot-bg-common" style={{ opacity: selectedSlotIndex === 1 ? 1 : 0, transform: bgTransform, transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)', overflow:'hidden' }}>
-            <video autoPlay loop muted playsInline style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', minWidth:'100%', minHeight:'100%', width:'auto', height:'auto', objectFit:'cover' }}>
-              <source src="./morning.mp4" type="video/mp4" />
-            </video>
-          </div>
-          {/* SLOT 2 — AFTERNOON (video) */}
-          <div className="slot-bg-common" style={{ opacity: selectedSlotIndex === 2 ? 1 : 0, transform: bgTransform, transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)', overflow:'hidden' }}>
-            <video autoPlay loop muted playsInline style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', minWidth:'100%', minHeight:'100%', width:'auto', height:'auto', objectFit:'cover' }}>
-              <source src="./afternoon.mp4" type="video/mp4" />
-            </video>
-          </div>
-          {/* SLOT 3 — EVENING (video) */}
-          <div className="slot-bg-common" style={{ opacity: selectedSlotIndex === 3 ? 1 : 0, transform: bgTransform, transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)', overflow:'hidden' }}>
-            <video autoPlay loop muted playsInline style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', minWidth:'100%', minHeight:'100%', width:'auto', height:'auto', objectFit:'cover' }}>
-              <source src="./evening.mp4" type="video/mp4" />
-            </video>
-          </div>
-          {/* PLACEHOLDER — keeps old closing structure intact */}
-          <div style={{ display:'none'
+          <div
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./night1.png')`,
+              opacity: selectedSlotIndex === 0 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          />
+          <div
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./morning1.png')`,
+              opacity: selectedSlotIndex === 1 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          />
+          <div
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./afternoon1.png')`,
+              opacity: selectedSlotIndex === 2 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          />
+          <div
+            className="slot-bg-common"
+            style={{
+              backgroundImage: `url('./evening1.png')`,
+              opacity: selectedSlotIndex === 3 ? 1 : 0,
+              transform: bgTransform,
+              transition: 'opacity 1s ease-in-out, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
             }}
           />
           </div>
