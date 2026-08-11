@@ -147,9 +147,12 @@ def compute_shap_for_slot(slot_id: int, gfs_row: pd.Series | None) -> dict | Non
         return None
 
     artifact     = joblib.load(model_path)
-    model        = artifact["model"]
-    feature_cols = artifact["feature_cols"]
+    model        = artifact.get("model") or artifact.get("calibrated")
+    feature_cols = artifact.get("feature_cols") or artifact.get("features") or []
     threshold    = artifact.get("threshold", 0.16)
+    if model is None or not feature_cols:
+        print(f"    Slot {slot_id}: missing model/features in artifact. Keys: {list(artifact.keys())}")
+        return None
 
     obs = build_obs(gfs_row, slot_id)
     X   = np.array([[float(obs.get(c, 0.0)) for c in feature_cols]])

@@ -108,15 +108,24 @@ def resave_artifact(pkl_path: Path, check_only: bool = False) -> bool:
         return False
 
     # Unpack model object from dict or use directly
+    # Artifact schemas seen in this repo:
+    #   v3/v4 calibrated : {'model': ..., 'feature_cols': ..., 'threshold': ..., 'calibrator': ...}
+    #   v4 ensemble / v5 : {'calibrated': ..., 'features': ..., 'slot': ..., 'auroc': ...}
     if isinstance(artifact, dict):
-        model_obj = artifact.get("model")
+        model_obj = artifact.get("model") or artifact.get("calibrated")
         if model_obj is None:
-            print(f"    ✗ No 'model' key in artifact dict. Keys: {list(artifact.keys())}")
+            print(f"    ✗ No model key in artifact. Keys: {list(artifact.keys())}")
             return False
+        # Normalise to unified schema so forecast_action.py can load either format
+        if "model" not in artifact and "calibrated" in artifact:
+            artifact["model"]        = artifact["calibrated"]
+        if "feature_cols" not in artifact and "features" in artifact:
+            artifact["feature_cols"] = artifact["features"]
+        if "threshold" not in artifact:
+            artifact["threshold"] = None   # will be overridden by THRESHOLDS dict at runtime
     else:
-        # Bare model
         model_obj = artifact
-        artifact = {"model": model_obj}
+        artifact = {"model": model_obj, "feature_cols": [], "threshold": None}
 
     booster = get_xgb_booster(model_obj)
     if booster is None:

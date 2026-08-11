@@ -299,11 +299,16 @@ def main():
         print(f"\n  Slot {slot_id}: loading {model_name}")
         try:
             artifact     = joblib.load(model_path)
-            model        = artifact["model"]
-            feature_cols = artifact["feature_cols"]
-            # Use model's stored threshold as the base, but override with operational thresholds
-            model_threshold = artifact.get("threshold", threshold_op)
-            # Operational threshold takes precedence (includes October fix)
+            # Support both artifact schemas:
+            #   old: {'model': ..., 'feature_cols': ..., 'threshold': ...}
+            #   new: {'calibrated': ..., 'features': ..., 'slot': ..., 'auroc': ...}
+            model        = artifact.get("model") or artifact.get("calibrated")
+            feature_cols = artifact.get("feature_cols") or artifact.get("features") or []
+            if model is None:
+                raise KeyError(f"No model key found. Keys: {list(artifact.keys())}")
+            if not feature_cols:
+                raise KeyError(f"No feature_cols/features key found. Keys: {list(artifact.keys())}")
+            # Operational threshold always takes precedence (includes October fix)
             threshold = threshold_op
         except Exception as e:
             print(f"  ✗ Load failed: {e}")
