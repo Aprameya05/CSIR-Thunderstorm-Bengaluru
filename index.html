@@ -3153,11 +3153,13 @@
               bars.push({ feature: '+ other features', shap: residual, start: running, end: finalProb,
                 direction: residual > 0 ? 'increases_risk' : 'decreases_risk' });
             }
-            // Clamp all values to [0,1] for display (SHAP can push running sum outside prob range)
-            const clamp = v => Math.max(0, Math.min(1, v));
-            const allVals = [base, finalProb, ...bars.map(b => b.start), ...bars.map(b => b.end)].map(clamp);
-            const minV = Math.max(0, Math.min(...allVals) - 0.03);
-            const maxV = Math.min(1, Math.max(...allVals) + 0.03);
+            // Use actual data range (SHAP base can exceed 1.0 in some model configs)
+            const allRaw = [base, finalProb, ...bars.map(b => b.start), ...bars.map(b => b.end)];
+            const dataMin = Math.min(...allRaw);
+            const dataMax = Math.max(...allRaw);
+            const pad5 = (dataMax - dataMin) * 0.05 || 0.05;
+            const minV = dataMin - pad5;
+            const maxV = dataMax + pad5;
             const range = maxV - minV || 0.01;
             const W = 680, H = 28 * (bars.length + 2) + 50;
             const PAD = { t: 28, r: 80, b: 32, l: 170 };
@@ -3165,7 +3167,7 @@
             const chartH = H - PAD.t - PAD.b;
             const rowH = chartH / (bars.length + 1);
             const barH = rowH * 0.55;
-            const toX = val => PAD.l + ((clamp(val) - minV) / range) * chartW;
+            const toX = val => PAD.l + ((val - minV) / range) * chartW;
             const toY = idx => PAD.t + (idx + 0.5) * rowH;
             const baseX = toX(base);
             const finalX = toX(finalProb);
@@ -3193,7 +3195,7 @@
                   {/* Final probability line */}
                   <line x1={finalX} y1={PAD.t - 8} x2={finalX} y2={H - PAD.b + 5} stroke="#38bdf8" strokeWidth="1.5" />
                   <text x={finalX} y={PAD.t - 10} textAnchor="middle" fontSize="8.5" fill="#38bdf8" fontWeight="bold">P={`${(finalProb*100).toFixed(1)}%`}</text>
-                  {/* Each SHAP bar — clipped to chart area */}
+                  {/* Each SHAP bar */}
                   {bars.map((bar, i) => {
                     const y = toY(i);
                     const x1 = toX(Math.min(bar.start, bar.end));
@@ -3202,16 +3204,6 @@
                     const isPos = bar.shap >= 0;
                     const barColor = isPos ? '#ef5350' : '#38bdf8';
                     const endX = toX(bar.end);
-                    // Detect if bar was clamped (actual end outside chart)
-                    const actualEnd = bar.end;
-                    const isClamped = actualEnd < 0 || actualEnd > 1;
-                    // Show value label at edge with arrow indicator if clamped
-                    const labelX = isClamped
-                      ? (isPos ? W - PAD.r - 2 : PAD.l + 2)
-                      : endX + (isPos ? 4 : -4);
-                    const labelAnchor = isClamped
-                      ? (isPos ? 'end' : 'start')
-                      : (isPos ? 'start' : 'end');
                     return (
                       <g key={bar.feature}>
                         {i > 0 && (
@@ -3223,21 +3215,20 @@
                           <rect x={x1} y={y - barH/2} width={w} height={barH} fill={barColor} opacity="0.80" rx="2" />
                         </g>
                         <text x={PAD.l - 6} y={y + 3.5} textAnchor="end" fontSize="8.5" fill="#90a4ae">{bar.feature}</text>
-                        <text x={labelX} y={y + 3.5}
-                              textAnchor={labelAnchor} fontSize="8" fill={barColor} fontWeight="bold">
-                          {isClamped ? '▶ ' : ''}{(bar.shap >= 0 ? '+' : '') + (bar.shap * 100).toFixed(1) + 'pp'}
+                        <text x={endX + (isPos ? 4 : -4)} y={y + 3.5}
+                              textAnchor={isPos ? 'start' : 'end'} fontSize="8" fill={barColor} fontWeight="bold">
+                          {(bar.shap >= 0 ? '+' : '') + (bar.shap * 100).toFixed(1) + 'pp'}
                         </text>
-                        {/* Running sum marker */}
-                        <circle cx={Math.min(Math.max(endX, PAD.l), PAD.l + chartW)} cy={y} r="2.5" fill={barColor} opacity="0.9" />
+                        <circle cx={endX} cy={y} r="2.5" fill={barColor} opacity="0.9" />
                       </g>
                     );
                   })}
-                  {/* X-axis ticks */}
-                  {[minV, base, finalProb, maxV].filter((v,i,a)=>a.indexOf(v)===i).map(v => (
-                    <g key={v}>
-                      <line x1={toX(v)} y1={H - PAD.b} x2={toX(v)} y2={H - PAD.b + 4} stroke="#607d8b" strokeWidth="0.8" />
-                      <text x={toX(v)} y={H - PAD.b + 14} textAnchor="middle" fontSize="7.5" fill="#607d8b">
-                        {(v*100).toFixed(0)}%
+                  {/* X-axis ticks — evenly spaced across actual data range */}
+                  {Array.from({length: 6}, (_, i) => minV + (i / 5) * (maxV - minV)).map((v, i) => (
+                    <g key={i}>
+                      <line x1={toX(v)} y1={H - PAD.b} x2={toX(v)} y2={H - PAD.b + 4} stroke="#172338" strokeWidth="0.8" />
+                      <text x={toX(v)} y={H - PAD.b + 13} textAnchor="middle" fontSize="7.5" fill="#607d8b">
+                        {(v * 100).toFixed(0)}%
                       </text>
                     </g>
                   ))}
