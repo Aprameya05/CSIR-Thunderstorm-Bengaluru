@@ -341,6 +341,63 @@ def compute_indices(surface_fields: dict, profile: dict) -> dict:
     except Exception as e:
         print(f"  Warning: index computation failed: {e}")
 
+    # ── Convective rotation parameters (SRH, EHI, BRN) ───────────────────────
+    # Computed from GFS wind profile at 850/700/500 hPa.
+    # Storm motion: Davies-Jones (1984) simplified — 7.5 m/s to right of mean shear.
+    # SRH: Storm-Relative Helicity (m²/s²) in 0–3 km layer (850 hPa proxy)
+    # EHI: Energy-Helicity Index = (CAPE × SRH) / 160000
+    # BRN: Bulk Richardson Number = CAPE / (0.5 × wind_shear²)
+    try:
+        u850 = float(profile.get(850, {}).get("u", np.nan) or np.nan)
+        v850 = float(profile.get(850, {}).get("v", np.nan) or np.nan)
+        u700 = float(profile.get(700, {}).get("u", np.nan) or np.nan)
+        v700 = float(profile.get(700, {}).get("v", np.nan) or np.nan)
+        u500 = float(profile.get(500, {}).get("u", np.nan) or np.nan)
+        v500 = float(profile.get(500, {}).get("v", np.nan) or np.nan)
+        cape = float(surface_fields.get("cape", 0) or 0)
+
+        if all(np.isfinite([u850, v850, u700, v700, u500, v500])):
+            # Mean wind in 0-6 km layer (850-500 hPa proxy)
+            u_mean = (u850 + u700 + u500) / 3.0
+            v_mean = (v850 + v700 + v500) / 3.0
+
+            # Storm motion: 30° to right of shear vector, 75% of shear magnitude
+            du_shear = u500 - u850
+            dv_shear = v500 - v850
+            shear_mag = np.sqrt(du_shear**2 + dv_shear**2)
+            # Right-mover: rotate shear 30° right
+            angle_rad = np.radians(-30)
+            us = (u_mean + 0.75 * (du_shear * np.cos(angle_rad) - dv_shear * np.sin(angle_rad)))
+            vs = (v_mean + 0.75 * (du_shear * np.sin(angle_rad) + dv_shear * np.cos(angle_rad)))
+
+            # SRH = ∫(V_s - V_wind) × dV  (simplified trapezoid over 850-500 hPa)
+            # Using 850 hPa as 0-3 km proxy
+            srh = (
+                (u850 - us) * (v700 - vs) - (u700 - us) * (v850 - vs)
+            ) * 0.5 + (
+                (u700 - us) * (v500 - vs) - (u500 - us) * (v700 - vs)
+            ) * 0.5
+
+            # EHI (Energy-Helicity Index)
+            ehi = (cape * max(srh, 0)) / 160000.0
+
+            # BRN (Bulk Richardson Number)
+            brn_shear_denom = 0.5 * shear_mag**2
+            brn = (cape / brn_shear_denom) if brn_shear_denom > 0.1 else np.nan
+
+            base.update({
+                "SRH_0_3km":  round(float(srh), 2),
+                "EHI":        round(float(ehi), 4),
+                "BRN":        round(float(brn), 2) if np.isfinite(brn) else np.nan,
+                "wind_shear_500_850_ms": round(float(shear_mag), 2),
+            })
+            print(f"  Convective params: SRH={srh:.1f} m²/s²  EHI={ehi:.3f}  BRN={brn:.1f}  shear={shear_mag:.1f} m/s")
+        else:
+            base.update({"SRH_0_3km": np.nan, "EHI": np.nan, "BRN": np.nan, "wind_shear_500_850_ms": np.nan})
+    except Exception as e:
+        print(f"  Warning: SRH/EHI/BRN computation failed: {e}")
+        base.update({"SRH_0_3km": np.nan, "EHI": np.nan, "BRN": np.nan, "wind_shear_500_850_ms": np.nan})
+
     return base
 
 
@@ -647,6 +704,11 @@ def main():
         "ERA5_q_850hPa": profile.get(850, {}).get("q", np.nan),
         # Rainfall
         "APCP_surface": surface_fields.get("apcp", 0.0),
+        # Convective rotation parameters
+        "SRH_0_3km":           indices.get("SRH_0_3km"),
+        "EHI":                 indices.get("EHI"),
+        "BRN":                 indices.get("BRN"),
+        "wind_shear_500_850_ms": indices.get("wind_shear_500_850_ms"),
         # Multi-hour TMP for diurnal range (Kelvin)
         **tmp_cols,
     }

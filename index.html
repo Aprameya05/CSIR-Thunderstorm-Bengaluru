@@ -1504,6 +1504,248 @@
 
           </div>
 
+          {/* ── PROBABILITY DAY-ARC CONE ── */}
+          {(() => {
+            const now2 = new Date();
+            const utcMs = now2.getTime() + now2.getTimezoneOffset() * 60000;
+            const ist2 = new Date(utcMs + 3600000 * 5.5);
+            const istFrac = (ist2.getHours() * 60 + ist2.getMinutes()) / 1440; // 0-1
+            const slotProbs = (slots || []).map(s => ({
+              slot: s.slot, prob: s.ts_probability ?? 0, predicted: s.ts_predicted,
+              label: ['00–06', '06–12', '12–18', '18–24'][s.slot],
+              color: s.ts_probability >= 0.5 ? '#ef5350' : s.ts_probability >= 0.3 ? '#ff9800' : s.ts_probability >= 0.15 ? '#ffc107' : '#4caf50',
+            }));
+            const W = 700, H = 100;
+            const slotW = W / 4;
+            return (
+              <div className="atc-card p-4 rounded-2xl font-mono">
+                <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">24-HOUR CONVECTIVE PROBABILITY ARC</h4>
+                    <p className="text-[9px] text-[#607d8b]">Thunderstorm probability across all 4 IST windows · NOW marker tracks current time</p>
+                  </div>
+                  <span className="text-[9px] text-cyan-300 font-bold">
+                    {ist2.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} IST
+                  </span>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ fontFamily: 'monospace' }}>
+                  {/* Background slots */}
+                  {slotProbs.map((sp, i) => {
+                    const x = i * slotW;
+                    const barH = sp.prob * (H - 30);
+                    const isActive = sp.slot === (ist2.getHours() < 6 ? 0 : ist2.getHours() < 12 ? 1 : ist2.getHours() < 18 ? 2 : 3);
+                    return (
+                      <g key={i}>
+                        <rect x={x} y={0} width={slotW} height={H - 20}
+                          fill={isActive ? '#0a1628' : '#040711'} stroke="#172338" strokeWidth="0.5" />
+                        {/* Probability fill */}
+                        <rect x={x + 2} y={H - 20 - barH} width={slotW - 4} height={barH}
+                          fill={sp.color} opacity="0.75" rx="3" />
+                        {/* Slot label */}
+                        <text x={x + slotW / 2} y={H - 6} textAnchor="middle" fontSize="8.5" fill="#607d8b" fontWeight="bold">
+                          {sp.label} IST
+                        </text>
+                        {/* Probability label */}
+                        <text x={x + slotW / 2} y={H - 20 - barH - 4} textAnchor="middle" fontSize="9" fill={sp.color} fontWeight="bold">
+                          {(sp.prob * 100).toFixed(0)}%
+                        </text>
+                        {/* Alert indicator */}
+                        {sp.predicted && (
+                          <text x={x + slotW - 6} y={14} textAnchor="end" fontSize="11">⚡</text>
+                        )}
+                        {isActive && (
+                          <rect x={x} y={0} width={slotW} height={H - 20}
+                            fill="none" stroke="#38bdf8" strokeWidth="1.5" rx="1" />
+                        )}
+                        {/* Slot divider */}
+                        <line x1={x} y1={0} x2={x} y2={H - 20} stroke="#172338" strokeWidth="1" />
+                      </g>
+                    );
+                  })}
+                  {/* NOW cursor */}
+                  {(() => {
+                    const nowX = istFrac * W;
+                    return (
+                      <g>
+                        <line x1={nowX} y1={0} x2={nowX} y2={H - 20} stroke="#38bdf8" strokeWidth="2" strokeDasharray="4 2" />
+                        <polygon points={`${nowX - 5},0 ${nowX + 5},0 ${nowX},7`} fill="#38bdf8" />
+                        <text x={nowX + 4} y={13} fontSize="8" fill="#38bdf8" fontWeight="bold">NOW</text>
+                      </g>
+                    );
+                  })()}
+                  {/* 30% threshold line */}
+                  <line x1={0} y1={H - 20 - 0.30 * (H - 30)} x2={W} y2={H - 20 - 0.30 * (H - 30)}
+                    stroke="#607d8b" strokeWidth="0.7" strokeDasharray="3 3" />
+                  <text x={W - 2} y={H - 20 - 0.30 * (H - 30) - 3} textAnchor="end" fontSize="7" fill="#607d8b">30%</text>
+                </svg>
+              </div>
+            );
+          })()}
+
+          {/* ── ATMOSPHERIC SPIDER CHART — 6-parameter anomaly vs climatology ── */}
+          {liveData?.convective_initiation && (() => {
+            const ci = liveData.convective_initiation;
+            // Normalize each parameter against Bengaluru climatological max
+            const params = [
+              { label: 'CAPE',      val: Math.min((ci.cape_now || 0) / 2500, 1),        raw: `${(ci.cape_now||0).toFixed(0)} J/kg` },
+              { label: 'K-Index',   val: Math.min(((ci.ki_now || 0) - 10) / 30, 1),     raw: `${(ci.ki_now||0).toFixed(1)}` },
+              { label: 'Instab.',   val: (ci.instability_score || 0) / 100,              raw: `${(ci.instability_score||0).toFixed(0)}/100` },
+              { label: 'TT',        val: Math.min(((ci.tt_now||0) - 40) / 20, 1),       raw: `${(ci.tt_now||0).toFixed(1)}` },
+              { label: 'PW',        val: Math.min((liveData.met_parameters?.PRECIP_WATER||40) / 70, 1), raw: `${(liveData.met_parameters?.PRECIP_WATER||0).toFixed(0)} mm` },
+              { label: '-LI',       val: Math.min(Math.max(-(ci.li_now||0) / 8, 0), 1), raw: `${(ci.li_now||0).toFixed(1)}` },
+            ];
+            const N = params.length;
+            const CX = 100, CY = 95, R = 72;
+            const angles = params.map((_, i) => (i / N) * 2 * Math.PI - Math.PI / 2);
+            const toXY = (r, angle) => [CX + r * Math.cos(angle), CY + r * Math.sin(angle)];
+            const rings = [0.25, 0.50, 0.75, 1.0];
+            const polyPts = params.map((p, i) => toXY(p.val * R, angles[i]).join(',')).join(' ');
+            const criticalColor = params[0].val > 0.7 ? '#ef5350' : params[0].val > 0.4 ? '#ffc107' : '#38bdf8';
+            return (
+              <div className="atc-card p-4 rounded-2xl font-mono">
+                <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">ATMOSPHERIC INSTABILITY RADAR</h4>
+                    <p className="text-[9px] text-[#607d8b]">6-parameter anomaly vs Bengaluru climatological max · Outer ring = extreme</p>
+                  </div>
+                  <span className={`text-sm font-extrabold px-3 py-1 rounded border ${
+                    ci.initiation_risk === 'HIGH' ? 'text-red-300 border-red-500/40 bg-red-500/10' :
+                    ci.initiation_risk === 'MODERATE' ? 'text-amber-300 border-amber-500/40 bg-amber-500/10' :
+                    'text-emerald-300 border-emerald-500/30 bg-emerald-500/5'
+                  }`}>{ci.initiation_risk ?? 'LOW'} RISK</span>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <svg viewBox="0 0 200 195" width="200" height="195" style={{ fontFamily: 'monospace', flexShrink: 0 }}>
+                    {/* Ring grid */}
+                    {rings.map(r => (
+                      <polygon key={r}
+                        points={angles.map(a => toXY(r * R, a).join(',')).join(' ')}
+                        fill="none" stroke="#172338" strokeWidth={r === 1 ? 1.2 : 0.6} />
+                    ))}
+                    {/* Spokes */}
+                    {angles.map((a, i) => {
+                      const [x2, y2] = toXY(R, a);
+                      return <line key={i} x1={CX} y1={CY} x2={x2} y2={y2} stroke="#172338" strokeWidth="0.7" />;
+                    })}
+                    {/* Data polygon */}
+                    <polygon points={polyPts} fill={criticalColor + '30'} stroke={criticalColor} strokeWidth="2" />
+                    {/* Data points */}
+                    {params.map((p, i) => {
+                      const [x, y] = toXY(p.val * R, angles[i]);
+                      return <circle key={i} cx={x} cy={y} r="3.5" fill={criticalColor} />;
+                    })}
+                    {/* Axis labels */}
+                    {params.map((p, i) => {
+                      const [x, y] = toXY(R + 14, angles[i]);
+                      return (
+                        <text key={i} x={x} y={y} textAnchor="middle" fontSize="8.5" fill="#90a4ae" fontWeight="bold">
+                          {p.label}
+                        </text>
+                      );
+                    })}
+                    {/* Center label */}
+                    <text x={CX} y={CY + 4} textAnchor="middle" fontSize="8" fill="#607d8b">VOBL</text>
+                  </svg>
+                  {/* Legend */}
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[10px] font-mono">
+                    {params.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 rounded-full bg-[#172338] overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${p.val * 100}%`, backgroundColor: criticalColor }} />
+                        </div>
+                        <span className="text-[#607d8b]">{p.label}</span>
+                        <span className="text-white font-bold">{p.raw}</span>
+                      </div>
+                    ))}
+                    <div className="col-span-2 mt-1 text-[9px] text-[#3d5066] border-t border-[#172338] pt-1.5">
+                      {ci.initiation_message}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── ALERT HISTORY CALENDAR HEATMAP ── */}
+          {liveData?.recent_alerts?.length > 0 && (() => {
+            const alerts = liveData.recent_alerts;
+            // Build a map of date → peak_probability
+            const alertMap = {};
+            alerts.forEach(a => { alertMap[a.date] = Math.max(alertMap[a.date] || 0, a.peak_probability || 0); });
+
+            // Generate last 90 days
+            const today = new Date();
+            const days = [];
+            for (let i = 89; i >= 0; i--) {
+              const d = new Date(today); d.setDate(d.getDate() - i);
+              const ds = d.toISOString().slice(0, 10);
+              days.push({ date: ds, prob: alertMap[ds] || 0, day: d.getDay() });
+            }
+
+            // Build weeks (columns)
+            const firstDayOfWeek = days[0].day;
+            const paddedDays = Array(firstDayOfWeek).fill(null).concat(days);
+            const weeks = [];
+            for (let i = 0; i < paddedDays.length; i += 7) {
+              weeks.push(paddedDays.slice(i, i + 7));
+            }
+
+            const cellSize = 12, gap = 2;
+            const W2 = weeks.length * (cellSize + gap);
+            const H2 = 7 * (cellSize + gap) + 20;
+            const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+            const probToColor = (p) => {
+              if (!p) return '#0a1628';
+              if (p >= 0.5) return '#ef5350';
+              if (p >= 0.3) return '#ff9800';
+              if (p >= 0.15) return '#ffc107';
+              return '#4caf50';
+            };
+
+            return (
+              <div className="atc-card p-4 rounded-2xl font-mono">
+                <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">ALERT HISTORY — 90-DAY HEATMAP</h4>
+                    <p className="text-[9px] text-[#607d8b]">TS alert events from last 90 days · Color = peak probability · {Object.keys(alertMap).length} alert days</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[8px] font-mono">
+                    {[['LOW', '#4caf50'], ['MOD', '#ffc107'], ['HIGH', '#ff9800'], ['CRIT', '#ef5350']].map(([l, c]) => (
+                      <span key={l} className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded-sm inline-block" style={{ background: c }}></span>
+                        <span className="text-[#607d8b]">{l}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <svg viewBox={`0 0 ${W2 + 16} ${H2}`} width={W2 + 16} height={H2} style={{ fontFamily: 'monospace' }}>
+                    {/* Day labels */}
+                    {dayLabels.map((l, i) => (
+                      <text key={i} x={10} y={20 + i * (cellSize + gap) + cellSize / 2 + 3}
+                        fontSize="7" fill="#3d5066" textAnchor="middle">{l}</text>
+                    ))}
+                    {/* Cells */}
+                    {weeks.map((week, wi) => (
+                      week.map((day, di) => {
+                        if (!day) return null;
+                        const x = 16 + wi * (cellSize + gap);
+                        const y = 12 + di * (cellSize + gap);
+                        const isToday = day.date === today.toISOString().slice(0, 10);
+                        return (
+                          <rect key={day.date} x={x} y={y} width={cellSize} height={cellSize}
+                            rx="2" fill={probToColor(day.prob)}
+                            stroke={isToday ? '#38bdf8' : 'none'} strokeWidth={isToday ? 1.5 : 0} />
+                        );
+                      })
+                    ))}
+                  </svg>
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
       );
     }
@@ -2270,6 +2512,118 @@
             </div>
           </div>
 
+          {/* ── MULTI-MODEL COMPARISON — v4 / v5 / v6 TODAY ── */}
+          {liveData?.slots?.length > 0 && (() => {
+            const slotLabels = ['00–06 IST', '06–12 IST', '12–18 IST', '18–24 IST'];
+            const slotColors = ['#38bdf8', '#818cf8', '#fb7185', '#fbbf24'];
+            // Model versions and their prod role
+            const modelVersions = [
+              { key: 'v4', label: 'v4 Gradient\nBoost', role: 'Slot 0 co-ens', color: '#607d8b' },
+              { key: 'v5', label: 'v5 XGBoost\nBase', role: 'Retired (ref)', color: '#3d5066' },
+              { key: 'v6', label: 'v6 Temporal\nXGBoost', role: 'PROD', color: '#38bdf8' },
+            ];
+            return (
+              <div className="atc-card p-4 rounded-2xl font-mono">
+                <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">MULTI-MODEL COMPARISON — TODAY'S RAW PROBABILITIES</h4>
+                    <p className="text-[9px] text-[#607d8b]">v4 / v5 / v6 slot-by-slot probabilities · PROD = ensemble or v6 depending on slot</p>
+                  </div>
+                  <span className="text-[9px] text-cyan-300 font-bold px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30">
+                    {liveData?.generated_at ? liveData.generated_at.slice(0, 10) : 'TODAY'}
+                  </span>
+                </div>
+                {/* Grid: columns = slots, rows = models */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[9px]" style={{ borderCollapse: 'separate', borderSpacing: '4px' }}>
+                    <thead>
+                      <tr>
+                        <th className="text-left text-[#3d5066] pr-4 pb-2 font-normal">MODEL</th>
+                        {slotLabels.map((l, i) => (
+                          <th key={i} className="text-center pb-2 font-bold" style={{ color: slotColors[i] }}>{l}</th>
+                        ))}
+                        <th className="text-center pb-2 font-bold text-[#607d8b]">DAILY MAX</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modelVersions.map(mv => {
+                        // Extract probabilities per slot
+                        const probs = liveData.slots.map(s => {
+                          const vmap = s.model_probs || s.version_probs || {};
+                          // Fallback: use main ts_probability for prod model
+                          if (mv.key === 'v6') return s.ts_probability ?? s.ts_prob ?? null;
+                          if (mv.key === 'v4') return vmap.v4 ?? (s.slot === 0 ? s.ts_probability : null);
+                          return vmap[mv.key] ?? null;
+                        });
+                        const validProbs = probs.filter(p => p !== null && !isNaN(p));
+                        const dayMax = validProbs.length ? Math.max(...validProbs) : null;
+                        return (
+                          <tr key={mv.key}>
+                            <td className="pr-4 py-1.5">
+                              <div className="font-bold text-white">{mv.key.toUpperCase()}</div>
+                              <div style={{ color: mv.color }}>{mv.role}</div>
+                            </td>
+                            {probs.map((p, si) => {
+                              const isNull = p === null || isNaN(p);
+                              const pct = isNull ? null : Math.round(p * 100);
+                              const bgColor = isNull ? '#0a1628' : p >= 0.5 ? '#ef535030' : p >= 0.3 ? '#ff980030' : p >= 0.15 ? '#ffc10730' : '#4caf5020';
+                              const textColor = isNull ? '#3d5066' : p >= 0.5 ? '#ef5350' : p >= 0.3 ? '#ff9800' : p >= 0.15 ? '#ffc107' : '#4caf50';
+                              return (
+                                <td key={si} className="text-center py-1.5 px-2 rounded" style={{ background: bgColor }}>
+                                  {isNull
+                                    ? <span style={{ color: '#3d5066' }}>—</span>
+                                    : <span className="font-bold text-sm" style={{ color: textColor }}>{pct}%</span>
+                                  }
+                                  {!isNull && p >= 0.3 && <div style={{ color: textColor }} className="text-[7px]">⚡ ALERT</div>}
+                                </td>
+                              );
+                            })}
+                            <td className="text-center py-1.5 px-3 rounded" style={{ background: '#0a1628' }}>
+                              {dayMax !== null
+                                ? <span className="font-extrabold text-base" style={{ color: dayMax >= 0.5 ? '#ef5350' : dayMax >= 0.3 ? '#ffc107' : '#4caf50' }}>
+                                    {Math.round(dayMax * 100)}%
+                                  </span>
+                                : <span className="text-[#3d5066]">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* Ensemble row */}
+                      <tr className="border-t border-[#172338]">
+                        <td className="pr-4 py-2">
+                          <div className="font-bold text-emerald-300">ENSEMBLE</div>
+                          <div className="text-emerald-600">ACTIVE PROD</div>
+                        </td>
+                        {liveData.slots.map((s, si) => {
+                          const p = s.ts_probability ?? null;
+                          const pct = p !== null ? Math.round(p * 100) : null;
+                          const textColor = p >= 0.5 ? '#ef5350' : p >= 0.3 ? '#ffc107' : '#4caf50';
+                          return (
+                            <td key={si} className="text-center py-2 px-2 rounded" style={{ background: '#0a2820' }}>
+                              {p !== null
+                                ? <span className="font-extrabold text-sm" style={{ color: textColor }}>{pct}%</span>
+                                : <span className="text-[#3d5066]">—</span>}
+                              {s.ts_predicted && <div className="text-[7px] text-emerald-400">● PRED</div>}
+                            </td>
+                          );
+                        })}
+                        <td className="text-center py-2 px-3 rounded" style={{ background: '#0a2820' }}>
+                          {(() => {
+                            const max = Math.max(...liveData.slots.map(s => s.ts_probability ?? 0));
+                            return <span className="font-extrabold text-base" style={{ color: max >= 0.5 ? '#ef5350' : max >= 0.3 ? '#ffc107' : '#4caf50' }}>{Math.round(max * 100)}%</span>;
+                          })()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="text-[8px] text-[#3d5066] mt-2 border-t border-[#172338] pt-2">
+                  v4 = XGBoost with gradient features (2022 vintage) · v5 = Temporal XGBoost with monsoon regime (2023) · v6 = Full temporal + isotonic recalibration (2024 PROD)
+                </div>
+              </div>
+            );
+          })()}
+
           {/* October Miss Pattern Research Findings */}
           <div className="p-4 rounded-xl bg-[#050811] border border-amber-500/30">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -2778,6 +3132,109 @@
                   <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-red-500/70 inline-block"></span>increases TS probability</span>
                   <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-cyan-500/70 inline-block"></span>suppresses TS probability</span>
                   <span className="text-[#3d5066]">Each bar shifts cumulative probability from base rate</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── WIND HODOGRAPH ── */}
+          {liveData?.met_parameters && (() => {
+            const mp = liveData.met_parameters;
+            // Wind vectors at pressure levels: [hPa, u, v]
+            const levels = [
+              { hPa: 850, u: mp.U_WIND_850 ?? mp.u850 ?? null, v: mp.V_WIND_850 ?? mp.v850 ?? null, label: '850', color: '#ef5350' },
+              { hPa: 700, u: mp.U_WIND_700 ?? mp.u700 ?? null, v: mp.V_WIND_700 ?? mp.v700 ?? null, label: '700', color: '#ff9800' },
+              { hPa: 500, u: mp.U_WIND_500 ?? mp.u500 ?? null, v: mp.V_WIND_500 ?? mp.v500 ?? null, label: '500', color: '#ffc107' },
+              { hPa: 300, u: mp.U_WIND_300 ?? mp.u300 ?? null, v: mp.V_WIND_300 ?? mp.v300 ?? null, label: '300', color: '#4caf50' },
+            ].filter(l => l.u !== null && l.v !== null && !isNaN(l.u) && !isNaN(l.v));
+
+            if (levels.length < 2) return null;
+
+            const CX = 120, CY = 120, R = 100;
+            // Scale: find max wind magnitude
+            const maxWind = Math.max(...levels.map(l => Math.sqrt(l.u**2 + l.v**2)), 10);
+            const scale = R / maxWind;
+            // Convert met convention: u = east component, v = north component
+            // SVG: right=east, up=north (invert y)
+            const toXY = (u, v) => [CX + u * scale, CY - v * scale];
+
+            const pathD = levels.map((l, i) => {
+              const [x, y] = toXY(l.u, l.v);
+              return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(' ');
+
+            const rings = [0.25, 0.5, 0.75, 1.0].map(r => (r * maxWind).toFixed(0));
+
+            // Bulk shear vector
+            const [bsX, bsY] = toXY(levels[levels.length-1].u - levels[0].u, levels[levels.length-1].v - levels[0].v);
+
+            return (
+              <div className="atc-card p-4 rounded-2xl font-mono">
+                <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">WIND HODOGRAPH</h4>
+                    <p className="text-[9px] text-[#607d8b]">Storm-relative wind profile 850–300 hPa · u/v components from GFS · Curvature indicates rotation potential</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[9px] text-[#607d8b]">Bulk Shear</div>
+                    <div className="text-sm font-bold text-cyan-300">
+                      {Math.sqrt((levels[levels.length-1].u - levels[0].u)**2 + (levels[levels.length-1].v - levels[0].v)**2).toFixed(1)} m/s
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-6 items-center">
+                  <svg viewBox="0 0 240 240" width="240" height="240" style={{ fontFamily: 'monospace', flexShrink: 0 }}>
+                    {/* Grid rings */}
+                    {[0.25, 0.5, 0.75, 1.0].map((r, i) => (
+                      <g key={r}>
+                        <circle cx={CX} cy={CY} r={r * R} fill="none" stroke="#172338" strokeWidth={r === 1 ? 1 : 0.5} />
+                        <text x={CX + r * R + 2} y={CY - 2} fontSize="7" fill="#3d5066">{rings[i]}m/s</text>
+                      </g>
+                    ))}
+                    {/* Axes */}
+                    <line x1={CX - R} y1={CY} x2={CX + R} y2={CY} stroke="#172338" strokeWidth="0.7" />
+                    <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="#172338" strokeWidth="0.7" />
+                    <text x={CX + R + 4} y={CY + 4} fontSize="7" fill="#3d5066">E</text>
+                    <text x={CX - R - 10} y={CY + 4} fontSize="7" fill="#3d5066">W</text>
+                    <text x={CX - 4} y={CY - R - 4} fontSize="7" fill="#3d5066">N</text>
+                    <text x={CX - 4} y={CY + R + 10} fontSize="7" fill="#3d5066">S</text>
+                    {/* Hodograph path */}
+                    <path d={pathD} fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinejoin="round" />
+                    {/* Level dots */}
+                    {levels.map(l => {
+                      const [x, y] = toXY(l.u, l.v);
+                      return (
+                        <g key={l.hPa}>
+                          <circle cx={x} cy={y} r="5" fill={l.color} />
+                          <text x={x + 7} y={y + 3} fontSize="8" fill={l.color} fontWeight="bold">{l.label}</text>
+                        </g>
+                      );
+                    })}
+                    {/* Origin */}
+                    <circle cx={CX} cy={CY} r="3" fill="#607d8b" />
+                    {/* Bulk shear arrow */}
+                    <line x1={CX} y1={CY} x2={bsX} y2={bsY} stroke="#ffffff30" strokeWidth="1.5" strokeDasharray="4 2" />
+                  </svg>
+                  {/* Level legend */}
+                  <div className="space-y-2 text-[10px] font-mono">
+                    {levels.map(l => {
+                      const spd = Math.sqrt(l.u**2 + l.v**2);
+                      const dir = (270 - Math.atan2(l.v, l.u) * 180 / Math.PI + 360) % 360;
+                      return (
+                        <div key={l.hPa} className="flex items-center gap-3">
+                          <span className="w-3 h-3 rounded-full inline-block flex-shrink-0" style={{ background: l.color }}></span>
+                          <span className="text-[#607d8b] w-8">{l.label}</span>
+                          <span className="text-white font-bold">{spd.toFixed(1)} m/s</span>
+                          <span className="text-[#607d8b]">{dir.toFixed(0)}°</span>
+                        </div>
+                      );
+                    })}
+                    <div className="mt-3 text-[9px] text-[#3d5066] border-t border-[#172338] pt-2">
+                      SRH: <span className="text-white font-bold">{(liveData?.convective_initiation?.srh_0_3km ?? '—')}</span> m²/s²<br/>
+                      EHI: <span className="text-white font-bold">{(liveData?.convective_initiation?.ehi ?? '—')}</span><br/>
+                      Curved hodograph → supercell potential
+                    </div>
+                  </div>
                 </div>
               </div>
             );

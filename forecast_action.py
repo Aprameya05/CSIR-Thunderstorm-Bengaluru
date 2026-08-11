@@ -186,6 +186,28 @@ def compute_derived(obs: dict, slot_id: int) -> dict:
     obs["thickness_500_850"]  = t850 - t500
     obs["mid_level_drying"]   = q700 / (q850 + 1e-9)
 
+    # ── Convective rotation parameters (SRH, EHI, BRN) ───────────────────────
+    # SRH/EHI/BRN are written directly to gfs_realtime_43295.csv by gfs_fetcher.py.
+    # Pass through if present; otherwise compute from wind components as fallback.
+    if obs.get("SRH_0_3km") is None or obs.get("SRH_0_3km") != obs.get("SRH_0_3km"):
+        # Fallback: estimate SRH from wind shear (simplified)
+        shear_mag = obs["wind_shear_500_850"]
+        srh_est   = shear_mag * 10.0   # rough proxy
+        ehi_est   = (CAPE * max(srh_est, 0)) / 160000.0
+        brn_est   = CAPE / max(0.5 * shear_mag**2, 0.1)
+        obs["SRH_0_3km"] = round(srh_est, 2)
+        obs["EHI"]       = round(ehi_est, 4)
+        obs["BRN"]       = round(brn_est, 2)
+
+    # Composite convective indices
+    obs["cape_x_ehi"]    = CAPE * float(obs.get("EHI", 0) or 0)
+    obs["srh_x_shear"]   = float(obs.get("SRH_0_3km", 0) or 0) * obs["wind_shear_500_850"]
+    obs["brn_category"]  = (
+        2 if obs.get("BRN", 999) is not None and float(obs.get("BRN", 999)) < 10 else
+        1 if obs.get("BRN", 999) is not None and float(obs.get("BRN", 999)) < 45 else
+        0
+    )
+
     return obs
 
 
@@ -437,6 +459,7 @@ def main():
                 "ERA5_v_500hPa", "ERA5_v_700hPa", "ERA5_v_850hPa",
                 "K_INDEX", "TOTALS_TOTALS", "LIFTED_INDEX", "CAPE",
                 "CIN", "PRECIP_WATER",
+                "SRH_0_3km", "EHI", "BRN", "wind_shear_500_850_ms",
             ]
             for col in gfs_cols:
                 if col in row.index and pd.notna(row[col]):
@@ -721,6 +744,9 @@ def main():
         "ki_now":             round(ki_now, 2),
         "li_now":             round(li_now, 2),
         "tt_now":             round(tt_now, 2),
+        "srh_0_3km":          round(float(obs.get("SRH_0_3km", 0) or 0), 2) if len(gfs_df) > 0 else None,
+        "ehi":                round(float(obs.get("EHI", 0) or 0), 4)       if len(gfs_df) > 0 else None,
+        "brn":                round(float(obs.get("BRN", 0) or 0), 2)       if len(gfs_df) > 0 else None,
         "cape_tendency_jkgh": cape_tendency,
         "cape_trend":         ("BUILDING" if cape_tendency is not None and cape_tendency > 50
                                else "WEAKENING" if cape_tendency is not None and cape_tendency < -50

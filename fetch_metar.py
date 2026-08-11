@@ -103,9 +103,58 @@ def inject_into_forecast(metar_data: dict):
     print("[METAR] Injected into forecast.json ✓")
 
 
+def inject_ground_truth_label(metar_data: dict):
+    """
+    Write ts_label_actual column into data/forecast_log.csv for today's rows.
+    This gives verify_today.py a real ground-truth label instead of using
+    ts_predicted as a self-referential proxy.
+
+    Writes 1 if METAR reports TS in the active slot window, else 0.
+    Only updates today's rows that don't yet have a ts_label_actual value.
+    """
+    import csv, io
+    from datetime import datetime, timezone, timedelta
+
+    IST = timezone(timedelta(hours=5, minutes=30))
+    now_ist = datetime.now(IST)
+    today_str = now_ist.strftime("%Y-%m-%d")
+    ts_observed = int(metar_data.get("thunderstorm_present", False))
+
+    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "forecast_log.csv")
+    if not os.path.exists(log_path):
+        print("[METAR] forecast_log.csv not found — skipping ground truth injection")
+        return
+
+    with open(log_path, "r", newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        return
+
+    fieldnames = list(rows[0].keys())
+    if "ts_label_actual" not in fieldnames:
+        fieldnames.append("ts_label_actual")
+
+    updated = 0
+    for row in rows:
+        if row.get("date") == today_str:
+            # Only set if not already labeled
+            if not row.get("ts_label_actual"):
+                row["ts_label_actual"] = str(ts_observed)
+                updated += 1
+
+    with open(log_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"[METAR] Ground truth label written: ts_label_actual={ts_observed} "
+          f"for {updated} row(s) on {today_str}")
+
+
 if __name__ == "__main__":
     metar = fetch_metar()
     if metar:
         inject_into_forecast(metar)
+        inject_ground_truth_label(metar)
     else:
         print("[METAR] WARNING: No METAR fetched — forecast.json unchanged")
