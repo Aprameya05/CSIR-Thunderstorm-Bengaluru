@@ -464,14 +464,13 @@ def save_artifact(result: dict, slot_id: int, has_himawari: bool) -> Path:
 
 # ── Entry point ─────────────────────────────────────────────────────────────────
 def main():
+    global N_TRIALS  # must be first before any reference to N_TRIALS in this scope
     ap = argparse.ArgumentParser()
     ap.add_argument("--slot", type=int, choices=[0, 1, 2, 3], default=None)
     ap.add_argument("--no-gpu", action="store_true", help="Force CPU mode")
-    ap.add_argument("--n-trials", type=int, default=N_TRIALS,
+    ap.add_argument("--n-trials", type=int, default=100,
                     help="Optuna trials per slot (default 100)")
     args = ap.parse_args()
-
-    global N_TRIALS
     N_TRIALS = args.n_trials
 
     # GPU detection
