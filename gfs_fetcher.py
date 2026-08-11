@@ -72,6 +72,17 @@ CAPE_NEAR_ZERO = 1.0
 CAPE_SUSPECT_KINDEX = 30.0
 CAPE_SUSPECT_TT = 44.0
 
+def _c2k(val) -> float:
+    """Celsius → Kelvin. Returns np.nan if val is None/NaN."""
+    if val is None:
+        return np.nan
+    try:
+        f = float(val)
+        return np.nan if np.isnan(f) else f + 273.15
+    except (TypeError, ValueError):
+        return np.nan
+
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -620,16 +631,17 @@ def main():
         "ERA5_u_700hPa": indices.get("ERA5_u_700hPa"),
         "ERA5_v_700hPa": indices.get("ERA5_v_700hPa"),
         # Surface fields
-        "ERA5_T2M":  surface_fields.get("t2m_C", np.nan),
-        "ERA5_D2M":  surface_fields.get("d2m_C", np.nan),
+        # ERA5_T2M / ERA5_D2M / ERA5_t_*hPa: training data uses Kelvin — convert back from Celsius
+        "ERA5_T2M":  (_c2k(surface_fields.get("t2m_C"))),
+        "ERA5_D2M":  (_c2k(surface_fields.get("d2m_C"))),
         "ERA5_U10":  surface_fields.get("u10", np.nan),
         "ERA5_V10":  surface_fields.get("v10", np.nan),
         "ERA5_CAPE": surface_fields.get("cape", np.nan),
         "ERA5_SP":   surface_fields.get("sp_pa", np.nan),
-        # Pressure-level T/q fields
-        "ERA5_t_500hPa": profile.get(500, {}).get("t_C", np.nan),
-        "ERA5_t_700hPa": profile.get(700, {}).get("t_C", np.nan),
-        "ERA5_t_850hPa": profile.get(850, {}).get("t_C", np.nan),
+        # Pressure-level T fields — Kelvin (training convention)
+        "ERA5_t_500hPa": (_c2k(profile.get(500, {}).get("t_C"))),
+        "ERA5_t_700hPa": (_c2k(profile.get(700, {}).get("t_C"))),
+        "ERA5_t_850hPa": (_c2k(profile.get(850, {}).get("t_C"))),
         "ERA5_q_500hPa": profile.get(500, {}).get("q", np.nan),
         "ERA5_q_700hPa": profile.get(700, {}).get("q", np.nan),
         "ERA5_q_850hPa": profile.get(850, {}).get("q", np.nan),

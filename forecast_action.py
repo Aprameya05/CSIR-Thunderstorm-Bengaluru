@@ -45,20 +45,29 @@ SLOT_LABELS = {0: "Late Night", 1: "Morning", 2: "Afternoon", 3: "Evening"}
 BASE_THRESHOLDS = {0: 0.24, 1: 0.15, 2: 0.16, 3: 0.39}
 
 # Production model priority per slot
+# v6 Himawari > v6 temporal > v5 temporal > v4 ensemble/calibrated > v3 > v2
 SLOT_MODEL_PRIORITY = {
-    0: ["nowcast_slot0_xgb_v4_ensemble.pkl",
+    0: ["nowcast_slot0_xgb_v6_himawari.pkl",
+        "nowcast_slot0_xgb_v6_temporal.pkl",
+        "nowcast_slot0_xgb_v4_ensemble.pkl",
         "nowcast_slot0_xgb_v4_calibrated.pkl",
         "nowcast_slot0_xgb_v3_calibrated.pkl",
         "nowcast_slot0_xgb_v2_calibrated.pkl"],
-    1: ["nowcast_slot1_xgb_v5_temporal.pkl",
+    1: ["nowcast_slot1_xgb_v6_himawari.pkl",
+        "nowcast_slot1_xgb_v6_temporal.pkl",
+        "nowcast_slot1_xgb_v5_temporal.pkl",
         "nowcast_slot1_xgb_v4_calibrated.pkl",
         "nowcast_slot1_xgb_v3_calibrated.pkl",
         "nowcast_slot1_xgb_v2_calibrated.pkl"],
-    2: ["nowcast_slot2_xgb_v5_temporal.pkl",
+    2: ["nowcast_slot2_xgb_v6_himawari.pkl",
+        "nowcast_slot2_xgb_v6_temporal.pkl",
+        "nowcast_slot2_xgb_v5_temporal.pkl",
         "nowcast_slot2_xgb_v4_calibrated.pkl",
         "nowcast_slot2_xgb_v3_calibrated.pkl",
         "nowcast_slot2_xgb_v2_calibrated.pkl"],
-    3: ["nowcast_slot3_xgb_v5_temporal.pkl",
+    3: ["nowcast_slot3_xgb_v6_himawari.pkl",
+        "nowcast_slot3_xgb_v6_temporal.pkl",
+        "nowcast_slot3_xgb_v5_temporal.pkl",
         "nowcast_slot3_xgb_v4_calibrated.pkl",
         "nowcast_slot3_xgb_v3_calibrated.pkl",
         "nowcast_slot3_xgb_v2_calibrated.pkl"],

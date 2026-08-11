@@ -43,11 +43,18 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install system libs
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libeccodes-dev libgeos-dev 2>/dev/null || true
+
       - name: Install dependencies
         run: |
           pip install --upgrade pip
+          # scikit-learn: >=1.5.0 for CI (models are XGBoost Booster.save_model — sklearn version-independent at inference)
+          # Strict 1.7.2 pin is for TRAINING only (Colab/local)
           pip install \
-            "scikit-learn==1.7.2" \
+            "scikit-learn>=1.5.0" \
             "xgboost>=2.0.0" \
             "joblib>=1.3.0" \
             "shap>=0.45.0" \
@@ -60,8 +67,10 @@ jobs:
             "requests>=2.31.0" \
             "pytz>=2024.1" \
             "scipy>=1.12.0"
-          # eccodes system lib for cfgrib
-          sudo apt-get install -y libeccodes-dev 2>/dev/null || true
+
+      - name: Show library versions
+        run: |
+          python -c "import sklearn,xgboost,joblib,shap; print(f'sklearn={sklearn.__version__} xgb={xgboost.__version__} joblib={joblib.__version__} shap={shap.__version__}')"
 
       - name: Fetch GFS real-time data
         run: |
@@ -69,7 +78,9 @@ jobs:
           if [ -n "${{ github.event.inputs.slot }}" ]; then
             SLOT_ARG="--slot ${{ github.event.inputs.slot }}"
           fi
-          python gfs_fetcher.py $SLOT_ARG
+          python gfs_fetcher.py $SLOT_ARG || echo "GFS fetch failed — pipeline will use climatology defaults"
+          # Show what was written
+          [ -f data/gfs_realtime_43295.csv ] && head -2 data/gfs_realtime_43295.csv || echo "No GFS CSV"
         continue-on-error: true   # Don't abort if NOMADS is slow — fall back to climatology
 
       - name: Fetch Himawari-9 satellite data
