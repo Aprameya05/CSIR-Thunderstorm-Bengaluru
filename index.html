@@ -1722,6 +1722,81 @@
             </div>
           </div>
 
+          {/* HISTORICAL ANALOG RETRIEVAL PANEL */}
+          {liveData?.analogs?.top_5?.length > 0 && (
+            <div className="atc-card p-5 rounded-2xl font-mono">
+              <div className="flex justify-between items-center border-b border-[#172338] pb-3 mb-4 flex-wrap gap-2">
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">HISTORICAL ANALOG RETRIEVAL</h3>
+                  <p className="text-[9px] text-[#607d8b]">
+                    5 closest days from 2015–2025 archive · Query: CAPE={liveData.analogs.query_cape?.toFixed(0)} K-Index={liveData.analogs.query_ki?.toFixed(1)} LI={liveData.analogs.query_li?.toFixed(2)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] font-mono">
+                  <span className="text-[#607d8b]">ANALOG TS RATE:</span>
+                  <span className={`text-lg font-extrabold ${
+                    liveData.analogs.ts_rate >= 0.6 ? 'text-red-400' :
+                    liveData.analogs.ts_rate >= 0.4 ? 'text-orange-400' :
+                    liveData.analogs.ts_rate >= 0.2 ? 'text-yellow-400' : 'text-emerald-400'
+                  }`}>
+                    {liveData.analogs.ts_rate !== null ? (liveData.analogs.ts_rate * 100).toFixed(0) + '%' : '—'}
+                  </span>
+                  <span className="text-[9px] text-[#607d8b]">of {liveData.analogs.top_5.length} analogs had TS</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px] font-mono border-collapse">
+                  <thead>
+                    <tr className="text-[9px] text-[#607d8b] border-b border-[#172338]">
+                      <th className="text-left py-2 pr-4 font-bold">#</th>
+                      <th className="text-left py-2 pr-4 font-bold">DATE</th>
+                      <th className="text-center py-2 pr-4 font-bold">CAPE (J/kg)</th>
+                      <th className="text-center py-2 pr-4 font-bold">K-INDEX</th>
+                      <th className="text-center py-2 pr-4 font-bold">LI</th>
+                      <th className="text-center py-2 font-bold">OUTCOME</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveData.analogs.top_5.map((a, i) => (
+                      <tr key={a.date} className={`border-b border-[#172338]/50 hover:bg-white/[0.02] transition-colors ${i === 0 ? 'bg-cyan-500/5' : ''}`}>
+                        <td className="py-2.5 pr-4">
+                          {i === 0
+                            ? <span className="text-[9px] text-cyan-400 font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/30">BEST</span>
+                            : <span className="text-[#3d5066]">#{i+1}</span>
+                          }
+                        </td>
+                        <td className="py-2.5 pr-4 text-[#90a4ae] font-bold">{a.date}</td>
+                        <td className={`py-2.5 pr-4 text-center font-bold ${
+                          a.cape >= 1500 ? 'text-red-400' : a.cape >= 500 ? 'text-amber-400' : a.cape >= 100 ? 'text-yellow-400' : 'text-white'
+                        }`}>{a.cape?.toFixed(0)}</td>
+                        <td className={`py-2.5 pr-4 text-center font-bold ${
+                          a.k_index >= 38 ? 'text-red-400' : a.k_index >= 32 ? 'text-amber-400' : 'text-white'
+                        }`}>{a.k_index?.toFixed(1)}</td>
+                        <td className={`py-2.5 pr-4 text-center font-bold ${
+                          a.lifted_index !== null && a.lifted_index < -4 ? 'text-red-400' :
+                          a.lifted_index !== null && a.lifted_index < -2 ? 'text-amber-400' : 'text-white'
+                        }`}>{a.lifted_index !== null ? a.lifted_index.toFixed(2) : '—'}</td>
+                        <td className="py-2.5 text-center">
+                          <span className={`px-2.5 py-1 rounded text-[9px] font-bold border ${
+                            a.thunderstorm
+                              ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          }`}>
+                            {a.thunderstorm ? '⚡ TS OBSERVED' : '✓ NO TS'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-between items-center mt-3 text-[9px] text-[#607d8b] border-t border-[#172338] pt-2">
+                <span>Similarity metric: CAPE (×2.0) + K-Index (×1.5) + LI (×1.0) — normalized Euclidean distance</span>
+                <span>{liveData.analogs.computed_at}</span>
+              </div>
+            </div>
+          )}
+
           {/* Multi-Day Outlook Panel */}
           {liveData?.multiday_outlook?.length > 0 && (
             <div className="atc-card p-6 rounded-2xl">
@@ -2092,6 +2167,108 @@
               </div>
             );
           })()}
+
+          {/* MODEL VERSION LEADERBOARD — Live 30-Day Skill by Slot */}
+          <div className="p-4 rounded-xl bg-[#050811] border border-[#172338]">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2 border-b border-[#172338] pb-3">
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">MODEL VERSION LEADERBOARD — ROLLING 30-DAY SKILL</h4>
+                <p className="text-[9px] text-[#607d8b]">Per-slot live verification · Current production model highlighted · Updates daily via verify_today.py</p>
+              </div>
+              {liveData?.verification?.all_slots_30d && Object.keys(liveData.verification.all_slots_30d).length > 0
+                ? <span className="text-[9px] text-emerald-300 font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">● LIVE DATA</span>
+                : <span className="text-[9px] text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">AWAITING VERIFICATION DATA</span>
+              }
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[0,1,2,3].map(slotId => {
+                const PROD_MODEL = { 0: 'v6+v4 Ensemble', 1: 'v6 Temporal', 2: 'v6 Temporal', 3: 'v6 Temporal' };
+                const MODEL_AUROC = { 0: 0.8791, 1: 0.8659, 2: 0.8710, 3: 0.8710 };
+                const SLOT_WINDOWS = { 0: '00–06 IST', 1: '06–12 IST', 2: '12–18 IST', 3: '18–24 IST' };
+                const SLOT_LABELS = { 0: 'LATE NIGHT', 1: 'MORNING', 2: 'AFTERNOON', 3: 'EVENING' };
+                const SLOT_COLORS = { 0: '#38bdf8', 1: '#ab47bc', 2: '#ffc107', 3: '#4caf50' };
+                const live = liveData?.verification?.all_slots_30d?.[String(slotId)];
+                const color = SLOT_COLORS[slotId];
+                const isPeak = slotId === 2;
+
+                const MetricRow = ({ label, val, fmt, good, warn }) => {
+                  const v = typeof val === 'number' ? val : null;
+                  const color = v === null ? '#607d8b' : (good(v) ? '#4caf50' : warn(v) ? '#ffc107' : '#ef5350');
+                  return (
+                    <div className="flex justify-between items-center py-0.5">
+                      <span className="text-[#607d8b]">{label}</span>
+                      <span className="font-bold" style={{ color }}>{v !== null ? fmt(v) : '—'}</span>
+                    </div>
+                  );
+                };
+
+                return (
+                  <div key={slotId} className={`p-3 rounded-xl bg-[#080d1a] border ${isPeak ? 'border-amber-500/50' : 'border-[#172338]'} flex flex-col gap-2`}>
+                    {/* Slot header */}
+                    <div className="flex items-center justify-between border-b border-[#172338] pb-2">
+                      <div>
+                        <div className="text-[9px] font-bold" style={{ color }}>{SLOT_LABELS[slotId]}</div>
+                        <div className="text-[8px] text-[#3d5066]">{SLOT_WINDOWS[slotId]}</div>
+                      </div>
+                      {isPeak && <span className="text-[8px] text-amber-300 font-bold px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30">★ PEAK</span>}
+                    </div>
+
+                    {/* Current model badge */}
+                    <div className="flex items-center justify-between px-2 py-1.5 rounded bg-cyan-500/10 border border-cyan-500/20 text-[9px] font-mono">
+                      <span className="text-cyan-300 font-bold">{PROD_MODEL[slotId]}</span>
+                      <span className="text-[8px] text-cyan-400 font-bold">PROD</span>
+                    </div>
+
+                    {/* CV AUROC */}
+                    <div className="flex justify-between text-[9px] font-mono">
+                      <span className="text-[#607d8b]">CV AUROC</span>
+                      <span className="font-bold text-white">{MODEL_AUROC[slotId].toFixed(4)}</span>
+                    </div>
+
+                    {/* Live 30-day metrics */}
+                    <div className="border-t border-[#172338] pt-2 space-y-0.5 text-[9px] font-mono">
+                      <div className="text-[8px] text-[#607d8b] font-bold mb-1">LIVE 30-DAY METRICS</div>
+                      {live ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-[#607d8b]">POD</span>
+                            <span className={`font-bold ${live.pod >= 0.5 ? 'text-emerald-400' : live.pod >= 0.3 ? 'text-amber-400' : 'text-red-400'}`}>{live.pod.toFixed(3)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[#607d8b]">FAR</span>
+                            <span className={`font-bold ${live.far <= 0.5 ? 'text-emerald-400' : live.far <= 0.7 ? 'text-amber-400' : 'text-red-400'}`}>{live.far.toFixed(3)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[#607d8b]">HSS</span>
+                            <span className={`font-bold ${live.hss >= 0.4 ? 'text-emerald-400' : live.hss >= 0.25 ? 'text-amber-400' : 'text-red-400'}`}>{live.hss.toFixed(3)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-[#607d8b]">Brier</span>
+                            <span className={`font-bold ${live.brier <= 0.05 ? 'text-emerald-400' : live.brier <= 0.1 ? 'text-amber-400' : 'text-red-400'}`}>{live.brier.toFixed(4)}</span>
+                          </div>
+                          {/* Mini skill bar */}
+                          <div className="mt-1.5">
+                            <div className="h-1.5 bg-[#172338] rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(live.pod * 100, 100)}%`, backgroundColor: color }} />
+                            </div>
+                            <div className="text-[7px] text-[#3d5066] mt-0.5">POD bar</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-[8px] text-[#3d5066] italic py-1">
+                          Awaiting verified forecast data.{'\n'}Verification runs daily.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-[9px] text-[#607d8b] mt-3 border-t border-[#172338] pt-2 flex justify-between flex-wrap gap-1">
+              <span>POD = Probability of Detection · FAR = False Alarm Ratio · HSS = Heidke Skill Score · Brier = Brier Score (lower = better)</span>
+              {liveData?.verification?.date_verified && <span>Verified: {liveData.verification.date_verified}</span>}
+            </div>
+          </div>
 
           {/* October Miss Pattern Research Findings */}
           <div className="p-4 rounded-xl bg-[#050811] border border-amber-500/30">
@@ -2509,6 +2686,102 @@
               <span className="text-[#90a4ae]">New v3 Physical Interaction Features (Derived)</span>
             </div>
           </div>
+
+          {/* TRUE SHAP WATERFALL CHART — Cumulative contribution path */}
+          {isRealtime && realtimeShap.base_value !== undefined && (() => {
+            const feats = realtimeShap.top_features.slice(0, 9);
+            const base = realtimeShap.base_value;
+            const finalProb = realtimeShap.prob;
+            let running = base;
+            const bars = feats.map(f => {
+              const start = running;
+              running += f.shap;
+              return { ...f, start, end: running };
+            });
+            const residual = finalProb - running;
+            if (Math.abs(residual) > 0.001) {
+              bars.push({ feature: '+ other features', shap: residual, start: running, end: finalProb,
+                direction: residual > 0 ? 'increases_risk' : 'decreases_risk' });
+            }
+            const allVals = [base, finalProb, ...bars.map(b => b.start), ...bars.map(b => b.end)];
+            const minV = Math.max(0, Math.min(...allVals) - 0.03);
+            const maxV = Math.min(1, Math.max(...allVals) + 0.03);
+            const range = maxV - minV || 0.01;
+            const W = 680, H = 28 * (bars.length + 2) + 50;
+            const PAD = { t: 28, r: 80, b: 32, l: 170 };
+            const chartW = W - PAD.l - PAD.r;
+            const chartH = H - PAD.t - PAD.b;
+            const rowH = chartH / (bars.length + 1);
+            const barH = rowH * 0.55;
+            const toX = val => PAD.l + ((val - minV) / range) * chartW;
+            const toY = idx => PAD.t + (idx + 0.5) * rowH;
+            const baseX = toX(base);
+            const finalX = toX(finalProb);
+            return (
+              <div className="p-4 rounded-xl bg-[#020409] border border-cyan-500/20 space-y-1">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-white">SHAP WATERFALL — PREDICTION PATH</h4>
+                    <p className="text-[9px] text-[#607d8b]">Cumulative feature contributions: base probability → model output · Slot {shapSlot}</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-[9px] font-mono">
+                    <span className="text-[#607d8b]">BASE RATE <span className="text-white font-bold">{(base*100).toFixed(1)}%</span></span>
+                    <span className="text-cyan-400">→ OUTPUT <span className="text-cyan-300 font-bold">{(finalProb*100).toFixed(1)}%</span></span>
+                  </div>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ fontFamily: 'JetBrains Mono, monospace', overflow: 'visible' }}>
+                  {/* Zero-change baseline */}
+                  <line x1={baseX} y1={PAD.t - 8} x2={baseX} y2={H - PAD.b + 5} stroke="#607d8b" strokeWidth="1" strokeDasharray="3 3" />
+                  <text x={baseX} y={PAD.t - 10} textAnchor="middle" fontSize="8" fill="#607d8b">BASE {(base*100).toFixed(1)}%</text>
+                  {/* Final probability line */}
+                  <line x1={finalX} y1={PAD.t - 8} x2={finalX} y2={H - PAD.b + 5} stroke="#38bdf8" strokeWidth="1.5" />
+                  <text x={finalX} y={PAD.t - 10} textAnchor="middle" fontSize="8.5" fill="#38bdf8" fontWeight="bold">P={`${(finalProb*100).toFixed(1)}%`}</text>
+                  {/* Each SHAP bar */}
+                  {bars.map((bar, i) => {
+                    const y = toY(i);
+                    const x1 = toX(Math.min(bar.start, bar.end));
+                    const x2 = toX(Math.max(bar.start, bar.end));
+                    const w = Math.max(x2 - x1, 1.5);
+                    const isPos = bar.shap >= 0;
+                    const barColor = isPos ? '#ef5350' : '#38bdf8';
+                    const endX = toX(bar.end);
+                    return (
+                      <g key={bar.feature}>
+                        {i > 0 && (
+                          <line x1={toX(bars[i-1].end)} y1={toY(i-1) + barH/2}
+                                x2={toX(bars[i-1].end)} y2={y - barH/2}
+                                stroke="#172338" strokeWidth="0.8" strokeDasharray="2 2" />
+                        )}
+                        <rect x={x1} y={y - barH/2} width={w} height={barH} fill={barColor} opacity="0.80" rx="2" />
+                        <text x={PAD.l - 6} y={y + 3.5} textAnchor="end" fontSize="8.5" fill="#90a4ae">{bar.feature}</text>
+                        <text x={endX + (isPos ? 4 : -4)} y={y + 3.5}
+                              textAnchor={isPos ? 'start' : 'end'} fontSize="8" fill={barColor} fontWeight="bold">
+                          {(bar.shap >= 0 ? '+' : '') + (bar.shap * 100).toFixed(1) + 'pp'}
+                        </text>
+                        {/* Running sum marker */}
+                        <circle cx={endX} cy={y} r="2.5" fill={barColor} opacity="0.9" />
+                      </g>
+                    );
+                  })}
+                  {/* X-axis ticks */}
+                  {[minV, base, finalProb, maxV].filter((v,i,a)=>a.indexOf(v)===i).map(v => (
+                    <g key={v}>
+                      <line x1={toX(v)} y1={H - PAD.b} x2={toX(v)} y2={H - PAD.b + 4} stroke="#607d8b" strokeWidth="0.8" />
+                      <text x={toX(v)} y={H - PAD.b + 14} textAnchor="middle" fontSize="7.5" fill="#607d8b">
+                        {(v*100).toFixed(0)}%
+                      </text>
+                    </g>
+                  ))}
+                  <line x1={PAD.l} y1={H - PAD.b} x2={W - PAD.r} y2={H - PAD.b} stroke="#172338" strokeWidth="0.8" />
+                </svg>
+                <div className="flex items-center gap-4 text-[8px] font-mono text-[#607d8b] border-t border-[#172338] pt-2">
+                  <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-red-500/70 inline-block"></span>increases TS probability</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-cyan-500/70 inline-block"></span>suppresses TS probability</span>
+                  <span className="text-[#3d5066]">Each bar shifts cumulative probability from base rate</span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* SHAP Horizontal Bar Chart */}
           <div className="space-y-2.5 text-xs">
@@ -3129,6 +3402,88 @@
                 ) : (
                   <div className="text-center text-[#607d8b] text-xs py-2">Satellite data unavailable — fetcher not yet run</div>
                 )}
+
+                {/* BT HISTORY SPARKLINE — animated trend over last N frames */}
+                {available && liveData?.satellite?.himawari9?.history?.length > 1 && (() => {
+                  const hist = liveData.satellite.himawari9.history;
+                  const bts = hist.map(h => h.min_bt_50km ?? h.min_bt ?? null).filter(v => v !== null && isFinite(v));
+                  if (bts.length < 2) return null;
+                  const minBTv = Math.min(...bts);
+                  const maxBTv = Math.max(...bts);
+                  const span = maxBTv - minBTv || 1;
+                  const W = 560, H = 62;
+                  const PAD = { l: 36, r: 12, t: 10, b: 18 };
+                  const chartW = W - PAD.l - PAD.r;
+                  const chartH = H - PAD.t - PAD.b;
+                  const pts = bts.map((v, i) => {
+                    const x = PAD.l + (i / (bts.length - 1)) * chartW;
+                    const y = PAD.t + ((maxBTv - v) / span) * chartH;
+                    return `${x},${y}`;
+                  }).join(' ');
+                  const lastBT = bts[bts.length - 1];
+                  const firstBT = bts[0];
+                  const trendDiff = lastBT - firstBT;
+                  const lineColor = lastBT < -50 ? '#ef5350' : lastBT < -40 ? '#ff9800' : '#38bdf8';
+                  const trendLabel = trendDiff < -3 ? `▼ COOLING ${trendDiff.toFixed(1)}°C` : trendDiff > 3 ? `▲ WARMING +${trendDiff.toFixed(1)}°C` : `→ STABLE`;
+                  const trendLabelColor = trendDiff < -3 ? '#ef5350' : trendDiff > 3 ? '#4caf50' : '#607d8b';
+                  return (
+                    <div className="mt-3 p-2.5 rounded-lg bg-[#050811] border border-[#172338]">
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="text-[9px] text-cyan-300 font-bold font-mono">BT HISTORY — LAST {bts.length} FRAMES (30-MIN CADENCE)</span>
+                        <span className="text-[9px] font-bold font-mono" style={{ color: trendLabelColor }}>{trendLabel}</span>
+                      </div>
+                      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="62" style={{ fontFamily: 'monospace' }}>
+                        {/* Y axis labels */}
+                        <text x={PAD.l - 4} y={PAD.t + 4} textAnchor="end" fontSize="7.5" fill="#607d8b">{maxBTv.toFixed(0)}°</text>
+                        <text x={PAD.l - 4} y={H - PAD.b + 4} textAnchor="end" fontSize="7.5" fill="#607d8b">{minBTv.toFixed(0)}°</text>
+                        {/* -40°C danger line */}
+                        {minBTv < -40 && maxBTv > -40 && (
+                          <line x1={PAD.l} x2={W - PAD.r}
+                            y1={PAD.t + ((maxBTv - (-40)) / span) * chartH}
+                            y2={PAD.t + ((maxBTv - (-40)) / span) * chartH}
+                            stroke="#ef5350" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5" />
+                        )}
+                        {/* Gradient fill under line */}
+                        <defs>
+                          <linearGradient id="btFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={lineColor} stopOpacity="0.3" />
+                            <stop offset="100%" stopColor={lineColor} stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        <polyline points={pts + ` ${PAD.l + chartW},${H - PAD.b} ${PAD.l},${H - PAD.b}`}
+                          fill="url(#btFill)" stroke="none" />
+                        {/* Main line */}
+                        <polyline points={pts} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        {/* Data points */}
+                        {bts.map((v, i) => {
+                          const x = PAD.l + (i / (bts.length - 1)) * chartW;
+                          const y = PAD.t + ((maxBTv - v) / span) * chartH;
+                          const isLast = i === bts.length - 1;
+                          const ts = hist[i]?.timestamp_utc;
+                          const hhmm = ts ? ts.slice(11, 16) + 'Z' : '';
+                          return (
+                            <g key={i}>
+                              <circle cx={x} cy={y} r={isLast ? 4 : 2.5}
+                                fill={isLast ? lineColor : lineColor + '99'}
+                                stroke={isLast ? '#fff' : 'none'} strokeWidth="1" />
+                              {(i === 0 || isLast) && (
+                                <text x={x} y={y - 6} textAnchor={isLast ? 'end' : 'start'} fontSize="8" fill={lineColor} fontWeight="bold">
+                                  {v.toFixed(0)}°C
+                                </text>
+                              )}
+                              {hhmm && (
+                                <text x={x} y={H - PAD.b + 12} textAnchor="middle" fontSize="7" fill="#3d5066">
+                                  {hhmm}
+                                </text>
+                              )}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  );
+                })()}
+
                 <div className="text-[9px] text-[#607d8b] mt-2 text-right">
                   Last update: {available ? timestampIST : '—'} · Threshold: −40°C · Source: NOAA AWS S3
                 </div>
