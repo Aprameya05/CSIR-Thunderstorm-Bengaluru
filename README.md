@@ -45,10 +45,10 @@ The day is split into four 6-hour windows. Each slot has its own XGBoost model t
 
 | Slot | Window (IST) | Period | Production Model | CV AUROC | Threshold | Notes |
 |:----:|:------------:|:------:|:----------------:|:--------:|:---------:|:-----:|
-| 0 | 00:01 - 06:00 | Late Night | v4 Ensemble | 0.8484 | 0.24 | Low event rate |
-| 1 | 06:01 - 12:00 | Morning | v5 Temporal | 0.8317 | 0.15 | 30 lag features |
+| 0 | 00:01 - 06:00 | Late Night | v6+v4 Ensemble | 0.8484 | 0.24 | Low event rate |
+| 1 | 06:01 - 12:00 | Morning | v6 Temporal | 0.8317 | 0.15 | 30 lag features |
 | **2** | **12:01 - 18:00** | **Afternoon** | **v6 Temporal** | **0.8710** | **0.16** | **Primary operational slot** |
-| 3 | 18:01 - 24:00 | Evening | v5 Temporal | 0.8710 | 0.39 | High base threshold |
+| 3 | 18:01 - 24:00 | Evening | v6 Temporal | 0.8710 | 0.39 | High base threshold |
 
 **Slot 2 is the primary operational slot.** The 1300-1800 IST window captures Bengaluru's dominant thunderstorm mechanism: solar heating of the Deccan Plateau driving afternoon convection, often triggered by orographic uplift on the eastern slopes of the Western Ghats.
 
@@ -549,7 +549,6 @@ The entire dashboard state lives in `forecast.json` which is committed to the re
 - Add Damini lightning network feed (pending IMD agreement).
 
 **Medium-term:**
-- ATC View: a simplified single-screen output with no ML terminology, designed for air traffic controllers.
 - API rate limiting and authentication for IMD production deployment.
 - Automated retraining trigger when new IMD annual data arrives.
 - Mobile-responsive dashboard audit.
