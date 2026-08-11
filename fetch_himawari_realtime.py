@@ -328,13 +328,39 @@ def build_output(signal: dict, scene_dt: datetime.datetime) -> dict:
     }
 
 
-def save_outputs(record: dict):
-    # Latest frame
-    with open(OUT_FILE, "w") as f:
-        json.dump(record, f, indent=2)
-    log.info(f"Saved → {OUT_FILE}")
+def compute_bt_trend(new_min_bt, new_ts_str: str, history: list):
+    """
+    bt_trend_1h: change in min_bt_50km vs the frame closest to 60 min ago.
+    Negative = cooling = anvil/storm growing toward airport.
+    Returns None if history is too sparse or gap > 75 min.
+    """
+    if new_min_bt is None or not history:
+        return None
+    try:
+        t_now = datetime.datetime.fromisoformat(new_ts_str)
+    except Exception:
+        return None
+    target = t_now - datetime.timedelta(minutes=60)
+    best, best_gap = None, float("inf")
+    for fr in history:
+        ts = fr.get("timestamp_utc", "")
+        try:
+            ft = datetime.datetime.fromisoformat(ts)
+            gap = abs((ft - target).total_seconds())
+            if gap < best_gap:
+                best_gap, best = gap, fr
+        except Exception:
+            continue
+    if best is None or best_gap > 4500:   # >75-min gap
+        return None
+    old_bt = best.get("min_bt_50km")
+    if old_bt is None:
+        return None
+    return round(float(new_min_bt) - float(old_bt), 2)
 
-    # History: load, append, trim, save
+
+def save_outputs(record: dict):
+    # Load existing history BEFORE appending (to compute trend from prior frames)
     history = []
     if HIST_FILE.exists():
         try:
@@ -343,6 +369,23 @@ def save_outputs(record: dict):
         except Exception:
             history = []
 
+    # Compute bt_trend_1h and inject into record
+    bt_trend = compute_bt_trend(
+        record.get("min_bt_50km"),
+        record.get("timestamp_utc", ""),
+        history,
+    )
+    record["bt_trend_1h"] = bt_trend
+    trend_str = f"{bt_trend:+.2f}°C/h" if bt_trend is not None else "N/A (insufficient history)"
+    log.info(f"  bt_trend_1h = {trend_str}  "
+             f"({'COOLING ❄' if bt_trend is not None and bt_trend < -2 else 'WARMING' if bt_trend is not None and bt_trend > 2 else 'STABLE'})")
+
+    # Latest frame (with trend)
+    with open(OUT_FILE, "w") as f:
+        json.dump(record, f, indent=2)
+    log.info(f"Saved → {OUT_FILE}")
+
+    # Append and trim history
     history.append(record)
     history = history[-KEEP_FRAMES:]   # keep last 6
 

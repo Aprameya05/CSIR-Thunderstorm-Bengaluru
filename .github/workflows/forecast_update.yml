@@ -107,6 +107,10 @@ jobs:
         run: python verify_today.py
         continue-on-error: true
 
+      - name: Populate skill scores
+        run: python populate_skill_scores.py
+        continue-on-error: true
+
       - name: Commit and push forecast outputs
         run: |
           git config --global user.name  "CSIR Forecast Bot"
@@ -128,6 +132,7 @@ jobs:
             data/realtime_shap.json \
             data/verification_today.json \
             data/pipeline_health.json \
+            data/skill_scores.json \
             2>/dev/null || true
 
           # Only commit if there are staged changes

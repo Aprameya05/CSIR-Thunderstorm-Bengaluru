@@ -44,6 +44,31 @@ SLOT_LABELS = {0: "Late Night", 1: "Morning", 2: "Afternoon", 3: "Evening"}
 # Base thresholds — overridden by October fix for Slot 2
 BASE_THRESHOLDS = {0: 0.24, 1: 0.15, 2: 0.16, 3: 0.39}
 
+# Monsoon regime threshold adjustment factors
+# ACTIVE / CONVECTIVE_BURST → lower threshold (catch more TS)
+# BREAK → raise threshold (suppress false alarms on suppressed days)
+REGIME_THRESHOLD_FACTORS = {
+    "CONVECTIVE_BURST": 0.80,
+    "ACTIVE":           0.88,
+    "ACTIVE_MODERATE":  0.95,
+    "NEUTRAL":          1.00,
+    "BREAK":            1.30,
+}
+
+
+def detect_monsoon_regime(cape: float, ki: float, t2m_c: float, month: int) -> str:
+    """Rule-based monsoon regime detection for threshold adjustment."""
+    if ki >= 38 and cape >= 800:
+        return "CONVECTIVE_BURST"
+    elif ki >= 35 and cape >= 300 and month in [5, 6, 7, 8, 9]:
+        return "ACTIVE"
+    elif ki >= 32 and cape >= 100 and t2m_c >= 28:
+        return "ACTIVE_MODERATE"
+    elif cape < 100 and ki < 30 and month in [6, 7, 8, 9]:
+        return "BREAK"
+    else:
+        return "NEUTRAL"
+
 # Production model priority per slot
 # v6 Himawari > v6 temporal > v5 temporal > v4 ensemble/calibrated > v3 > v2
 SLOT_MODEL_PRIORITY = {
@@ -265,6 +290,44 @@ def main():
     else:
         print("  GFS: NOT FOUND — using climatology defaults")
 
+    # ── CAPE tendency from GFS history ───────────────────────────────────────
+    cape_tendency = None   # J/kg/h — positive = instability growing
+    gfs_hist_path = DATA / "gfs_history_43295.json"
+    if gfs_hist_path.exists():
+        try:
+            with open(gfs_hist_path) as f:
+                gfs_hist = json.load(f)
+            if len(gfs_hist) >= 2:
+                c_new = float(gfs_hist[-1].get("CAPE", 0) or 0)
+                c_old = float(gfs_hist[-2].get("CAPE", 0) or 0)
+                t_new_str = gfs_hist[-1].get("fetched_at", "")
+                t_old_str = gfs_hist[-2].get("fetched_at", "")
+                if t_new_str and t_old_str:
+                    t_new_dt = datetime.fromisoformat(t_new_str.replace("Z", "+00:00"))
+                    t_old_dt = datetime.fromisoformat(t_old_str.replace("Z", "+00:00"))
+                    dt_h = (t_new_dt - t_old_dt).total_seconds() / 3600.0
+                    if dt_h > 0:
+                        cape_tendency = round((c_new - c_old) / dt_h, 1)
+                        print(f"  CAPE tendency: {cape_tendency:+.1f} J/kg/h "
+                              f"(prev={c_old:.0f} → now={c_new:.0f})")
+        except Exception as e:
+            print(f"  CAPE tendency error: {e}")
+
+    # ── Monsoon regime pre-detection for threshold adjustment ─────────────────
+    if len(gfs_df) > 0:
+        _r = gfs_df.iloc[0]
+        _t2m_k = float(_r.get("ERA5_T2M", 302.0) or 302.0)
+        _t2m_c = _t2m_k - 273.15 if _t2m_k > 200 else _t2m_k
+        _cape_pre = float(_r.get("CAPE", 0.0) or 0.0)
+        _ki_pre   = float(_r.get("K_INDEX", 30.0) or 30.0)
+    else:
+        _t2m_c, _cape_pre, _ki_pre = 28.0, 0.0, 30.0
+
+    monsoon_regime       = detect_monsoon_regime(_cape_pre, _ki_pre, _t2m_c, month)
+    regime_thresh_factor = REGIME_THRESHOLD_FACTORS.get(monsoon_regime, 1.0)
+    print(f"  Monsoon regime (pre-detection): {monsoon_regime} → "
+          f"threshold factor ×{regime_thresh_factor:.2f}")
+
     # ── Slot loop ─────────────────────────────────────────────────────────────
     slots_output = []
     results      = {}
@@ -277,6 +340,9 @@ def main():
                 print(f"\n  Slot 2: October threshold fix active → {threshold_op}")
         else:
             threshold_op = BASE_THRESHOLDS[slot_id]
+
+        # Apply monsoon regime adjustment (clamped 0.05–0.90)
+        threshold_op = round(min(max(threshold_op * regime_thresh_factor, 0.05), 0.90), 3)
 
         # Find best available model
         model_path = None
@@ -413,21 +479,22 @@ def main():
             model_ver = "v2_calibrated"
 
         slots_output.append({
-            "slot":            slot_id,
-            "label":           SLOT_LABELS[slot_id],
-            "time":            SLOT_NAMES[slot_id],
-            "ts_probability":  round(float(cal), 4),
-            "ts_predicted":    float(cal) >= threshold,
-            "threshold":       threshold,
-            "primary":         slot_id == 2,
-            "source":          data_source,
-            "model_used":      model_name,
-            "model_version":   model_ver,
-            "raw_probability": round(float(raw), 4),
-            "cape":            round(obs.get("CAPE", 0), 1),
-            "k_index":         round(obs.get("K_INDEX", 0), 1),
-            "lifted_index":    round(obs.get("LIFTED_INDEX", 0), 2),
-            "totals_totals":   round(obs.get("TOTALS_TOTALS", 0), 1),
+            "slot":              slot_id,
+            "label":             SLOT_LABELS[slot_id],
+            "time":              SLOT_NAMES[slot_id],
+            "ts_probability":    round(float(cal), 4),
+            "ts_predicted":      float(cal) >= threshold,
+            "threshold":         threshold,
+            "primary":           slot_id == 2,
+            "source":            data_source,
+            "model_used":        model_name,
+            "model_version":     model_ver,
+            "raw_probability":   round(float(raw), 4),
+            "cape":              round(obs.get("CAPE", 0), 1),
+            "k_index":           round(obs.get("K_INDEX", 0), 1),
+            "lifted_index":      round(obs.get("LIFTED_INDEX", 0), 2),
+            "totals_totals":     round(obs.get("TOTALS_TOTALS", 0), 1),
+            "regime_adjustment": regime_thresh_factor,
         })
         print(f"  Slot {slot_id}: {model_ver}  raw={raw*100:.1f}%  cal={cal*100:.1f}%  "
               f"threshold={threshold}  predicted={'YES' if float(cal) >= threshold else 'NO'}")
@@ -537,6 +604,7 @@ def main():
             "alert_level":           himawari.get("alert_level", "GREEN"),
             "nearest_pixel_dist_km": himawari.get("nearest_pixel_dist_km"),
             "threshold_celsius":     himawari.get("threshold_celsius", -40.0),
+            "bt_trend_1h":           himawari.get("bt_trend_1h"),
             "data_source":           "Himawari-9 Band 13 (10.4µm) via NOAA AWS S3",
             "available":             bool(himawari),
         },
@@ -653,6 +721,12 @@ def main():
         "ki_now":             round(ki_now, 2),
         "li_now":             round(li_now, 2),
         "tt_now":             round(tt_now, 2),
+        "cape_tendency_jkgh": cape_tendency,
+        "cape_trend":         ("BUILDING" if cape_tendency is not None and cape_tendency > 50
+                               else "WEAKENING" if cape_tendency is not None and cape_tendency < -50
+                               else "STEADY"),
+        "monsoon_regime":     monsoon_regime,
+        "regime_thresh_factor": regime_thresh_factor,
         "peak_window_ist":    "1300–1800 IST",
         "computed_at":        now.strftime("%Y-%m-%d %H:%M IST"),
     }
@@ -876,7 +950,8 @@ def main():
             print(f"  SHAP load error: {e}")
 
     # ── Load METAR if available ───────────────────────────────────────────────
-    metar_available = False
+    metar_available   = False
+    metar_ts_override = False
     forecast_metar_exists = False
     if Path("forecast.json").exists():
         try:
@@ -890,6 +965,47 @@ def main():
             pass
     if not forecast_metar_exists:
         print("  METAR: not yet available (will be injected by fetch_metar.py)")
+
+    # METAR TS override — if METAR confirms active thunderstorm, force alert
+    if metar_available and isinstance(forecast.get("metar"), dict):
+        if forecast["metar"].get("thunderstorm_present"):
+            metar_ts_override = True
+            alert_active      = True   # force alert regardless of model
+            forecast["alert_active"] = True
+            # Boost current-window slot probability to at minimum 0.85
+            for s in forecast["slots"]:
+                if s.get("ts_probability", 0) < 0.85:
+                    s["ts_probability_pre_metar"] = s["ts_probability"]
+                    s["ts_probability"]  = 0.85
+                    s["ts_predicted"]    = True
+                    s["metar_override"]  = True
+            forecast["metar_ts_override"] = True
+            print(f"  ⚡ METAR ACTIVE TS — override: alert_active forced TRUE, "
+                  f"slot probs floored at 0.85")
+
+    # ── SIGMET bulletin ───────────────────────────────────────────────────────
+    sigmet_text = None
+    if alert_active or metar_ts_override:
+        valid_start = now.strftime("%H%M")
+        valid_end   = (now + timedelta(hours=6)).strftime("%H%M")
+        date_sig    = now.strftime("%d/%b/%Y").upper()
+        intensity   = ("SEVERE"   if peak_probability >= 0.70 else
+                       "MODERATE" if peak_probability >= 0.40 else
+                       "LIGHT")
+        tops_fl     = ("FL400" if intensity == "SEVERE" else
+                       "FL350" if intensity == "MODERATE" else "FL300")
+        sigmet_text = (
+            f"VCBB SIGMET X01 VALID {valid_start}/{valid_end} UTC {date_sig}\n"
+            f"VOBL FIR THUNDERSTORM FCST\n"
+            f"TS {intensity} OBS/FCST AT {valid_start} UTC\n"
+            f"TOP {tops_fl} CB\n"
+            f"MOV NE 10KT\n"
+            f"INTENSITY {'INTSF' if cape_tendency is not None and cape_tendency > 50 else 'NC'}\n"
+            f"FCST AT {valid_end} UTC TS {intensity} STNR\n"
+            f"NC="
+        )
+        print(f"  SIGMET generated ({intensity}) valid {valid_start}–{valid_end} UTC")
+    forecast["sigmet_bulletin"] = sigmet_text
 
     # ── Pipeline health ───────────────────────────────────────────────────────
     pipeline_health = build_pipeline_health(now, gfs_df, himawari, metar_available, upper_air)

@@ -672,14 +672,26 @@
                     : 'In peak window now'}
                 </div>
               </div>
-              <div className="grid grid-cols-2 text-[10px] text-center border-t border-[#172338] pt-1.5">
+              <div className="grid grid-cols-3 text-[10px] text-center border-t border-[#172338] pt-1.5">
                 <div>
                   <div className="font-bold text-white">{liveData?.convective_initiation?.instability_score ?? '—'}</div>
                   <div className="text-[8px] text-[#3d5066]">INSTABILITY</div>
                 </div>
                 <div>
-                  <div className="font-bold text-white">{liveData?.convective_initiation?.peak_window_ist ?? '1300-1800'}</div>
-                  <div className="text-[8px] text-[#3d5066]">PEAK WINDOW</div>
+                  {(() => {
+                    const ct = liveData?.convective_initiation?.cape_tendency_jkgh;
+                    const trend = liveData?.convective_initiation?.cape_trend ?? '—';
+                    return <>
+                      <div className={`font-bold ${ct !== null && ct > 50 ? 'text-red-400' : ct !== null && ct < -50 ? 'text-emerald-400' : 'text-white'}`}>
+                        {ct !== null ? `${ct > 0 ? '+' : ''}${ct}` : '—'}
+                      </div>
+                      <div className="text-[8px] text-[#3d5066]">CAPE J/kg/h</div>
+                    </>;
+                  })()}
+                </div>
+                <div>
+                  <div className="font-bold text-white">{liveData?.convective_initiation?.monsoon_regime ?? '—'}</div>
+                  <div className="text-[8px] text-[#3d5066]">REGIME</div>
                 </div>
               </div>
             </div>
@@ -1328,6 +1340,18 @@
               </div>
 
             </div>
+
+            {/* SIGMET Bulletin — shown only when alert is active */}
+            {liveData?.sigmet_bulletin && (
+              <div className="mt-3 p-3 rounded-xl bg-orange-500/10 border border-orange-500/40 font-mono">
+                <div className="flex items-center gap-2 mb-2 text-[10px] text-orange-300 font-bold">
+                  <span>📡</span>
+                  <span>AUTO-GENERATED SIGMET BULLETIN</span>
+                  <span className="ml-auto text-[8px] text-[#607d8b]">ADVISORY ONLY — NOT FOR OFFICIAL USE</span>
+                </div>
+                <pre className="text-[10px] text-orange-200 whitespace-pre-wrap leading-relaxed">{liveData.sigmet_bulletin}</pre>
+              </div>
+            )}
 
           </div>
 
@@ -3020,6 +3044,7 @@
             const voblBT = h9?.vobl_bt_celsius;
             const coldPx = h9?.cold_pixels_count ?? 0;
             const nearestKm = h9?.nearest_pixel_dist_km;
+            const btTrend1h = h9?.bt_trend_1h ?? null;
             const timestampIST = h9?.timestamp_ist?.replace('T', ' ') + ' IST';
             const available = h9?.available;
 
@@ -3034,7 +3059,7 @@
                 </div>
 
                 {available ? (
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 text-center text-xs">
+                  <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 text-center text-xs">
                     <div className="p-2 rounded bg-[#050811] border border-[#172338]">
                       <div className="text-[9px] text-[#607d8b] mb-1">STORM DETECTED</div>
                       <div className={`text-sm font-bold ${stormDetected ? 'text-red-400' : 'text-emerald-400'}`}>
@@ -3045,6 +3070,13 @@
                       <div className="text-[9px] text-[#607d8b] mb-1">MIN BT (50km)</div>
                       <div className={`text-sm font-bold ${minBT !== null && minBT < -40 ? 'text-red-400' : 'text-white'}`}>
                         {minBT !== null ? `${minBT}°C` : '—'}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded bg-[#050811] border border-[#172338]">
+                      <div className="text-[9px] text-[#607d8b] mb-1">BT TREND 1H</div>
+                      <div className={`text-sm font-bold ${btTrend1h !== null && btTrend1h < -3 ? 'text-red-400' : btTrend1h !== null && btTrend1h > 3 ? 'text-emerald-400' : 'text-white'}`}>
+                        {btTrend1h !== null ? `${btTrend1h > 0 ? '+' : ''}${btTrend1h}°C` : '—'}
+                        {btTrend1h !== null && btTrend1h < -3 ? ' ❄' : btTrend1h !== null && btTrend1h > 3 ? ' ↑' : ''}
                       </div>
                     </div>
                     <div className="p-2 rounded bg-[#050811] border border-[#172338]">
