@@ -540,6 +540,52 @@ The entire dashboard state lives in `forecast.json` which is committed to the re
 
 ---
 
+## Dashboard UI (index.html)
+
+The dashboard is a single-file React app served as a static page. No build step — Babel standalone + Tailwind CDN.
+
+### UI overhaul (August 2026)
+
+The UI was rebuilt with a ReactBits-inspired design system featuring:
+
+- **Aurora background** — 3 CSS-animated gradient blobs (`@keyframes aurora-1/2/3`) that shift colour between cyan/violet in normal state and red/orange when any slot probability exceeds 30%
+- **Canvas particle field** — 70 drifting particles with connecting lines rendered via `requestAnimationFrame`. Particles turn red on alert
+- **Scan line** — single-pixel horizontal sweep across the full viewport
+- **Glassmorphism cards** — `backdrop-filter: blur(14px)` with `rgba(5,9,20,0.82)` base and animated `border-color` on hover
+- **Gradient text** — `background-clip: text` on key headings, animating with `@keyframes gradient-pan`
+- **Neon glow classes** — `.neon-cyan`, `.neon-red`, `.neon-green` with layered `text-shadow`
+- **Shimmer cards** — `::after` pseudo-element sweep on hover for tiles 3-6
+- **Framer Motion tab transitions** — `y: 24 → 0`, `scale: 0.98 → 1`, spring `[0.16, 1, 0.3, 1]`
+
+### Slot background images
+
+Four time-of-day backgrounds swap based on the active 6-hour slot (or by tapping a slot card):
+
+| Slot | Window | File |
+|:----:|:------:|:----:|
+| 0 | 00:00–06:00 | `night1.png` |
+| 1 | 06:00–12:00 | `morning1.png` |
+| 2 | 12:00–18:00 | `afternoon1.png` |
+| 3 | 18:00–24:00 | `evening1.png` |
+
+Backgrounds cross-fade over 1 second with a parallax transform driven by mouse position.
+
+### SHAP waterfall x-axis fix
+
+The SHAP TreeExplainer returns values in log-odds space while `base_value` was stored as a probability, causing the raw chart domain to exceed 100% and bars to extend far off-screen. Fix: compute the actual min/max across all bar endpoints and `base_value` with 5% padding, then draw 6 evenly-spaced ticks across that range. No clamping to [0,1].
+
+### Other fixes
+
+- SHAP waterfall bars: `base_value` domain calculated from actual data range (not clamped to [0,1])
+- Spider chart: `viewBox="0 0 200 195"`, `maxWidth:'45%'`
+- Hodograph: `viewBox="0 0 240 240"`, `maxWidth:'100%'`
+- Skew-T container: `overflow-x: auto` with `minWidth` on SVG to prevent clipping
+- Probability arc bars: minimum height of 2px for non-zero probabilities
+- Nav: emojis removed, `px-4 py-2 tracking-wider` tabs, active tab underline sweeps with `@keyframes border-sweep`
+- Sub-nav hint strip: visible at `rgba(96,125,139,0.85)`
+
+---
+
 ## What Is Next
 
 **Near-term:**
