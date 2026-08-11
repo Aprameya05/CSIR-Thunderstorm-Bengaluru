@@ -465,7 +465,7 @@
             <span className="text-[10px] font-bold text-white uppercase tracking-wider">{title}</span>
             <span className={`text-[#607d8b] transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}>▾</span>
           </button>
-          {open && <div className="px-4 pb-4">{children}</div>}
+          {open && <div className="pb-2">{children}</div>}
         </div>
       );
     }
@@ -646,7 +646,7 @@
           )}
 
           {/* TOP ROW — 6 INFO TILES */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             
             {/* Tile 1: CONVECTIVE RISK — shows PEAK slot probability system-wide */}
             <div className={`atc-card atc-card-hover p-3.5 rounded-xl flex flex-col items-center justify-between text-center min-h-[190px] hover:border-cyan-500/30 transition-all duration-300 ${
@@ -821,16 +821,16 @@
                     <div className="flex items-center gap-2"><span>📈</span><span>MODEL PERFORMANCE</span></div>
                     {isLive && <span className="text-[8px] text-cyan-400 font-bold">30-DAY</span>}
                   </div>
-                  <div className="my-1 flex items-center justify-between">
+                  <div className="my-1 flex items-center justify-center">
                     <HalfCircleAurocGauge value={auroc} size={80} />
-                    <div className="text-[10px] text-right space-y-0.5">
-                      <div><Tooltip term="POD" className="text-[#607d8b]">POD</Tooltip> <span className={`font-bold ${pod >= 0.5 ? 'text-emerald-400' : pod >= 0.3 ? 'text-amber-400' : 'text-red-400'}`}>{pod.toFixed(3)}</span></div>
-                      <div><Tooltip term="FAR" className="text-[#607d8b]">FAR</Tooltip> <span className={`font-bold ${far <= 0.5 ? 'text-emerald-400' : far <= 0.7 ? 'text-amber-400' : 'text-red-400'}`}>{far.toFixed(3)}</span></div>
-                      <div><Tooltip term="CSI" className="text-[#607d8b]">CSI</Tooltip> <span className="text-white font-bold">{csi.toFixed(3)}</span></div>
-                    </div>
                   </div>
-                  <div className="text-[9px] text-[#3d5066] border-t border-[#172338] pt-1.5 text-center">
-                    {isLive ? `Rolling 30-day${liveData.verification.last_updated ? ' · ' + liveData.verification.last_updated : ''}` : '⏱ Test Period: 2023–2025 · Slot 2 v3'}
+                  <div className="grid grid-cols-3 text-[9px] text-center gap-1 border-t border-[#172338] pt-1.5">
+                    <div><Tooltip term="POD" className="text-[#607d8b]">POD</Tooltip><div className={`font-bold ${pod >= 0.5 ? 'text-emerald-400' : pod >= 0.3 ? 'text-amber-400' : 'text-red-400'}`}>{pod.toFixed(2)}</div></div>
+                    <div><Tooltip term="FAR" className="text-[#607d8b]">FAR</Tooltip><div className={`font-bold ${far <= 0.5 ? 'text-emerald-400' : far <= 0.7 ? 'text-amber-400' : 'text-red-400'}`}>{far.toFixed(2)}</div></div>
+                    <div><Tooltip term="CSI" className="text-[#607d8b]">CSI</Tooltip><div className="text-white font-bold">{csi.toFixed(2)}</div></div>
+                  </div>
+                  <div className="text-[8px] text-[#3d5066] mt-1 text-center">
+                    {isLive ? '30-day live' : 'Test 2023–25'}
                   </div>
                 </div>
               );
@@ -1205,15 +1205,15 @@
               
               {/* Top Floating Overlay Text */}
               <div className="relative z-20 flex items-center justify-between pointer-events-auto">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{photoInfo.weatherIcon}</span>
+                <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10">
+                  <span className="text-lg">{photoInfo.weatherIcon}</span>
                   <div>
-                    <h2 className="text-2xl font-extrabold text-white font-display tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">
+                    <div className="text-xs font-bold text-white/90 font-mono tracking-widest uppercase">
                       {photoInfo.slotName}
-                    </h2>
-                    <p className="text-xs font-mono text-cyan-300 font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                    </div>
+                    <div className="text-[10px] font-mono text-cyan-300/80">
                       {photoInfo.timeRange}
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1617,7 +1617,7 @@
                   {/* Background slots */}
                   {slotProbs.map((sp, i) => {
                     const x = i * slotW;
-                    const barH = sp.prob * (H - 30);
+                    const barH = Math.max(sp.prob * (H - 30), sp.prob > 0 ? 2 : 0);
                     const isActive = sp.slot === (ist2.getHours() < 6 ? 0 : ist2.getHours() < 12 ? 1 : ist2.getHours() < 18 ? 2 : 3);
                     return (
                       <g key={i}>
@@ -1699,8 +1699,8 @@
                     'text-emerald-300 border-emerald-500/30 bg-emerald-500/5'
                   }`}>{ci.initiation_risk ?? 'LOW'} RISK</span>
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-6">
-                  <svg viewBox="0 0 200 195" width="200" height="195" style={{ fontFamily: 'monospace', flexShrink: 0 }}>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <svg viewBox="0 0 200 195" width="180" height="176" style={{ fontFamily: 'monospace', flexShrink: 0, maxWidth: '45%' }}>
                     {/* Ring grid */}
                     {rings.map(r => (
                       <polygon key={r}
@@ -2908,8 +2908,8 @@
           )}
 
           {(soundingStatus === 'ok' || soundingStatus === 'gfs-fallback') && sounding && (
-            <div className="flex gap-4">
-              <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-shrink-0" style={{maxWidth:'100%'}}>
+            <div className="flex gap-4 overflow-x-auto">
+              <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-shrink-0" style={{minWidth: `${W}px`}}>
                 {/* Background */}
                 <rect x={MARGIN.left} y={MARGIN.top} width={PW} height={PH} fill="rgba(2,4,9,0.95)" />
 
@@ -3279,7 +3279,7 @@
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-6 items-center">
-                  <svg viewBox="0 0 240 240" width="240" height="240" style={{ fontFamily: 'monospace', flexShrink: 0 }}>
+                  <svg viewBox="0 0 240 240" width="220" height="220" style={{ fontFamily: 'monospace', flexShrink: 0, maxWidth: '100%' }}>
                     {/* Grid rings */}
                     {[0.25, 0.5, 0.75, 1.0].map((r, i) => (
                       <g key={r}>
@@ -3495,19 +3495,19 @@
 
       return (
         <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
-          <div className="flex justify-between items-center border-b border-[#172338] pb-4">
+          <div className="flex flex-wrap justify-between items-start gap-3 border-b border-[#172338] pb-4">
             <div>
-              <h2 className="text-xl font-bold text-white">SYNOPTIC ATMOSPHERIC REGIME CLUSTERS</h2>
+              <h2 className="text-base font-bold text-white">SYNOPTIC ATMOSPHERIC REGIME CLUSTERS</h2>
               <p className="text-xs text-[#607d8b]">KMeans 5-Cluster Atmospheric Pattern Classification over Bengaluru Plateau</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {todayRegimeId && (
                 <span className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold animate-pulse">
                   TODAY: {todayRegimeId}
                 </span>
               )}
-              <span className="px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
-                KMeans 5-CLUSTER ATMOSPHERIC PATTERN
+              <span className="hidden sm:inline px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
+                KMeans 5-CLUSTER
               </span>
             </div>
           </div>
@@ -4884,13 +4884,11 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
             )}
 
             {/* ── COPY FORECAST + KEYBOARD HINT STRIP ── */}
-            <div className="relative z-30 flex items-center justify-between gap-3 px-4 py-1.5 bg-[#02060f]/60 border-b border-[#172338]/60 font-mono backdrop-blur-sm">
+            <div className="relative z-30 flex items-center justify-between gap-3 px-4 py-1 bg-[#02060f]/70 border-b border-[#172338]/50 font-mono backdrop-blur-sm">
               <div className="flex items-center gap-3 text-[9px] text-[#3d5066]">
-                <span className="hidden sm:inline">Press <kbd className="px-1 py-0.5 rounded bg-[#172338] text-[#607d8b] border border-[#263d55] text-[8px]">1</kbd>–<kbd className="px-1 py-0.5 rounded bg-[#172338] text-[#607d8b] border border-[#263d55] text-[8px]">8</kbd> to switch tabs</span>
-                <span className="hidden sm:inline text-[#263d55]">·</span>
-                <span className="hidden sm:inline">Press <kbd className="px-1 py-0.5 rounded bg-[#172338] text-[#607d8b] border border-[#263d55] text-[8px]">?</kbd> for shortcuts</span>
-                <span className="text-[#263d55]">·</span>
-                <span>VOBL / IMD 43295</span>
+                <span className="hidden sm:inline text-[#263d55]">Keys 1–8 switch tabs · ? for help</span>
+                <span className="hidden sm:inline text-[#1a2535]">·</span>
+                <span className="text-[#1e2e40]">VOBL / IMD 43295 / CSIR</span>
               </div>
               <button
                 onClick={copyForecastSummary}
