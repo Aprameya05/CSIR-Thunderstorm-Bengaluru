@@ -1,6 +1,6 @@
 {
-  "date": "2026-08-14",
-  "generated_at": "2026-08-14 22:39 IST",
+  "date": "2026-08-15",
+  "generated_at": "2026-08-15 00:05 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0028,
@@ -36,14 +36,14 @@
       "ts_predicted": false,
       "threshold": 0.15,
       "primary": false,
-      "source": "model_defaults",
+      "source": "gfs+upperair",
       "model_used": "nowcast_slot1_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0007,
-      "cape": 0.0,
-      "k_index": 30.0,
-      "lifted_index": -2.0,
-      "totals_totals": 44.0,
+      "raw_probability": 0.0003,
+      "cape": 1.0,
+      "k_index": 30.2,
+      "lifted_index": 0.8,
+      "totals_totals": 41.0,
       "regime_adjustment": 1.0,
       "prob_delta": 0.0,
       "trend": "stable",
@@ -89,10 +89,10 @@
       "lifted_index": -2.0,
       "totals_totals": 44.0,
       "regime_adjustment": 1.0,
-      "prob_delta": -0.011,
-      "trend": "down",
-      "trend_diff": -0.011,
-      "prev_probability": 0.013
+      "prob_delta": 0.0,
+      "trend": "stable",
+      "trend_diff": 0.0,
+      "prev_probability": 0.002
     }
   ],
   "met_parameters": {
@@ -101,23 +101,23 @@
     "ua_k_index": 30.0,
     "ua_lifted_index": -2.0,
     "ua_totals_totals": 44.0,
-    "ERA5_u_500hPa": 0.0,
-    "ERA5_v_500hPa": 0.0,
-    "ERA5_u_850hPa": 0.0,
-    "ERA5_v_850hPa": 0.0,
+    "ERA5_u_500hPa": 3.706567287445069,
+    "ERA5_v_500hPa": -1.654455542564392,
+    "ERA5_u_850hPa": 13.24899196624756,
+    "ERA5_v_850hPa": -1.290956735610962,
     "instability_level": "Stable"
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-08-14T17:00:00",
-      "timestamp_ist": "2026-08-14T22:30:00",
-      "vobl_bt_celsius": -32.85,
-      "min_bt_50km": -52.28,
-      "mean_bt_50km": -34.64,
-      "cold_pixels_count": 159,
+      "timestamp_utc": "2026-08-14T18:20:00",
+      "timestamp_ist": "2026-08-14T23:50:00",
+      "vobl_bt_celsius": -34.07,
+      "min_bt_50km": -60.23,
+      "mean_bt_50km": -37.01,
+      "cold_pixels_count": 182,
       "storm_detected": true,
       "alert_level": "GREEN",
-      "nearest_pixel_dist_km": 5.17,
+      "nearest_pixel_dist_km": 18.18,
       "threshold_celsius": -40.0,
       "bt_trend_1h": null,
       "data_source": "Himawari-9 Band 13 (10.4\u00b5m) via NOAA AWS S3",
@@ -187,14 +187,14 @@
         "bt_trend_1h": -0.04
       },
       {
-        "timestamp_utc": "2026-08-14T17:00:00",
-        "timestamp_ist": "2026-08-14T22:30:00",
-        "vobl_bt_celsius": -32.85,
-        "min_bt_50km": -52.28,
-        "mean_bt_50km": -34.64,
-        "cold_pixels_count": 159,
+        "timestamp_utc": "2026-08-14T18:20:00",
+        "timestamp_ist": "2026-08-14T23:50:00",
+        "vobl_bt_celsius": -34.07,
+        "min_bt_50km": -60.23,
+        "mean_bt_50km": -37.01,
+        "cold_pixels_count": 182,
         "storm_detected": true,
-        "nearest_pixel_dist_km": 5.17,
+        "nearest_pixel_dist_km": 18.18,
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
         "bt_trend_1h": null
@@ -204,18 +204,18 @@
   "gfs_tmax_c": 33.9,
   "gfs_tmin_c": 21.9,
   "gfs_rainfall_mm": 0.0,
-  "gfs_valid_date": "14 Aug 2026",
+  "gfs_valid_date": "15 Aug 2026",
   "gfs_cycle": "N/A",
   "convective_initiation": {
-    "instability_score": 19.0,
-    "initiation_status": "POST-CONVECTIVE",
-    "initiation_message": "Next peak window in 14.4h (tomorrow 1300 IST)",
+    "instability_score": 16.3,
+    "initiation_status": "PRE-CONVECTIVE",
+    "initiation_message": "Peak convective window in 12.9h (1300\u20131800 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 14.4,
-    "cape_now": 0,
-    "ki_now": 30,
-    "li_now": 0,
-    "tt_now": 44,
+    "hours_to_peak": 12.9,
+    "cape_now": 1.0,
+    "ki_now": 30.22,
+    "li_now": 0.8,
+    "tt_now": 40.95,
     "srh_0_3km": null,
     "ehi": null,
     "brn": null,
@@ -224,7 +224,7 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-08-14 22:39 IST"
+    "computed_at": "2026-08-15 00:05 IST"
   },
   "multiday_outlook": [],
   "analogs": {
@@ -254,27 +254,27 @@
         "month": 8
       },
       {
+        "date": "2022-08-10",
+        "cape": 9.0,
+        "k_index": 33.3,
+        "lifted_index": 0.32,
+        "thunderstorm": false,
+        "month": 8
+      },
+      {
         "date": "2025-07-28",
         "cape": 8.2,
         "k_index": 32.3,
         "lifted_index": -0.3,
         "thunderstorm": false,
         "month": 7
-      },
-      {
-        "date": "2023-08-21",
-        "cape": 0.0,
-        "k_index": 30.6,
-        "lifted_index": -1.36,
-        "thunderstorm": false,
-        "month": 8
       }
     ],
     "ts_rate": 0.0,
-    "query_cape": 0,
-    "query_ki": 30,
-    "query_li": 0,
-    "computed_at": "2026-08-14 22:39 IST"
+    "query_cape": 1.0,
+    "query_ki": 30.22,
+    "query_li": 0.8,
+    "computed_at": "2026-08-15 00:05 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -316,7 +316,7 @@
         "impact_pct": 0.1
       }
     ],
-    "computed_at": "2026-08-14 22:39 IST"
+    "computed_at": "2026-08-15 00:05 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -325,11 +325,11 @@
     "auroc": 1.0,
     "description": "Dry thermal low baseline, low storm occurrence",
     "color": "green",
-    "cape_used": 0,
-    "ki_used": 30,
+    "cape_used": 1.0,
+    "ki_used": 30.22,
     "t2m_c": 28.0,
     "month": 8,
-    "computed_at": "2026-08-14 22:39 IST"
+    "computed_at": "2026-08-15 00:05 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -702,12 +702,12 @@
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-08-14T17:00:00.000Z",
+    "obs_time": "2026-08-14T18:30:00.000Z",
     "temp_c": 22,
     "dewpoint_c": 20,
     "rh_pct": 88.4,
     "wind_dir": 270,
-    "wind_speed_kt": 12,
+    "wind_speed_kt": 8,
     "wind_gust_kt": null,
     "visibility_sm": 3.73,
     "visibility_km": 6.0,
@@ -720,18 +720,18 @@
         "base_ft": 1200
       },
       {
-        "cover": "BKN",
+        "cover": "SCT",
         "base_ft": 8000
       }
     ],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 141700Z 27012KT 6000 SCT012 BKN080 22/20 Q1015 NOSIG",
-    "fetched_utc": "2026-08-14T17:09:20Z"
+    "raw": "METAR VOBL 141830Z 27008KT 6000 SCT012 SCT080 22/20 Q1015 NOSIG",
+    "fetched_utc": "2026-08-14T18:35:15Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-08-14T17:09:20Z",
-    "generated_at_ist": "2026-08-14 22:39 IST",
+    "generated_at_utc": "2026-08-14T18:35:11Z",
+    "generated_at_ist": "2026-08-15 00:05 IST",
     "components": {
       "gfs": {
         "status": "MISSING",
@@ -742,15 +742,17 @@
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-08-14T17:00:00",
+        "timestamp_utc": "2026-08-14T18:20:00",
         "storm_detected": true,
-        "min_bt_50km": -52.28,
+        "min_bt_50km": -60.23,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
-        "status": "MISSING",
-        "slots_available": [],
-        "n_slots": 0
+        "status": "OK",
+        "slots_available": [
+          1
+        ],
+        "n_slots": 1
       },
       "metar": {
         "status": "OK"
