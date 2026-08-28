@@ -1,6 +1,6 @@
 {
   "date": "2026-08-28",
-  "generated_at": "2026-08-28 06:22 IST",
+  "generated_at": "2026-08-28 07:17 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0028,
@@ -109,11 +109,11 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-08-28T00:40:00",
-      "timestamp_ist": "2026-08-28T06:10:00",
-      "vobl_bt_celsius": 12.06,
-      "min_bt_50km": 9.23,
-      "mean_bt_50km": 11.71,
+      "timestamp_utc": "2026-08-28T01:40:00",
+      "timestamp_ist": "2026-08-28T07:10:00",
+      "vobl_bt_celsius": 12.73,
+      "min_bt_50km": 9.79,
+      "mean_bt_50km": 12.29,
       "cold_pixels_count": 0,
       "storm_detected": false,
       "alert_level": "GREEN",
@@ -187,11 +187,11 @@
         "bt_trend_1h": -0.04
       },
       {
-        "timestamp_utc": "2026-08-28T00:40:00",
-        "timestamp_ist": "2026-08-28T06:10:00",
-        "vobl_bt_celsius": 12.06,
-        "min_bt_50km": 9.23,
-        "mean_bt_50km": 11.71,
+        "timestamp_utc": "2026-08-28T01:40:00",
+        "timestamp_ist": "2026-08-28T07:10:00",
+        "vobl_bt_celsius": 12.73,
+        "min_bt_50km": 9.79,
+        "mean_bt_50km": 12.29,
         "cold_pixels_count": 0,
         "storm_detected": false,
         "nearest_pixel_dist_km": null,
@@ -209,9 +209,9 @@
   "convective_initiation": {
     "instability_score": 12.0,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 6.6h (1300\u20131800 IST)",
+    "initiation_message": "Peak convective window in 5.7h (1300\u20131800 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 6.6,
+    "hours_to_peak": 5.7,
     "cape_now": 62.0,
     "ki_now": 27.18,
     "li_now": 0.83,
@@ -224,7 +224,7 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-08-28 06:22 IST"
+    "computed_at": "2026-08-28 07:17 IST"
   },
   "multiday_outlook": [],
   "analogs": {
@@ -274,7 +274,7 @@
     "query_cape": 62.0,
     "query_ki": 27.18,
     "query_li": 0.83,
-    "computed_at": "2026-08-28 06:22 IST"
+    "computed_at": "2026-08-28 07:17 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -316,7 +316,7 @@
         "impact_pct": 0.1
       }
     ],
-    "computed_at": "2026-08-28 06:22 IST"
+    "computed_at": "2026-08-28 07:17 IST"
   },
   "synoptic_regime": {
     "regime_id": "R3",
@@ -329,7 +329,7 @@
     "ki_used": 27.18,
     "t2m_c": 28.0,
     "month": 8,
-    "computed_at": "2026-08-28 06:22 IST"
+    "computed_at": "2026-08-28 07:17 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -702,22 +702,22 @@
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-08-28T00:30:00.000Z",
-    "temp_c": 20,
-    "dewpoint_c": 18,
-    "rh_pct": 88.3,
-    "wind_dir": 270,
+    "obs_time": "2026-08-28T01:30:00.000Z",
+    "temp_c": 21,
+    "dewpoint_c": 19,
+    "rh_pct": 88.4,
+    "wind_dir": 280,
     "wind_speed_kt": 10,
     "wind_gust_kt": null,
     "visibility_sm": 3.73,
     "visibility_km": 6.0,
-    "altimeter_hpa": 1014,
+    "altimeter_hpa": 1015,
     "flight_category": "MVFR",
     "wx_string": "",
     "sky_cover": [
       {
         "cover": "FEW",
-        "base_ft": 800
+        "base_ft": 1000
       },
       {
         "cover": "SCT",
@@ -725,13 +725,13 @@
       }
     ],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 280030Z 27010KT 6000 FEW008 SCT012 20/18 Q1014 NOSIG",
-    "fetched_utc": "2026-08-28T00:52:31Z"
+    "raw": "METAR VOBL 280130Z 28010KT 6000 FEW010 SCT012 21/19 Q1015 NOSIG",
+    "fetched_utc": "2026-08-28T01:47:35Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-08-28T00:52:31Z",
-    "generated_at_ist": "2026-08-28 06:22 IST",
+    "generated_at_utc": "2026-08-28T01:47:34Z",
+    "generated_at_ist": "2026-08-28 07:17 IST",
     "components": {
       "gfs": {
         "status": "MISSING",
@@ -742,9 +742,9 @@
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-08-28T00:40:00",
+        "timestamp_utc": "2026-08-28T01:40:00",
         "storm_detected": false,
-        "min_bt_50km": 9.23,
+        "min_bt_50km": 9.79,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
