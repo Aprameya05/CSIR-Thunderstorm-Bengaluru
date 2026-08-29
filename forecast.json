@@ -1,6 +1,6 @@
 {
   "date": "2026-08-29",
-  "generated_at": "2026-08-29 06:04 IST",
+  "generated_at": "2026-08-29 06:41 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0028,
@@ -109,15 +109,15 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-08-29T00:20:00",
-      "timestamp_ist": "2026-08-29T05:50:00",
-      "vobl_bt_celsius": -18.14,
-      "min_bt_50km": -40.17,
-      "mean_bt_50km": -18.65,
-      "cold_pixels_count": 1,
-      "storm_detected": true,
+      "timestamp_utc": "2026-08-29T01:00:00",
+      "timestamp_ist": "2026-08-29T06:30:00",
+      "vobl_bt_celsius": -20.03,
+      "min_bt_50km": -32.1,
+      "mean_bt_50km": -18.41,
+      "cold_pixels_count": 0,
+      "storm_detected": false,
       "alert_level": "GREEN",
-      "nearest_pixel_dist_km": 48.79,
+      "nearest_pixel_dist_km": null,
       "threshold_celsius": -40.0,
       "bt_trend_1h": null,
       "data_source": "Himawari-9 Band 13 (10.4\u00b5m) via NOAA AWS S3",
@@ -187,14 +187,14 @@
         "bt_trend_1h": -0.04
       },
       {
-        "timestamp_utc": "2026-08-29T00:20:00",
-        "timestamp_ist": "2026-08-29T05:50:00",
-        "vobl_bt_celsius": -18.14,
-        "min_bt_50km": -40.17,
-        "mean_bt_50km": -18.65,
-        "cold_pixels_count": 1,
-        "storm_detected": true,
-        "nearest_pixel_dist_km": 48.79,
+        "timestamp_utc": "2026-08-29T01:00:00",
+        "timestamp_ist": "2026-08-29T06:30:00",
+        "vobl_bt_celsius": -20.03,
+        "min_bt_50km": -32.1,
+        "mean_bt_50km": -18.41,
+        "cold_pixels_count": 0,
+        "storm_detected": false,
+        "nearest_pixel_dist_km": null,
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
         "bt_trend_1h": null
@@ -209,9 +209,9 @@
   "convective_initiation": {
     "instability_score": 11.1,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 6.9h (1300\u20131800 IST)",
+    "initiation_message": "Peak convective window in 6.3h (1300\u20131800 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 6.9,
+    "hours_to_peak": 6.3,
     "cape_now": 64.0,
     "ki_now": 26.53,
     "li_now": 0.96,
@@ -224,7 +224,7 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-08-29 06:04 IST"
+    "computed_at": "2026-08-29 06:41 IST"
   },
   "multiday_outlook": [],
   "analogs": {
@@ -274,7 +274,7 @@
     "query_cape": 64.0,
     "query_ki": 26.53,
     "query_li": 0.96,
-    "computed_at": "2026-08-29 06:04 IST"
+    "computed_at": "2026-08-29 06:41 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -316,7 +316,7 @@
         "impact_pct": 0.1
       }
     ],
-    "computed_at": "2026-08-29 06:04 IST"
+    "computed_at": "2026-08-29 06:41 IST"
   },
   "synoptic_regime": {
     "regime_id": "R3",
@@ -329,7 +329,7 @@
     "ki_used": 26.53,
     "t2m_c": 28.0,
     "month": 8,
-    "computed_at": "2026-08-29 06:04 IST"
+    "computed_at": "2026-08-29 06:41 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -702,32 +702,36 @@
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-08-29T00:00:00.000Z",
+    "obs_time": "2026-08-29T01:00:00.000Z",
     "temp_c": 20,
     "dewpoint_c": 18,
     "rh_pct": 88.3,
     "wind_dir": 270,
-    "wind_speed_kt": 8,
+    "wind_speed_kt": 10,
     "wind_gust_kt": null,
     "visibility_sm": 3.73,
     "visibility_km": 6.0,
-    "altimeter_hpa": 1014,
+    "altimeter_hpa": 1015,
     "flight_category": "MVFR",
     "wx_string": "",
     "sky_cover": [
       {
-        "cover": "BKN",
-        "base_ft": 1000
+        "cover": "SCT",
+        "base_ft": 800
+      },
+      {
+        "cover": "SCT",
+        "base_ft": 1200
       }
     ],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 290000Z 27008KT 6000 BKN010 20/18 Q1014 NOSIG",
-    "fetched_utc": "2026-08-29T00:34:10Z"
+    "raw": "METAR VOBL 290100Z 27010KT 6000 SCT008 SCT012 20/18 Q1015 TEMPO BKN008",
+    "fetched_utc": "2026-08-29T01:11:38Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-08-29T00:34:10Z",
-    "generated_at_ist": "2026-08-29 06:04 IST",
+    "generated_at_utc": "2026-08-29T01:11:37Z",
+    "generated_at_ist": "2026-08-29 06:41 IST",
     "components": {
       "gfs": {
         "status": "MISSING",
@@ -738,9 +742,9 @@
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-08-29T00:20:00",
-        "storm_detected": true,
-        "min_bt_50km": -40.17,
+        "timestamp_utc": "2026-08-29T01:00:00",
+        "storm_detected": false,
+        "min_bt_50km": -32.1,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
