@@ -1,6 +1,6 @@
 {
   "date": "2026-09-01",
-  "generated_at": "2026-09-01 02:58 IST",
+  "generated_at": "2026-09-01 03:34 IST",
   "alert_active": false,
   "peak_slot": 3,
   "peak_probability": 0.0016,
@@ -23,10 +23,10 @@
       "lifted_index": -2.0,
       "totals_totals": 44.0,
       "regime_adjustment": 1.0,
-      "prob_delta": -0.0028,
+      "prob_delta": 0.0,
       "trend": "stable",
-      "trend_diff": -0.003,
-      "prev_probability": 0.003
+      "trend_diff": 0,
+      "prev_probability": 0
     },
     {
       "slot": 1,
@@ -109,11 +109,11 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-08-31T21:20:00",
-      "timestamp_ist": "2026-09-01T02:50:00",
-      "vobl_bt_celsius": -16.18,
-      "min_bt_50km": -27.77,
-      "mean_bt_50km": -2.2,
+      "timestamp_utc": "2026-08-31T21:50:00",
+      "timestamp_ist": "2026-09-01T03:20:00",
+      "vobl_bt_celsius": -22.62,
+      "min_bt_50km": -23.84,
+      "mean_bt_50km": -4.53,
       "cold_pixels_count": 0,
       "storm_detected": false,
       "alert_level": "GREEN",
@@ -187,11 +187,11 @@
         "bt_trend_1h": -0.04
       },
       {
-        "timestamp_utc": "2026-08-31T21:20:00",
-        "timestamp_ist": "2026-09-01T02:50:00",
-        "vobl_bt_celsius": -16.18,
-        "min_bt_50km": -27.77,
-        "mean_bt_50km": -2.2,
+        "timestamp_utc": "2026-08-31T21:50:00",
+        "timestamp_ist": "2026-09-01T03:20:00",
+        "vobl_bt_celsius": -22.62,
+        "min_bt_50km": -23.84,
+        "mean_bt_50km": -4.53,
         "cold_pixels_count": 0,
         "storm_detected": false,
         "nearest_pixel_dist_km": null,
@@ -209,9 +209,9 @@
   "convective_initiation": {
     "instability_score": 14.3,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 10.0h (1300\u20131800 IST)",
+    "initiation_message": "Peak convective window in 9.4h (1300\u20131800 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 10.0,
+    "hours_to_peak": 9.4,
     "cape_now": 0.0,
     "ki_now": 29.51,
     "li_now": 1.76,
@@ -224,7 +224,7 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-09-01 02:58 IST"
+    "computed_at": "2026-09-01 03:34 IST"
   },
   "multiday_outlook": [],
   "analogs": {
@@ -274,7 +274,7 @@
     "query_cape": 0.0,
     "query_ki": 29.51,
     "query_li": 1.76,
-    "computed_at": "2026-09-01 02:58 IST"
+    "computed_at": "2026-09-01 03:34 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -316,7 +316,7 @@
         "impact_pct": 0.1
       }
     ],
-    "computed_at": "2026-09-01 02:58 IST"
+    "computed_at": "2026-09-01 03:34 IST"
   },
   "synoptic_regime": {
     "regime_id": "R3",
@@ -329,7 +329,7 @@
     "ki_used": 29.51,
     "t2m_c": 28.0,
     "month": 9,
-    "computed_at": "2026-09-01 02:58 IST"
+    "computed_at": "2026-09-01 03:34 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -702,7 +702,7 @@
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-08-31T21:00:00.000Z",
+    "obs_time": "2026-08-31T22:00:00.000Z",
     "temp_c": 21,
     "dewpoint_c": 18,
     "rh_pct": 83.0,
@@ -721,13 +721,13 @@
       }
     ],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 312100Z 27008KT 6000 FEW012 21/18 Q1014 NOSIG",
-    "fetched_utc": "2026-08-31T21:28:51Z"
+    "raw": "METAR VOBL 312200Z 27008KT 6000 FEW012 21/18 Q1014 NOSIG",
+    "fetched_utc": "2026-08-31T22:04:28Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-08-31T21:28:51Z",
-    "generated_at_ist": "2026-09-01 02:58 IST",
+    "generated_at_utc": "2026-08-31T22:04:27Z",
+    "generated_at_ist": "2026-09-01 03:34 IST",
     "components": {
       "gfs": {
         "status": "MISSING",
@@ -738,9 +738,9 @@
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-08-31T21:20:00",
+        "timestamp_utc": "2026-08-31T21:50:00",
         "storm_detected": false,
-        "min_bt_50km": -27.77,
+        "min_bt_50km": -23.84,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
