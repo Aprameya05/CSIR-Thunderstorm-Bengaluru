@@ -1114,46 +1114,16 @@
         if (!mapContainerRef.current || mapRef.current || typeof maplibregl === 'undefined') return;
         const map = new maplibregl.Map({
           container: mapContainerRef.current,
-          style: {
-            version: 8,
-            sources: {
-              'topo': {
-                type: 'raster',
-                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'],
-                tileSize: 256,
-                attribution: '© Esri, HERE, Garmin, FAO, NOAA, USGS'
-              },
-              'terrain-dem': {
-                type: 'raster-dem',
-                tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-                tileSize: 256,
-                encoding: 'terrarium',
-                maxzoom: 15
-              }
-            },
-            layers: [
-              { id: 'topo-base', type: 'raster', source: 'topo', paint: { 'raster-opacity': 1.0 } }
-            ]
-          },
+          style: 'https://tiles.openfreemap.org/styles/liberty',
           center: [VOBL.lng, VOBL.lat],
-          zoom: 9,
-          pitch: 52,
-          bearing: -15,
+          zoom: 10,
+          pitch: 48,
+          bearing: -12,
           antialias: true,
         });
         mapRef.current = map;
-        map.on('error', () => setMapError(true));
+        map.on('error', (e) => { if (e.error && e.error.status === 0) setMapError(true); });
         map.on('load', () => {
-          // 3D terrain
-          map.setTerrain({ source: 'terrain-dem', exaggeration: 1.6 });
-          // Atmosphere sky
-          map.addLayer({ id: 'sky', type: 'sky', paint: {
-            'sky-type': 'atmosphere',
-            'sky-atmosphere-sun': [0, 80],
-            'sky-atmosphere-sun-intensity': 5,
-            'sky-atmosphere-color': 'rgba(10,20,40,1)',
-            'sky-horizon-blend': 0.4
-          }});
           map.addSource('storm-heat', { type: 'geojson', data: buildHeatmapGeoJSON(peakProb) });
           map.addLayer({
             id: 'storm-heat-layer', type: 'heatmap', source: 'storm-heat',
