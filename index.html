@@ -314,6 +314,83 @@
       opacity: 0.55;
     }
 
+    /* ── PAGE GRID TEXTURE (subtle dot grid on content pages) ──── */
+    .page-grid-bg {
+      background-image: radial-gradient(rgba(56,189,248,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* ── PAGE HERO BANNER ────────────────────────────────────────── */
+    .page-hero-banner {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(5,9,20,0.95) 0%, rgba(8,16,36,0.95) 100%);
+      border: 1px solid rgba(56,189,248,0.14);
+      border-radius: 16px;
+      padding: 20px 24px;
+    }
+    .page-hero-banner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(56,189,248,0.07) 0%, transparent 60%, rgba(139,92,246,0.05) 100%);
+      pointer-events: none;
+    }
+    .page-hero-banner::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(56,189,248,0.4), rgba(139,92,246,0.3), transparent);
+    }
+    .page-hero-eyebrow {
+      font-family: monospace;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #38bdf8;
+      text-shadow: 0 0 10px rgba(56,189,248,0.6);
+      margin-bottom: 6px;
+    }
+    .page-hero-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #e8eaf6;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .page-hero-sub {
+      font-family: monospace;
+      font-size: 11px;
+      color: #4a6280;
+    }
+
+    /* ── CONTENT SECTION DIVIDER ─────────────────────────────────── */
+    .section-rule {
+      border: none;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(56,189,248,0.18), transparent);
+      margin: 4px 0;
+    }
+
+    /* ── STAT CHIP ───────────────────────────────────────────────── */
+    .stat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-family: monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      border: 1px solid rgba(56,189,248,0.25);
+      background: rgba(56,189,248,0.08);
+      color: #38bdf8;
+    }
+
   </style>
 </head>
 <body class="bg-[#040711] text-[#e8eaf6] antialiased min-h-screen font-sans relative overflow-x-hidden selection:bg-sky-400 selection:text-black">
@@ -2548,6 +2625,36 @@
       3: { model: 'v3 Calibrated', auroc: 0.8710, features: 54,  calibration: 'Isotonic', color: 'text-cyan-300',   bg: 'bg-cyan-500/15',   border: 'border-cyan-500/30'   },
     };
 
+    // ── SHARED PAGE HEADER COMPONENT ─────────────────────────────────────────
+    function PageHeader({ eyebrow, title, subtitle, badge, badgeColor = 'cyan', icon = null }) {
+      const badgeColors = {
+        cyan:   'bg-cyan-500/10 text-cyan-300 border-cyan-400/30',
+        amber:  'bg-amber-500/10 text-amber-300 border-amber-400/30',
+        red:    'bg-red-500/10 text-red-300 border-red-400/30',
+        green:  'bg-emerald-500/10 text-emerald-300 border-emerald-400/30',
+        purple: 'bg-purple-500/10 text-purple-300 border-purple-400/30',
+      };
+      return (
+        <div className="page-hero-banner mb-5 relative z-10">
+          <div className="relative z-10 flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="page-hero-eyebrow">{eyebrow}</div>
+              <div className="page-hero-title">{icon && <span className="mr-2">{icon}</span>}{title}</div>
+              {subtitle && <div className="page-hero-sub">{subtitle}</div>}
+            </div>
+            {badge && (
+              <div className={`shrink-0 mt-1 px-3 py-1.5 rounded-lg border text-[9px] font-mono font-bold tracking-wider ${badgeColors[badgeColor] || badgeColors.cyan}`}>
+                {badge}
+              </div>
+            )}
+          </div>
+          {/* Decorative corner glow */}
+          <div className="absolute top-0 right-0 w-32 h-32 pointer-events-none"
+            style={{background:'radial-gradient(circle at 100% 0%, rgba(56,189,248,0.06) 0%, transparent 70%)'}} />
+        </div>
+      );
+    }
+
     function ForecastPage({ slots, selectedSlotIndex, onSelectSlot, liveData }) {
       // Find peak slot index (highest ts_probability)
       const maxProb = slots && slots.length > 0 ? Math.max(...slots.map(s => s.ts_probability)) : 0;
@@ -2565,11 +2672,13 @@
 
       return (
         <div className="space-y-6 max-w-[1750px] mx-auto font-mono">
-          <div className="atc-card p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-wide">6-HOUR DIURNAL CONVECTIVE FORECAST SLOTS</h2>
-              <p className="text-xs text-[#607d8b]">Operational 24-Hour Thunderstorm Probability Windows for VOBL Runway 09L/27R Sector</p>
-            </div>
+          <PageHeader
+            eyebrow="SLOT FORECAST · VOBL / IMD 43295"
+            title="6-Hour Convective Forecast"
+            subtitle="Operational 24-Hour Thunderstorm Probability Windows · Runway 09L/27R Sector"
+            badge="IMD NOWCAST"
+          />
+          <div className="atc-card p-4 rounded-2xl flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
             <div className="flex items-center gap-2">
               {/* Model legend */}
               <div className="hidden sm:flex items-center gap-2 text-[9px] font-bold mr-2">
@@ -2893,16 +3002,15 @@
       // Slot 2 shown in the headline metrics block (peak afternoon slot, primary operational)
       const s2 = SLOT_MODELS[2];
       return (
-        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
-          <div className="flex justify-between items-center border-b border-[#172338] pb-4">
-            <div>
-              <h2 className="text-xl font-bold text-white">MODEL SKILL VERIFICATION & CALIBRATION METRICS</h2>
-              <p className="text-xs text-[#607d8b]">Per-slot best model selection — v3/v4/v5 ensemble · Test period 2023–2025</p>
-            </div>
-            <span className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
-              VERIFIED 2023–2025 TEST PERIOD
-            </span>
-          </div>
+        <div className="font-mono space-y-6 max-w-[1750px] mx-auto">
+          <PageHeader
+            eyebrow="ML MODEL ARCHITECTURE · V3/V4/V5 ENSEMBLE"
+            title="Model Skill & Calibration"
+            subtitle="Per-slot best model selection · XGBoost v3/v4/v5 · Test period 2023–2025"
+            badge="VERIFIED 2023–2025"
+            badgeColor="green"
+          />
+          <div className="atc-card p-6 rounded-2xl space-y-6">
 
           {/* Per-slot model table */}
           <div>
@@ -3744,6 +3852,7 @@
               Could not fetch sounding or build GFS fallback. Try refreshing.
             </div>
           )}
+          </div>
         </div>
       );
     }
@@ -3799,13 +3908,16 @@
       };
 
       return (
-        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#172338] pb-4">
-            <div>
-              <h2 className="text-xl font-bold text-white">SHAP FEATURE IMPORTANCE & AI RAG EXPLAINABILITY</h2>
-              <p className="text-xs text-[#607d8b]">Physical Feature Contribution Analysis for Convective Storm Initiation</p>
-            </div>
-            
+        <div className="font-mono space-y-6 max-w-[1750px] mx-auto">
+          <PageHeader
+            eyebrow="SHAP · AI RAG EXPLAINABILITY"
+            title="Feature Importance & Explainability"
+            subtitle="Physical Feature Contribution Analysis for Convective Storm Initiation"
+            badge="AI-ASSISTED"
+            badgeColor="purple"
+          />
+          <div className="atc-card p-6 rounded-2xl space-y-6">
+          <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-3 border-b border-[#172338] pb-4">
             {/* Slot Switcher */}
             <div className="flex items-center gap-1 text-xs">
               {['Slot 0 (Late Night)', 'Slot 1 (Morning)', 'Slot 2 (Afternoon)', 'Slot 3 (Evening)'].map((sLabel, idx) => (
@@ -4197,6 +4309,7 @@
               <span className="inline-block w-2 h-4 bg-emerald-400 ml-1 animate-pulse align-middle"></span>
             </div>
           </div>
+          </div>
         </div>
       );
     }
@@ -4207,23 +4320,15 @@
       const todayRegime = liveData?.synoptic_regime || null;
 
       return (
-        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
-          <div className="flex flex-wrap justify-between items-start gap-3 border-b border-[#172338] pb-4">
-            <div>
-              <h2 className="text-base font-bold text-white">SYNOPTIC ATMOSPHERIC REGIME CLUSTERS</h2>
-              <p className="text-xs text-[#607d8b]">KMeans 5-Cluster Atmospheric Pattern Classification over Bengaluru Plateau</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {todayRegimeId && (
-                <span className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-bold animate-pulse">
-                  TODAY: {todayRegimeId}
-                </span>
-              )}
-              <span className="hidden sm:inline px-3 py-1.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-bold">
-                KMeans 5-CLUSTER
-              </span>
-            </div>
-          </div>
+        <div className="font-mono space-y-6 max-w-[1750px] mx-auto">
+          <PageHeader
+            eyebrow="SYNOPTIC CLASSIFICATION · KMEANS 5-CLUSTER"
+            title="Atmospheric Regime Clusters"
+            subtitle="KMeans Pattern Classification over Bengaluru Plateau"
+            badge={todayRegimeId ? `TODAY: ${todayRegimeId}` : 'KMEANS 5-CLUSTER'}
+            badgeColor="purple"
+          />
+          <div className="atc-card p-6 rounded-2xl space-y-6">
 
           {/* Today's regime detail banner */}
           {todayRegime && (
@@ -4336,6 +4441,7 @@
               </div>
             );
           })()}
+          </div>
         </div>
       );
     }
@@ -4398,22 +4504,24 @@
       };
 
       return (
-        <div className="atc-card p-6 rounded-2xl font-mono space-y-6 max-w-[1750px] mx-auto">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#172338] pb-4">
-            <div>
-              <h2 className="text-xl font-bold text-white">FASTAPI OPERATIONAL NOWCASTING ENDPOINTS</h2>
-              <p className="text-xs text-[#607d8b]">REST API Interface for Airport Ground Handling & Automated Systems</p>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${apiStatus === 'online' ? 'bg-emerald-400' : apiStatus === 'waking' ? 'bg-amber-400 animate-pulse' : 'bg-gray-500'}`}></span>
-              <span className="text-[10px] text-[#607d8b] flex-shrink-0">{apiStatus === 'online' ? 'API ONLINE' : apiStatus === 'waking' ? 'API WAKING UP…' : 'CHECKING…'}</span>
+        <div className="font-mono space-y-6 max-w-[1750px] mx-auto">
+          <PageHeader
+            eyebrow="FASTAPI REST INTERFACE · OPERATIONAL"
+            title="Live API Explorer"
+            subtitle="REST API endpoints for Airport Ground Handling & Automated Systems"
+            badge={apiStatus === 'online' ? '● API ONLINE' : apiStatus === 'waking' ? '◌ API WAKING' : '… CHECKING'}
+            badgeColor={apiStatus === 'online' ? 'green' : 'amber'}
+          />
+          <div className="atc-card p-6 rounded-2xl space-y-6">
+          <div className="flex items-center gap-2 border-b border-[#172338] pb-4">
+              <span className={`w-2 h-2 rounded-full ${apiStatus === 'online' ? 'bg-emerald-400' : apiStatus === 'waking' ? 'bg-amber-400 animate-pulse' : 'bg-gray-500'}`}></span>
+              <span className="text-[10px] text-[#607d8b]">{apiStatus === 'online' ? 'API ONLINE' : apiStatus === 'waking' ? 'API WAKING Up…' : 'CHECKING…'}</span>
               <input
                 type="text"
                 readOnly
                 value="https://csir-thunderstorm-api.onrender.com"
-                className="bg-[#050811] text-xs text-[#607d8b] border border-[#172338] rounded px-3 py-1.5 w-full sm:w-80"
+                className="ml-2 bg-[#050811] text-xs text-[#607d8b] border border-[#172338] rounded px-3 py-1.5 w-full sm:w-80"
               />
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -4472,6 +4580,7 @@
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       );
@@ -4592,16 +4701,15 @@
       }, [isPlaying]);
 
       return (
-        <div className="atc-card p-6 rounded-2xl font-mono max-w-[1750px] mx-auto space-y-4">
-          <div className="flex justify-between items-center border-b border-[#172338] pb-4">
-            <div>
-              <h2 className="text-lg font-bold text-white">DOPPLER RADAR VOBL BENGALURU — S-BAND DISPLAY</h2>
-              <p className="text-xs text-[#607d8b]">Coverage Radius: 200 km · 12.97° N, 77.58° E</p>
-            </div>
-            <span className="px-3 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold">
-              HIMAWARI-9 IR ACTIVE — DOPPLER RADAR PENDING IMD ACCESS
-            </span>
-          </div>
+        <div className="font-mono max-w-[1750px] mx-auto space-y-4">
+          <PageHeader
+            eyebrow="DOPPLER RADAR · S-BAND · VOBL"
+            title="Radar Map — Bengaluru"
+            subtitle="Coverage Radius: 200 km · 12.97° N, 77.58° E · Himawari-9 IR Active"
+            badge="SAT+RADAR"
+            badgeColor="amber"
+          />
+          <div className="atc-card p-6 rounded-2xl space-y-4">
 
           {/* Himawari-9 Satellite Storm Proximity Panel */}
           {(() => {
@@ -5690,7 +5798,7 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
                 </AnimatePresence>
               </div>
             ) : (
-            <main className="flex-1 px-3 sm:px-4 lg:px-6 pt-4 pb-8 overflow-x-hidden overflow-y-auto">
+            <main className="flex-1 px-3 sm:px-4 lg:px-6 pt-4 pb-8 overflow-x-hidden overflow-y-auto page-grid-bg">
               <AnimatePresence mode="wait">
                 {activeNavTab === 'FORECAST' && (
                   <motion.div key="forecast"
@@ -5802,14 +5910,15 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
 
           {/* Fullscreen ATC Mode Overlay */}
           {isAtcMode && (
-            <AtcViewFullscreen 
+            <AtcViewFullscreen
               slots={currentSlots}
-              currentSlot={currentSlots[selectedSlotIndex]} 
+              currentSlot={currentSlots[selectedSlotIndex]}
               onExitAtc={handleExitAtc}
               liveData={liveData}
             />
           )}
 
+        </div>
         </div>
       );
     }
@@ -5858,13 +5967,13 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
 
       return (
         <div className="p-4 lg:p-6 space-y-5">
-          <div className="atc-card rounded-2xl p-5">
-            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">EXTENDED OUTLOOK</div>
-            <div className="text-xl font-bold text-white mb-1">Multi-Day Thunderstorm Outlook — VOBL</div>
-            <div className="text-[11px] text-[#607d8b] font-mono">
-              GFS f024/f048 · CAPE / K-Index / LI / Totals-Totals · Fetched: {fetchedAt || '—'} IST
-            </div>
-          </div>
+          <PageHeader
+            eyebrow="EXTENDED OUTLOOK · GFS GUIDANCE"
+            title="Multi-Day Thunderstorm Outlook"
+            subtitle={`GFS f024/f048 · CAPE / K-Index / LI / Totals-Totals · Fetched: ${fetchedAt || '—'} IST`}
+            badge="GFS GUIDANCE"
+            badgeColor="purple"
+          />
           {loading && <div className="text-center text-[#607d8b] font-mono text-sm py-12">Loading multi-day outlook…</div>}
           {!loading && outlook.length === 0 && (
             <div className="atc-card rounded-2xl p-8 text-center">
@@ -5956,11 +6065,13 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
       const curMonth = new Date().getMonth(); // 0-indexed
       return (
         <div className="p-4 lg:p-6 space-y-5">
-          <div className="atc-card rounded-2xl p-5">
-            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">HISTORICAL CLIMATOLOGY</div>
-            <div className="text-xl font-bold text-white mb-1">Thunderstorm Climatology — VOBL/43295</div>
-            <div className="text-[11px] text-[#607d8b] font-mono">IMD Station 43295 · 1990–2025 · 35-year climatology</div>
-          </div>
+          <PageHeader
+            eyebrow="HISTORICAL CLIMATOLOGY · VOBL/43295"
+            title="Thunderstorm Climatology"
+            subtitle="IMD Station 43295 · 1990–2025 · 35-year record"
+            badge="35-YEAR RECORD"
+            badgeColor="amber"
+          />
 
           {/* Monthly frequency */}
           <div className="atc-card rounded-2xl p-5">
@@ -6052,13 +6163,13 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
       };
       return (
         <div className="p-4 lg:p-6 space-y-5">
-          <div className="atc-card rounded-2xl p-5">
-            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">MODEL VERIFICATION</div>
-            <div className="text-xl font-bold text-white mb-1">Skill Score Dashboard</div>
-            <div className="text-[11px] text-[#607d8b] font-mono">
-              XGBoost v6 · n={skills?.n_samples ?? 0} verified forecasts · {skills?.date || 'Accumulating…'}
-            </div>
-          </div>
+          <PageHeader
+            eyebrow="MODEL VERIFICATION · XGBOOST v6"
+            title="Skill Score Dashboard"
+            subtitle={`n=${skills?.n_samples ?? 0} verified forecasts · ${skills?.date || 'Accumulating…'}`}
+            badge="LIVE VERIFICATION"
+            badgeColor="green"
+          />
           <div className="atc-card rounded-2xl p-4">
             <div className="rounded-xl p-3" style={{background:'rgba(255,193,7,0.08)', border:'1px solid rgba(255,193,7,0.2)'}}>
               <div className="text-[10px] font-mono text-[#ffc107]">ℹ ACCUMULATION NOTE</div>
@@ -6168,14 +6279,13 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
 
       return (
         <div className="p-4 lg:p-6 space-y-5">
-          {/* Header */}
-          <div className="atc-card rounded-2xl p-5">
-            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">ALERT SYSTEM</div>
-            <div className="text-xl font-bold text-white mb-1">Thunderstorm Alerts — VOBL/43295</div>
-            <div className="text-[11px] text-[#607d8b] font-mono">
-              Subscribe for real-time alerts and daily digests. Anyone can subscribe — no login required. Unsubscribe anytime from any email.
-            </div>
-          </div>
+          <PageHeader
+            eyebrow="ALERT SYSTEM · WHATSAPP · BROWSER PUSH"
+            title="Thunderstorm Alerts"
+            subtitle="Subscribe for real-time alerts and daily digests · No login required · Unsubscribe anytime"
+            badge={isAlert ? '⚡ ALERT ACTIVE' : '✓ ALL CLEAR'}
+            badgeColor={isAlert ? 'red' : 'green'}
+          />
 
           {/* Current status */}
           <div className="atc-card rounded-2xl p-5">
@@ -6384,11 +6494,13 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
 
       return (
         <div className="p-4 lg:p-6 space-y-5">
-          <div className="atc-card rounded-2xl p-5">
-            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">INTERACTIVE TOOL</div>
-            <div className="text-xl font-bold text-white mb-1">What-If Thunderstorm Simulator</div>
-            <div className="text-[11px] text-[#607d8b] font-mono">Adjust convective indices to explore how the model responds. Sliders initialized to current GFS values.</div>
-          </div>
+          <PageHeader
+            eyebrow="INTERACTIVE SIMULATION TOOL"
+            title="What-If Simulator"
+            subtitle="Adjust convective indices to explore model response · Sliders initialized to current GFS values"
+            badge="INTERACTIVE"
+            badgeColor="cyan"
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="atc-card rounded-2xl p-5">
