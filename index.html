@@ -6560,7 +6560,27 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
     // END NEW FEATURE PAGES
     // ═══════════════════════════════════════════════════════════════════════════
 
-    ReactDOM.render(<App />, document.getElementById('root'));
+    class ErrorBoundary extends React.Component {
+      constructor(props) { super(props); this.state = { error: null }; }
+      static getDerivedStateFromError(e) { return { error: e }; }
+      render() {
+        if (this.state.error) {
+          return (
+            <div style={{position:'fixed',inset:0,background:'#040711',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:'24px'}}>
+              <div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.4)',borderRadius:'12px',padding:'24px',maxWidth:'600px',fontFamily:'monospace',color:'#f87171'}}>
+                <div style={{fontSize:'11px',letterSpacing:'0.15em',marginBottom:'12px',color:'#ef4444'}}>⛔ REACT RUNTIME ERROR</div>
+                <div style={{fontSize:'13px',marginBottom:'8px',color:'#fca5a5',fontWeight:'bold'}}>{String(this.state.error)}</div>
+                <div style={{fontSize:'10px',color:'#6b7280',whiteSpace:'pre-wrap',maxHeight:'300px',overflow:'auto'}}>{this.state.error?.stack}</div>
+                <button onClick={()=>window.location.reload()} style={{marginTop:'16px',padding:'8px 16px',background:'rgba(239,68,68,0.2)',border:'1px solid rgba(239,68,68,0.4)',borderRadius:'6px',color:'#f87171',cursor:'pointer',fontSize:'11px'}}>RELOAD</button>
+              </div>
+            </div>
+          );
+        }
+        return this.props.children;
+      }
+    }
+
+    ReactDOM.render(<ErrorBoundary><App /></ErrorBoundary>, document.getElementById('root'));
 
     // ── Service Worker Registration ───────────────────────────────────────────
     if ('serviceWorker' in navigator) {
