@@ -20,6 +20,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   
+  <!-- MapLibre GL JS (free, no API key needed) -->
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
+
   <!-- Tailwind CSS CDN -->
   <!-- Worker URL injected by GitHub Actions (sed replace before deploy) -->
   <script>window.__WORKER_URL__ = 'WORKER_URL_PLACEHOLDER';</script>
@@ -931,7 +935,283 @@
     }
 
     // --- 1. DASHBOARD PAGE ---
+    // ── 3D MAP DASHBOARD ──────────────────────────────────────────────────────
+    const VOBL = { lng: 77.7063, lat: 13.1979 };
+    const BLR_CLIM_ZONES = [
+      { name: 'Airport (VOBL)', lat: 13.1979, lng: 77.7063, factor: 1.00 },
+      { name: 'Yelahanka', lat: 13.10, lng: 77.60, factor: 0.88 },
+      { name: 'Hebbal', lat: 13.035, lng: 77.59, factor: 0.84 },
+      { name: 'Whitefield', lat: 12.966, lng: 77.750, factor: 0.79 },
+      { name: 'Electronic City', lat: 12.845, lng: 77.660, factor: 0.74 },
+      { name: 'Bannerghatta', lat: 12.80, lng: 77.575, factor: 0.81 },
+      { name: 'Jayanagar', lat: 12.925, lng: 77.583, factor: 0.82 },
+      { name: 'Koramangala', lat: 12.934, lng: 77.624, factor: 0.80 },
+      { name: 'Indiranagar', lat: 12.978, lng: 77.641, factor: 0.83 },
+      { name: 'MG Road', lat: 12.975, lng: 77.607, factor: 0.80 },
+      { name: 'Rajajinagar', lat: 12.992, lng: 77.553, factor: 0.78 },
+      { name: 'Marathahalli', lat: 12.956, lng: 77.701, factor: 0.82 },
+      { name: 'Devanahalli', lat: 13.248, lng: 77.712, factor: 0.91 },
+    ];
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function buildHeatmapGeoJSON(peakProb) {
+      const features = [];
+      const sigma = 18;
+      for (let lat = 12.72; lat <= 13.55; lat += 0.035) {
+        for (let lng = 77.25; lng <= 78.05; lng += 0.035) {
+          const dist = haversineKm(lat, lng, VOBL.lat, VOBL.lng);
+          let zoneFactor = 0.72;
+          let minDist = Infinity;
+          for (const z of BLR_CLIM_ZONES) {
+            const d = haversineKm(lat, lng, z.lat, z.lng);
+            if (d < minDist) { minDist = d; zoneFactor = z.factor; }
+          }
+          const intensity = peakProb * Math.exp(-(dist * dist) / (2 * sigma * sigma)) * zoneFactor;
+          if (intensity >= 0.015) {
+            features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] }, properties: { intensity } });
+          }
+        }
+      }
+      return { type: 'FeatureCollection', features };
+    }
+
+    function mapRiskColor(p) {
+      if (p >= 0.55) return '#ef5350';
+      if (p >= 0.35) return '#ff9800';
+      if (p >= 0.15) return '#ffd54f';
+      return '#66bb6a';
+    }
+    function mapRiskLabel(p) {
+      if (p >= 0.55) return 'HIGH';
+      if (p >= 0.35) return 'MODERATE';
+      if (p >= 0.15) return 'LOW';
+      return 'MINIMAL';
+    }
+
     function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange, fetchLatencyMs, mousePos }) {
+      const mapContainerRef = React.useRef(null);
+      const mapRef = React.useRef(null);
+      const [mapReady, setMapReady] = React.useState(false);
+
+      const peakProb = liveData?.peak_probability ?? Math.max(...slots.map(s => s.ts_probability || 0));
+      const alertActive = liveData?.alert_active ?? (peakProb >= 0.35);
+      const peakSlot = slots.reduce((a, b) => (a.ts_probability > b.ts_probability ? a : b), slots[0]);
+      const riskColor = mapRiskColor(peakProb);
+      const riskLabel = mapRiskLabel(peakProb);
+
+      const gfs = liveData?.met_parameters || {};
+      const ci = liveData?.convective_initiation || {};
+      const sat = liveData?.satellite?.himawari9 || {};
+      const genAt = liveData?.generated_at || lastUpdated || '—';
+
+      // Init map once
+      React.useEffect(() => {
+        if (!mapContainerRef.current || mapRef.current || typeof maplibregl === 'undefined') return;
+        const map = new maplibregl.Map({
+          container: mapContainerRef.current,
+          style: 'https://tiles.openfreemap.org/styles/liberty',
+          center: [VOBL.lng, VOBL.lat],
+          zoom: 10.5,
+          pitch: 48,
+          bearing: -15,
+          antialias: true,
+        });
+        mapRef.current = map;
+
+        map.on('load', () => {
+          // Heatmap layer
+          map.addSource('storm-heat', {
+            type: 'geojson',
+            data: buildHeatmapGeoJSON(peakProb),
+          });
+          map.addLayer({
+            id: 'storm-heat-layer',
+            type: 'heatmap',
+            source: 'storm-heat',
+            paint: {
+              'heatmap-weight': ['get', 'intensity'],
+              'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 1.2, 13, 2.5],
+              'heatmap-color': [
+                'interpolate', ['linear'], ['heatmap-density'],
+                0, 'rgba(0,0,0,0)',
+                0.2, 'rgba(56,189,248,0.3)',
+                0.4, 'rgba(255,213,0,0.55)',
+                0.65, 'rgba(255,152,0,0.75)',
+                0.85, 'rgba(239,83,80,0.88)',
+                1, 'rgba(180,0,0,0.95)',
+              ],
+              'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 28, 13, 55],
+              'heatmap-opacity': 0.82,
+            },
+          });
+
+          // VOBL airport marker ring
+          map.addSource('vobl-point', {
+            type: 'geojson',
+            data: { type: 'Feature', geometry: { type: 'Point', coordinates: [VOBL.lng, VOBL.lat] }, properties: {} },
+          });
+          map.addLayer({ id: 'vobl-ring-outer', type: 'circle', source: 'vobl-point',
+            paint: { 'circle-radius': 18, 'circle-color': 'rgba(56,189,248,0.12)', 'circle-stroke-width': 2, 'circle-stroke-color': '#38bdf8' }
+          });
+          map.addLayer({ id: 'vobl-ring-inner', type: 'circle', source: 'vobl-point',
+            paint: { 'circle-radius': 6, 'circle-color': '#38bdf8', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }
+          });
+
+          // VOBL popup
+          new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 28 })
+            .setLngLat([VOBL.lng, VOBL.lat])
+            .setHTML(`<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:#040711;padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);">⚡ VOBL / Station 43295</div>`)
+            .addTo(map);
+
+          setMapReady(true);
+        });
+
+        map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+
+        return () => { map.remove(); mapRef.current = null; };
+      }, []);
+
+      // Update heatmap when probability changes
+      React.useEffect(() => {
+        if (!mapRef.current || !mapReady) return;
+        const src = mapRef.current.getSource('storm-heat');
+        if (src) src.setData(buildHeatmapGeoJSON(peakProb));
+      }, [peakProb, mapReady]);
+
+      const slotColors = ['#7e57c2','#29b6f6','#ef5350','#ff9800'];
+      const slotLabels = ['00-06h','06-12h','12-18h','18-24h'];
+
+      return (
+        <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0, background: '#040711' }}>
+          {/* MAP */}
+          <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
+
+          {/* Dark overlay for readability */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(4,7,17,0.88) 0%, rgba(4,7,17,0.55) 38%, rgba(4,7,17,0) 60%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(4,7,17,0.9) 0%, rgba(4,7,17,0) 35%)', pointerEvents: 'none' }} />
+
+          {/* TOP STATUS BAR */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'rgba(4,7,17,0.72)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(56,189,248,0.1)', zIndex: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: '#607d8b', fontFamily: 'monospace' }}>CSIR TS NOWCAST</span>
+              <span style={{ fontSize: 10, color: '#263d55', fontFamily: 'monospace' }}>·</span>
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#546e7a' }}>VOBL / 43295</span>
+              <span style={{ fontSize: 10, color: '#263d55', fontFamily: 'monospace' }}>·</span>
+              <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#38bdf8', opacity: 0.7 }}>{genAt}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {isLiveData && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#4caf50', fontFamily: 'monospace', background: 'rgba(76,175,80,0.12)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(76,175,80,0.25)' }}>● LIVE</span>}
+              {fetchLatencyMs && <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#607d8b' }}>{fetchLatencyMs}ms</span>}
+            </div>
+          </div>
+
+          {/* LEFT PANEL */}
+          <div style={{ position: 'absolute', top: 44, left: 0, bottom: 140, width: 230, padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 10, zIndex: 10, overflowY: 'auto' }}>
+            {/* Peak probability */}
+            <div style={{ background: 'rgba(6,10,20,0.85)', border: `1px solid ${alertActive ? 'rgba(239,83,80,0.4)' : 'rgba(56,189,248,0.15)'}`, borderRadius: 14, padding: '14px 14px' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 6 }}>PEAK PROBABILITY</div>
+              <div style={{ fontSize: 44, fontWeight: 900, fontFamily: 'monospace', color: riskColor, lineHeight: 1 }}>{(peakProb * 100).toFixed(0)}<span style={{ fontSize: 18 }}>%</span></div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: riskColor, marginTop: 4 }}>{riskLabel} RISK</div>
+              {alertActive && (
+                <div style={{ marginTop: 8, background: 'rgba(239,83,80,0.12)', border: '1px solid rgba(239,83,80,0.35)', borderRadius: 8, padding: '6px 10px', fontSize: 9, fontWeight: 700, letterSpacing: 1, color: '#ef5350', fontFamily: 'monospace' }}>
+                  ⚡ ALERT ACTIVE · SLOT {peakSlot?.slot ?? '?'}
+                </div>
+              )}
+            </div>
+
+            {/* GFS Indices */}
+            <div style={{ background: 'rgba(6,10,20,0.85)', border: '1px solid rgba(56,189,248,0.12)', borderRadius: 14, padding: '12px 14px' }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 8 }}>GFS STABILITY</div>
+              {[
+                { label: 'CAPE', value: gfs.ua_cape_jkg != null ? `${Math.round(gfs.ua_cape_jkg)} J/kg` : '—' },
+                { label: 'K-INDEX', value: gfs.ua_k_index != null ? gfs.ua_k_index.toFixed(1) : '—' },
+                { label: 'LI', value: gfs.ua_lifted_index != null ? gfs.ua_lifted_index.toFixed(1) : '—' },
+                { label: 'TT', value: gfs.ua_totals_totals != null ? gfs.ua_totals_totals.toFixed(1) : '—' },
+              ].map(r => (
+                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>{r.label}</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#cfd8dc', fontFamily: 'monospace' }}>{r.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Satellite */}
+            {sat.available && (
+              <div style={{ background: 'rgba(6,10,20,0.85)', border: '1px solid rgba(126,87,194,0.2)', borderRadius: 14, padding: '12px 14px' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 8 }}>HIMAWARI-9</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>MIN BT</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: sat.storm_detected ? '#ef5350' : '#cfd8dc', fontFamily: 'monospace' }}>{sat.min_bt_50km != null ? `${sat.min_bt_50km.toFixed(1)}°C` : '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>BT TREND</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: sat.bt_trend_1h < 0 ? '#ef5350' : '#4caf50', fontFamily: 'monospace' }}>{sat.bt_trend_1h != null ? `${sat.bt_trend_1h > 0 ? '+' : ''}${sat.bt_trend_1h.toFixed(1)}°` : '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>STORM</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: sat.storm_detected ? '#ef5350' : '#4caf50', fontFamily: 'monospace' }}>{sat.storm_detected ? 'DETECTED' : 'NONE'}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Monsoon regime */}
+            {ci.monsoon_regime && (
+              <div style={{ background: 'rgba(6,10,20,0.85)', border: '1px solid rgba(56,189,248,0.1)', borderRadius: 14, padding: '10px 14px' }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 4 }}>REGIME</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace' }}>{ci.monsoon_regime}</div>
+                {ci.cape_trend && <div style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace', marginTop: 2 }}>CAPE {ci.cape_trend}</div>}
+              </div>
+            )}
+
+            {/* Nav shortcuts */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 'auto' }}>
+              {[['FORECAST','📈'],['RADAR MAP','🛰'],['ALERTS','🔔']].map(([tab, icon]) => (
+                <button key={tab} onClick={() => onNavTabChange(tab)}
+                  style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.14)', borderRadius: 9, padding: '7px 10px', fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: '#38bdf8', fontFamily: 'monospace', cursor: 'pointer', textAlign: 'left' }}>
+                  {icon} {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* BOTTOM SLOT CARDS */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, padding: '10px 12px', background: 'rgba(4,7,17,0.85)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(56,189,248,0.08)', zIndex: 10 }}>
+            {slots.slice(0,4).map((s, i) => {
+              const p = s.ts_probability || 0;
+              const col = mapRiskColor(p);
+              const isSelected = i === selectedSlotIndex;
+              return (
+                <button key={i} onClick={() => onSelectSlot(i)}
+                  style={{ background: isSelected ? 'rgba(56,189,248,0.1)' : 'rgba(6,10,20,0.7)', border: `1px solid ${isSelected ? 'rgba(56,189,248,0.35)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 12, padding: '10px 8px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: '#607d8b', fontFamily: 'monospace', marginBottom: 4 }}>{slotLabels[i]}</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: col }}>{(p*100).toFixed(0)}<span style={{fontSize:10}}>%</span></div>
+                  <div style={{ marginTop: 5, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+                    <div style={{ height: 3, width: `${Math.max(p*100,2)}%`, background: col, borderRadius: 3, transition: 'width 0.5s' }} />
+                  </div>
+                  <div style={{ fontSize: 8, color: isSelected ? '#38bdf8' : '#546e7a', fontFamily: 'monospace', marginTop: 4 }}>{s.label || `SLOT ${i}`}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Map loading fallback */}
+          {!mapReady && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
+              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#546e7a', letterSpacing: 2 }}>LOADING MAP...</div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function DashboardOverviewPageClassic({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange, fetchLatencyMs, mousePos }) {
       const currentSlot = slots[selectedSlotIndex] || slots[2];
       const photoInfo = SLOT_AIRPORT_PHOTOS[selectedSlotIndex] || SLOT_AIRPORT_PHOTOS[2];
       const riskInfo = getRiskBadge(currentSlot.ts_probability);
@@ -5272,7 +5552,7 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
           <AtmosphericWeatherOverlay selectedSlotIndex={selectedSlotIndex} />
 
           {/* Foreground UI Content Container */}
-          <div className="relative z-20 flex flex-col min-h-screen">
+          <div className="relative z-20 flex flex-col h-screen overflow-hidden">
             
             {/* Header Bar */}
             <HeaderBar 
@@ -5353,14 +5633,15 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
             )}
 
             {/* Main Content Area */}
-            <main className="flex-1 px-3 sm:px-4 lg:px-6 pt-4 pb-8 overflow-x-hidden">
-              <AnimatePresence mode="wait">
-                {activeNavTab === 'DASHBOARD' && (
-                  <motion.div key="dash"
-                    initial={{ opacity: 0, y: 24, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -16, scale: 0.99 }}
-                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+            {activeNavTab === 'DASHBOARD' ? (
+              /* Dashboard: fullscreen, no padding */
+              <div style={{flex:1, position:'relative', overflow:'hidden', minHeight:0}}>
+                <AnimatePresence mode="wait">
+                  <motion.div key="dash" style={{position:'absolute',inset:0}}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}>
                     <DashboardOverviewPage
                       slots={currentSlots}
                       selectedSlotIndex={selectedSlotIndex}
@@ -5374,7 +5655,12 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
                       mousePos={mousePos}
                     />
                   </motion.div>
-                )}
+                </AnimatePresence>
+              </div>
+            ) : (
+            <main className="flex-1 px-3 sm:px-4 lg:px-6 pt-4 pb-8 overflow-x-hidden overflow-y-auto">
+              <AnimatePresence mode="wait">
+                {false && (
                 {activeNavTab === 'FORECAST' && (
                   <motion.div key="forecast"
                     initial={{ opacity: 0, y: 24, scale: 0.98 }}
@@ -5479,6 +5765,7 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
                 )}
               </AnimatePresence>
             </main>
+            )}
 
           </div>
 
