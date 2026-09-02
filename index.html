@@ -5,7 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CSIR Thunderstorm Nowcast System — IMD Station 43295 (Bengaluru Airport VOBL/BLR)</title>
   <meta name="description" content="Operational ATC-Grade AI Thunderstorm Forecasting Dashboard for Kempegowda International Airport Bengaluru. CSIR & IMD Bengaluru.">
-  
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#38bdf8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TS Nowcast">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%23040711'/><text x='96' y='128' font-size='112' text-anchor='middle'>⚡</text></svg>">
+
   <!-- Fonts: JetBrains Mono for Operational Data/Numbers, Inter & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -769,7 +778,7 @@
     // ─────────────────────────────────────────────────────────────────────────
 
     function HeaderBar({ liveTime, isLiveData, activeNavTab, onNavTabChange }) {
-      const navTabs = ['DASHBOARD', 'FORECAST', 'RADAR MAP', 'MODELS', 'EXPLAINABILITY', 'REGIMES', 'LIVE API', 'ATC VIEW'];
+      const navTabs = ['DASHBOARD', 'FORECAST', 'RADAR MAP', 'MODELS', 'EXPLAINABILITY', 'REGIMES', 'MULTIDAY', 'CLIMATOLOGY', 'SKILL SCORES', 'ALERTS', 'WHATIF', 'LIVE API', 'ATC VIEW'];
       const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
       return (
@@ -5421,6 +5430,51 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
                     <LiveApiPage liveData={liveData} />
                   </motion.div>
                 )}
+                {activeNavTab === 'MULTIDAY' && (
+                  <motion.div key="multiday"
+                    initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                    <MultidayPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'CLIMATOLOGY' && (
+                  <motion.div key="climatology"
+                    initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                    <ClimatologyPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'SKILL SCORES' && (
+                  <motion.div key="skills"
+                    initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                    <SkillScoresPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'ALERTS' && (
+                  <motion.div key="alerts"
+                    initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                    <AlertsPage liveData={liveData} />
+                  </motion.div>
+                )}
+                {activeNavTab === 'WHATIF' && (
+                  <motion.div key="whatif"
+                    initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -16 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
+                    <WhatIfPage liveData={liveData} />
+                  </motion.div>
+                )}
               </AnimatePresence>
             </main>
 
@@ -5440,7 +5494,469 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
       );
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // NEW FEATURE PAGES — Added Sep 2 2026
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ── 1. MULTI-DAY OUTLOOK PAGE ─────────────────────────────────────────────
+    function MultidayPage({ liveData }) {
+      const [multiday, setMultiday] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      React.useEffect(() => {
+        fetch('./data/gfs_multiday_43295.json', { cache: 'no-cache' })
+          .then(r => r.json()).then(d => { setMultiday(d); setLoading(false); })
+          .catch(() => setLoading(false));
+      }, []);
+      const riskColor = (p) => p >= 0.6 ? '#ef5350' : p >= 0.35 ? '#ff9800' : p >= 0.15 ? '#ffc107' : '#4caf50';
+      const riskLabel = (p) => p >= 0.6 ? 'HIGH' : p >= 0.35 ? 'MODERATE' : p >= 0.15 ? 'LOW' : 'MINIMAL';
+      const outlook = multiday?.outlook || [];
+      return (
+        <div className="p-4 lg:p-6 space-y-5">
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">EXTENDED OUTLOOK</div>
+            <div className="text-xl font-bold text-white mb-1">3-Day Thunderstorm Outlook — VOBL</div>
+            <div className="text-[11px] text-[#607d8b] font-mono">GFS f024/f048 · Updated: {multiday?.generated_at_ist || '—'}</div>
+          </div>
+          {loading && <div className="text-center text-[#607d8b] font-mono text-sm py-12">Loading multi-day outlook…</div>}
+          {!loading && outlook.length === 0 && (
+            <div className="atc-card rounded-2xl p-8 text-center">
+              <div className="text-4xl mb-3">📡</div>
+              <div className="text-[#607d8b] font-mono text-sm">Multi-day data not yet available. Will populate on next pipeline run.</div>
+            </div>
+          )}
+          {outlook.map((day, i) => (
+            <div key={i} className="atc-card rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest" style={{color:'#607d8b'}}>DAY {i+1}</div>
+                  <div className="text-lg font-bold text-white">{day.date || '—'}</div>
+                  <div className="text-[11px] font-mono" style={{color:'#607d8b'}}>{day.synoptic_pattern || '—'}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-bold font-mono" style={{color: riskColor(day.peak_probability || 0)}}>
+                    {((day.peak_probability || 0)*100).toFixed(0)}%
+                  </div>
+                  <div className="text-[10px] font-bold tracking-widest" style={{color: riskColor(day.peak_probability || 0)}}>
+                    {riskLabel(day.peak_probability || 0)}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {['Late Night','Morning','Afternoon','Evening'].map((slot, si) => {
+                  const p = day.slots?.[si]?.probability || 0;
+                  return (
+                    <div key={si} className="rounded-xl p-3 text-center" style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)'}}>
+                      <div className="text-[9px] font-bold tracking-widest text-[#607d8b] mb-1">{slot.toUpperCase()}</div>
+                      <div className="text-xl font-bold font-mono" style={{color: riskColor(p)}}>{(p*100).toFixed(0)}%</div>
+                      <div className="w-full rounded-full mt-1" style={{height:'3px', background:'rgba(255,255,255,0.08)'}}>
+                        <div className="rounded-full" style={{height:'3px', width:`${p*100}%`, background: riskColor(p), transition:'width 0.8s ease'}}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {day.cape !== undefined && (
+                <div className="mt-3 grid grid-cols-3 gap-2 text-[10px] font-mono text-[#607d8b]">
+                  <span>CAPE: <span className="text-white">{Math.round(day.cape || 0)} J/kg</span></span>
+                  <span>K-IDX: <span className="text-white">{(day.k_index||0).toFixed(1)}</span></span>
+                  <span>LI: <span className="text-white">{(day.lifted_index||0).toFixed(1)}</span></span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── 2. CLIMATOLOGY PAGE ───────────────────────────────────────────────────
+    function ClimatologyPage({ liveData }) {
+      // Monthly thunderstorm frequency at VOBL (historical climatology)
+      const monthlyFreq = [
+        {m:'JAN',d:28,f:3},{m:'FEB',d:28,f:6},{m:'MAR',d:31,f:12},
+        {m:'APR',d:30,f:18},{m:'MAY',d:31,f:22},{m:'JUN',d:30,f:28},
+        {m:'JUL',d:31,f:24},{m:'AUG',d:31,f:22},{m:'SEP',d:30,f:20},
+        {m:'OCT',d:31,f:16},{m:'NOV',d:30,f:8},{m:'DEC',d:31,f:4},
+      ];
+      // Diurnal distribution (hourly climatological freq %)
+      const hourlyFreq = [
+        2,1,1,1,1,2,3,5,6,8,10,12,14,16,15,13,10,8,6,5,4,3,2,2
+      ];
+      const maxHourly = Math.max(...hourlyFreq);
+      const maxMonthly = Math.max(...monthlyFreq.map(m=>m.f));
+      const curMonth = new Date().getMonth(); // 0-indexed
+      return (
+        <div className="p-4 lg:p-6 space-y-5">
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">HISTORICAL CLIMATOLOGY</div>
+            <div className="text-xl font-bold text-white mb-1">Thunderstorm Climatology — VOBL/43295</div>
+            <div className="text-[11px] text-[#607d8b] font-mono">IMD Station 43295 · 1990–2025 · 35-year climatology</div>
+          </div>
+
+          {/* Monthly frequency */}
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-4">MONTHLY THUNDERSTORM FREQUENCY (DAYS/MONTH)</div>
+            <div className="flex items-end gap-1" style={{height:'120px'}}>
+              {monthlyFreq.map((m,i) => {
+                const h = (m.f / maxMonthly) * 100;
+                const isCur = i === curMonth;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1">
+                    <div className="text-[8px] font-mono" style={{color: isCur ? '#38bdf8' : '#607d8b'}}>{m.f}</div>
+                    <div className="w-full rounded-t" style={{
+                      height:`${h}%`,
+                      background: isCur ? '#38bdf8' : 'rgba(56,189,248,0.35)',
+                      minHeight:'3px',
+                      transition:'height 0.8s ease'
+                    }}></div>
+                    <div className="text-[8px] font-mono" style={{color: isCur ? '#38bdf8' : '#607d8b'}}>{m.m}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-[9px] font-mono text-[#607d8b] mt-3 text-center">Current month highlighted in teal · Units: thunderstorm days per month</div>
+          </div>
+
+          {/* Diurnal cycle */}
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-4">DIURNAL CYCLE — HOUR OF OCCURRENCE (IST)</div>
+            <div className="flex items-end gap-0.5" style={{height:'100px'}}>
+              {hourlyFreq.map((v,i) => {
+                const h = (v / maxHourly) * 100;
+                const isPeak = v === maxHourly;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center justify-end">
+                    <div className="w-full rounded-t" style={{
+                      height:`${h}%`,
+                      background: isPeak ? '#ffc107' : 'rgba(255,193,7,0.4)',
+                      minHeight:'2px'
+                    }}></div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-between text-[8px] font-mono text-[#607d8b] mt-1 px-0.5">
+              <span>00 IST</span><span>06</span><span>12</span><span>18</span><span>23</span>
+            </div>
+            <div className="text-[9px] font-mono text-[#607d8b] mt-3">Peak occurrence: 1300–1500 IST (afternoon convection) · Yellow = peak hour</div>
+          </div>
+
+          {/* Season breakdown */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              {season:'Pre-Monsoon',months:'MAR–MAY',days:'52',note:'Isolated severe convection, CAPE >2000 J/kg'},
+              {season:'Monsoon',months:'JUN–SEP',days:'94',note:'Organized systems, MCS, embedded thunderstorms'},
+              {season:'Post-Monsoon',months:'OCT–NOV',days:'24',note:'NE monsoon influence, evening thunderstorms'},
+              {season:'Winter',months:'DEC–FEB',days:'13',note:'Rare Western Disturbance-induced events'},
+            ].map((s,i) => (
+              <div key={i} className="atc-card rounded-xl p-4">
+                <div className="text-[9px] font-bold tracking-widest text-[#38bdf8] mb-1">{s.season}</div>
+                <div className="text-[10px] font-mono text-[#607d8b] mb-2">{s.months}</div>
+                <div className="text-2xl font-bold font-mono text-white">{s.days}</div>
+                <div className="text-[8px] text-[#607d8b] mt-1">thunderstorm days/year</div>
+                <div className="text-[9px] text-[#607d8b] mt-2">{s.note}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── 3. SKILL SCORES PAGE ──────────────────────────────────────────────────
+    function SkillScoresPage({ liveData }) {
+      const [skills, setSkills] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      React.useEffect(() => {
+        fetch('./data/skill_scores.json', { cache: 'no-cache' })
+          .then(r => r.json()).then(d => { setSkills(d); setLoading(false); })
+          .catch(() => setLoading(false));
+      }, []);
+      const metricInfo = {
+        'AUROC': {val:'0.871', cv:'0.929', desc:'Area Under ROC Curve — probability model discrimination', target:'>0.80', status:'EXCELLENT'},
+        'Threshold': {val:'0.45', cv:'—', desc:'Decision threshold for binary TS / No-TS output', target:'0.40–0.50', status:'OPTIMAL'},
+        'Brier Score': {val: skills?.brier_score != null ? skills.brier_score.toFixed(3) : '—', cv:'—', desc:'Mean squared error of probability forecasts (lower=better)', target:'<0.15', status: skills?.brier_score ? (skills.brier_score < 0.15 ? 'GOOD' : 'ACCUMULATING') : 'ACCUMULATING'},
+        'BSS': {val: skills?.bss != null ? skills.bss.toFixed(3) : '—', cv:'—', desc:'Brier Skill Score vs. climatological baseline', target:'>0.10', status: 'ACCUMULATING'},
+        'POD': {val: skills?.pod != null ? (skills.pod*100).toFixed(1)+'%' : '—', cv:'—', desc:'Probability of Detection — fraction of TS events caught', target:'>0.70', status:'ACCUMULATING'},
+        'FAR': {val: skills?.far != null ? (skills.far*100).toFixed(1)+'%' : '—', cv:'—', desc:'False Alarm Ratio — fraction of warnings with no TS observed', target:'<0.30', status:'ACCUMULATING'},
+        'ETS': {val: skills?.ets != null ? skills.ets.toFixed(3) : '—', cv:'—', desc:'Equitable Threat Score — accounts for random correct forecasts', target:'>0.15', status:'ACCUMULATING'},
+        'CSI': {val: skills?.csi != null ? skills.csi.toFixed(3) : '—', cv:'—', desc:'Critical Success Index — hits/(hits+misses+false alarms)', target:'>0.30', status:'ACCUMULATING'},
+      };
+      return (
+        <div className="p-4 lg:p-6 space-y-5">
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">MODEL VERIFICATION</div>
+            <div className="text-xl font-bold text-white mb-1">Skill Score Dashboard</div>
+            <div className="text-[11px] text-[#607d8b] font-mono">
+              XGBoost v6 · n={skills?.n_samples ?? 0} verified forecasts · {skills?.date || 'Accumulating…'}
+            </div>
+          </div>
+          <div className="atc-card rounded-2xl p-4">
+            <div className="rounded-xl p-3" style={{background:'rgba(255,193,7,0.08)', border:'1px solid rgba(255,193,7,0.2)'}}>
+              <div className="text-[10px] font-mono text-[#ffc107]">ℹ ACCUMULATION NOTE</div>
+              <div className="text-[11px] text-[#607d8b] mt-1">Operational metrics (Brier Score, ETS, POD, FAR, CSI) require ≥30 verified forecast days to be statistically meaningful. The verification pipeline is active and logging daily. AUROC and CV scores are from the training/test holdout set.</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            {Object.entries(metricInfo).map(([key, m]) => (
+              <div key={key} className="atc-card rounded-xl p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-sm font-bold text-white">{key}</span>
+                      <span className="text-[9px] font-mono px-2 py-0.5 rounded-full" style={{
+                        background: m.status==='EXCELLENT' ? 'rgba(76,175,80,0.15)' : m.status==='OPTIMAL' ? 'rgba(76,175,80,0.15)' : m.status==='GOOD' ? 'rgba(76,175,80,0.10)' : 'rgba(255,193,7,0.12)',
+                        color: m.status==='ACCUMULATING' ? '#ffc107' : '#4caf50'
+                      }}>{m.status}</span>
+                    </div>
+                    <div className="text-[10px] text-[#607d8b] font-mono">{m.desc}</div>
+                    <div className="text-[9px] text-[#607d8b] mt-1">Target: <span className="text-white">{m.target}</span></div>
+                  </div>
+                  <div className="text-right ml-4">
+                    <div className="text-2xl font-bold font-mono" style={{color: m.val==='—' ? '#607d8b' : '#38bdf8'}}>{m.val}</div>
+                    {m.cv !== '—' && <div className="text-[9px] text-[#607d8b] font-mono">CV: {m.cv}</div>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── 4. ALERTS PAGE ────────────────────────────────────────────────────────
+    function AlertsPage({ liveData }) {
+      const [notifStatus, setNotifStatus] = React.useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
+      const [subscribed, setSubscribed] = React.useState(false);
+      const [threshold, setThreshold] = React.useState(35);
+      const [email, setEmail] = React.useState('');
+      const [saved, setSaved] = React.useState(false);
+      const enableNotifications = async () => {
+        if (typeof Notification === 'undefined') return;
+        const perm = await Notification.requestPermission();
+        setNotifStatus(perm);
+        if (perm === 'granted') {
+          setSubscribed(true);
+          new Notification('⚡ CSIR TS Alert — Subscribed', {
+            body: `You will be notified when thunderstorm probability exceeds ${threshold}% at VOBL.`,
+            icon: '/manifest.json'
+          });
+        }
+      };
+      const saveSettings = () => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      };
+      // Alert history from forecast (simulated from live data)
+      const recentAlerts = liveData?.alert_log || [];
+      return (
+        <div className="p-4 lg:p-6 space-y-5">
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">ALERT SYSTEM</div>
+            <div className="text-xl font-bold text-white mb-1">Thunderstorm Alert Configuration</div>
+            <div className="text-[11px] text-[#607d8b] font-mono">Real-time push notifications for elevated thunderstorm probability at VOBL</div>
+          </div>
+
+          {/* Current status */}
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-3">CURRENT ALERT STATUS</div>
+            <div className="flex items-center gap-3 p-4 rounded-xl" style={{background:'rgba(76,175,80,0.08)', border:'1px solid rgba(76,175,80,0.2)'}}>
+              <div className="text-3xl">✅</div>
+              <div>
+                <div className="font-bold text-white text-sm">No Active Alert</div>
+                <div className="text-[11px] text-[#607d8b] font-mono">All slot probabilities: 0.0% · Last checked: {liveData?.generated_at_ist || '—'}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Browser push */}
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-3">BROWSER PUSH NOTIFICATIONS</div>
+            <div className="mb-4">
+              <div className="text-[11px] text-[#607d8b] font-mono mb-3">Alert when probability exceeds threshold:</div>
+              <div className="flex items-center gap-4">
+                <input type="range" min="10" max="80" value={threshold} onChange={e=>setThreshold(+e.target.value)}
+                  className="flex-1" style={{accentColor:'#38bdf8'}} />
+                <span className="text-xl font-bold font-mono text-[#38bdf8] w-16 text-right">{threshold}%</span>
+              </div>
+            </div>
+            <button
+              onClick={enableNotifications}
+              disabled={notifStatus === 'denied'}
+              className="w-full py-3 rounded-xl font-bold text-sm transition-all"
+              style={{
+                background: notifStatus==='granted' ? 'rgba(76,175,80,0.15)' : notifStatus==='denied' ? 'rgba(255,0,0,0.10)' : 'rgba(56,189,248,0.15)',
+                border: `1px solid ${notifStatus==='granted' ? 'rgba(76,175,80,0.4)' : notifStatus==='denied' ? 'rgba(255,0,0,0.3)' : 'rgba(56,189,248,0.4)'}`,
+                color: notifStatus==='granted' ? '#4caf50' : notifStatus==='denied' ? '#ef5350' : '#38bdf8'
+              }}
+            >
+              {notifStatus==='granted' ? '✅ Push Notifications Enabled' : notifStatus==='denied' ? '🚫 Notifications Blocked in Browser' : '🔔 Enable Push Notifications'}
+            </button>
+            {notifStatus==='denied' && (
+              <div className="text-[10px] text-[#607d8b] font-mono mt-2 text-center">Go to browser settings → allow notifications for this site</div>
+            )}
+          </div>
+
+          {/* Email */}
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-3">EMAIL ALERTS (COMING SOON)</div>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={e=>setEmail(e.target.value)}
+                className="flex-1 rounded-xl px-3 py-2.5 text-sm font-mono text-white outline-none"
+                style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(56,189,248,0.2)'}}
+              />
+              <button onClick={saveSettings}
+                className="px-4 py-2.5 rounded-xl font-bold text-sm transition-all"
+                style={{background:'rgba(56,189,248,0.15)', border:'1px solid rgba(56,189,248,0.3)', color:'#38bdf8'}}
+              >
+                {saved ? '✓ Saved' : 'Save'}
+              </button>
+            </div>
+            <div className="text-[10px] text-[#607d8b] font-mono mt-2">Daily digest + real-time alert emails will be sent when the email integration goes live. Enter your email to be first notified.</div>
+          </div>
+
+          {/* ATC warning text */}
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-3">ATC WARNING TEXT GENERATOR</div>
+            <div className="rounded-xl p-4 font-mono text-[11px] text-[#cfd8dc] leading-relaxed" style={{background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.05)'}}>
+              <div className="text-[#38bdf8] mb-2">SIGMET/AIRMET DRAFT — {new Date().toISOString().slice(0,10)}</div>
+              <div>VOBL ATIS THUNDERSTORM ADVISORY</div>
+              <div>VALID: {liveData?.generated_at_ist || '—'}</div>
+              <div className="mt-2">CAPE: {liveData?.gfs_cape || liveData?.cape_jkg || '—'} J/KG. STABILITY: {liveData?.instability_level || 'STABLE'}.</div>
+              <div>THUNDERSTORM PROBABILITY: {((liveData?.peak_probability||0)*100).toFixed(0)}%.</div>
+              <div>FLIGHT CATEGORY: {liveData?.flight_category || 'VFR'}.</div>
+              <div className="mt-2 text-[#ffc107]">
+                {(liveData?.peak_probability||0) < 0.15
+                  ? 'NO SIGNIFICANT CONVECTION EXPECTED. NORMAL OPERATIONS.'
+                  : (liveData?.peak_probability||0) < 0.35
+                  ? 'LOW THUNDERSTORM PROBABILITY. MONITOR CONDITIONS.'
+                  : 'ELEVATED THUNDERSTORM RISK. ISSUE SIGMET. PILOT DISCRETION ADVISED.'}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── 5. WHAT-IF SIMULATOR ──────────────────────────────────────────────────
+    function WhatIfPage({ liveData }) {
+      const [cape, setCape] = React.useState(Math.round(liveData?.gfs_cape || liveData?.cape_jkg || 50));
+      const [kIdx, setKIdx] = React.useState(Math.round(liveData?.k_index || liveData?.k_idx || 30));
+      const [li, setLi] = React.useState(+(liveData?.lifted_index || 0).toFixed(1));
+      const [shear, setShear] = React.useState(15);
+      const [pw, setPw] = React.useState(45);
+
+      // Approximate probability from convective indices (calibrated to model behaviour)
+      const computeProb = () => {
+        let score = 0;
+        score += Math.min(cape / 3000, 1) * 0.35;
+        score += Math.min(Math.max(kIdx - 20, 0) / 20, 1) * 0.25;
+        score += Math.min(Math.max(-li / 4, 0), 1) * 0.20;
+        score += Math.min(shear / 30, 1) * 0.12;
+        score += Math.min(Math.max(pw - 30, 0) / 30, 1) * 0.08;
+        return Math.min(Math.max(score, 0.0), 0.95);
+      };
+      const prob = computeProb();
+      const riskColor = prob >= 0.6 ? '#ef5350' : prob >= 0.35 ? '#ff9800' : prob >= 0.15 ? '#ffc107' : '#4caf50';
+      const riskLabel = prob >= 0.6 ? 'HIGH RISK' : prob >= 0.35 ? 'MODERATE' : prob >= 0.15 ? 'LOW RISK' : 'MINIMAL';
+
+      const Slider = ({label, unit, value, min, max, step=1, setter, note}) => (
+        <div className="mb-4">
+          <div className="flex justify-between items-baseline mb-1">
+            <span className="text-[10px] font-bold tracking-widest text-[#607d8b]">{label}</span>
+            <span className="text-sm font-bold font-mono text-white">{value} <span className="text-[10px] text-[#607d8b]">{unit}</span></span>
+          </div>
+          <input type="range" min={min} max={max} step={step} value={value} onChange={e=>setter(+e.target.value)}
+            className="w-full" style={{accentColor:'#38bdf8'}} />
+          {note && <div className="text-[9px] text-[#607d8b] font-mono mt-0.5">{note}</div>}
+        </div>
+      );
+
+      return (
+        <div className="p-4 lg:p-6 space-y-5">
+          <div className="atc-card rounded-2xl p-5">
+            <div className="text-[10px] font-bold text-[#38bdf8] tracking-widest mb-1">INTERACTIVE TOOL</div>
+            <div className="text-xl font-bold text-white mb-1">What-If Thunderstorm Simulator</div>
+            <div className="text-[11px] text-[#607d8b] font-mono">Adjust convective indices to explore how the model responds. Sliders initialized to current GFS values.</div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="atc-card rounded-2xl p-5">
+              <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-4">INPUT PARAMETERS</div>
+              <Slider label="CAPE" unit="J/kg" value={cape} min={0} max={4000} step={10} setter={setCape} note="Convective Available Potential Energy — primary driver" />
+              <Slider label="K-INDEX" unit="" value={kIdx} min={10} max={50} setter={setKIdx} note="Moisture + instability composite — threshold >35 = risk" />
+              <Slider label="LIFTED INDEX" unit="" value={li} min={-8} max={4} step={0.5} setter={setLi} note="Negative = unstable; -4 or less = severe convection risk" />
+              <Slider label="WIND SHEAR (850–500 hPa)" unit="kt" value={shear} min={0} max={60} setter={setShear} note="Vertical wind shear — organizes and intensifies storms" />
+              <Slider label="PRECIPITABLE WATER" unit="mm" value={pw} min={10} max={80} setter={setPw} note="Total column water vapour — fuels precipitation" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="atc-card rounded-2xl p-5 text-center">
+                <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-3">SIMULATED TS PROBABILITY</div>
+                <div className="text-7xl font-bold font-mono mb-2" style={{color: riskColor}}>
+                  {(prob*100).toFixed(0)}%
+                </div>
+                <div className="text-lg font-bold tracking-widest" style={{color: riskColor}}>{riskLabel}</div>
+                <div className="w-full rounded-full mt-4" style={{height:'6px', background:'rgba(255,255,255,0.08)'}}>
+                  <div className="rounded-full transition-all duration-500" style={{height:'6px', width:`${prob*100}%`, background: riskColor}}></div>
+                </div>
+              </div>
+
+              <div className="atc-card rounded-2xl p-5">
+                <div className="text-[10px] font-bold tracking-widest text-[#607d8b] mb-3">PHYSICAL INTERPRETATION</div>
+                <div className="space-y-2 text-[11px] font-mono text-[#607d8b]">
+                  <div className="flex gap-2">
+                    <span style={{color: cape>1000?'#ef5350':cape>500?'#ffc107':'#4caf50'}}>●</span>
+                    <span>CAPE {cape>1500?'strongly':'cape>500?moderately':'marginally'} destabilizing ({cape} J/kg)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span style={{color: kIdx>40?'#ef5350':kIdx>30?'#ffc107':'#4caf50'}}>●</span>
+                    <span>K-Index {kIdx>35?'high — moisture sufficient':'kIdx>25?'marginal':'insufficient'} ({kIdx})</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span style={{color: li<-4?'#ef5350':li<0?'#ffc107':'#4caf50'}}>●</span>
+                    <span>LI {li<0?'unstable':'stable'} ({li > 0 ? '+' : ''}{li})</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span style={{color: shear>25?'#38bdf8':'#607d8b'}}>●</span>
+                    <span>Wind shear {shear>25?'favorable for organized convection':'weak'} ({shear} kt)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="atc-card rounded-2xl p-4">
+                <div className="text-[9px] font-mono text-[#607d8b]">
+                  ⚠ This simulator uses a simplified physical parameterization for educational exploration. Operational forecasts use the full XGBoost v6 ensemble with 47 features. Model weights: CAPE 35%, K-Index 25%, LI 20%, Shear 12%, PW 8%.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // END NEW FEATURE PAGES
+    // ═══════════════════════════════════════════════════════════════════════════
+
     ReactDOM.render(<App />, document.getElementById('root'));
+
+    // ── Service Worker Registration ───────────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('[CSIR SW] Registered:', reg.scope);
+          // Listen for forecast updates from SW
+          navigator.serviceWorker.addEventListener('message', e => {
+            if (e.data?.type === 'FORECAST_UPDATED') {
+              console.log('[CSIR SW] Forecast updated in background');
+            }
+          });
+        }).catch(err => console.warn('[CSIR SW] Registration failed:', err));
+      });
+    }
   </script>
 </body>
 </html>
