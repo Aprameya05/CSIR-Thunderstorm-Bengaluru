@@ -4977,126 +4977,233 @@
             // Scale: 50km = 60px radius on 800x600 viewBox centered at 400,300
             const KM_PER_PX = 50 / 60;
 
+            // Professional PPI Radar display
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false });
+            const dateStr = now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day:'2-digit', month:'short', year:'numeric' });
+            const CX=390, CY=310, MAXR=255;
+            const rings = [64,128,191,255];
+            const kmLabels = ['50','100','150','200'];
+            const spokes = Array.from({length:12},(_,i)=>i*30);
+            const azLabels = Array.from({length:12},(_,i)=>i*30);
+            const cardinals = [{a:0,lbl:'N'},{a:90,lbl:'E'},{a:180,lbl:'S'},{a:270,lbl:'W'}];
+            function radarXY(az, r) {
+              const rad = (az - 90) * Math.PI / 180;
+              return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) };
+            }
+            const btSweepId = 'btSweepGrad';
+            const coldPulseId = 'coldPulse';
+
             return (
-              <div className="relative w-full h-[550px] bg-[#020409] rounded-xl border border-[#172338] overflow-hidden flex items-center justify-center">
-                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 800 600">
-                  {/* Background gradient representing BT field */}
-                  <defs>
-                    <radialGradient id="btGradient" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor={voblColor} />
-                      <stop offset="40%" stopColor={meanColor} />
-                      <stop offset="100%" stopColor="rgba(23,35,56,0.1)" />
-                    </radialGradient>
-                    <radialGradient id="coldGradient" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor={minColor} />
-                      <stop offset="100%" stopColor="transparent" />
-                    </radialGradient>
-                  </defs>
+              <div style={{display:'flex',flexDirection:'column',background:'#000204',borderRadius:12,overflow:'hidden',border:'1.5px solid #001a00',fontFamily:'monospace'}}>
+                {/* ── TOP STATUS BAR ── */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'5px 12px',background:'#000f00',borderBottom:'1px solid #00320080',fontSize:10,letterSpacing:'0.08em',color:'#00c853'}}>
+                  <span style={{fontWeight:700,fontSize:11}}>IMD C-BAND DWR &nbsp;·&nbsp; VOBL / 43295 &nbsp;·&nbsp; PPI &nbsp;·&nbsp; EL = 0.5°</span>
+                  <span style={{color:'#00e676',fontWeight:600}}>{dateStr} &nbsp; {timeStr} IST</span>
+                  <span style={{color:liveStormDetected?'#ff1744':'#00c853',fontWeight:700}}>{liveStormDetected?'⚠ STORM':'● NOMINAL'}</span>
+                </div>
 
-                  {/* BT field overlay — 50km radius */}
-                  <circle cx="400" cy="300" r="60" fill="url(#btGradient)" opacity="0.7" />
+                {/* ── MAIN RADAR BODY ── */}
+                <div style={{display:'flex',flex:1}}>
+                  {/* SVG radar canvas */}
+                  <div style={{flex:1,position:'relative'}}>
+                    <svg width="100%" viewBox="0 0 800 620" style={{display:'block',background:'#000204'}}>
+                      <defs>
+                        {/* Rotating sweep gradient */}
+                        <radialGradient id={btSweepId} cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#00e676" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="#00e676" stopOpacity="0" />
+                        </radialGradient>
+                        {/* BT field */}
+                        <radialGradient id="btField" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor={voblColor} stopOpacity="0.65" />
+                          <stop offset="45%" stopColor={meanColor} stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="transparent" />
+                        </radialGradient>
+                        {/* Cold core glow */}
+                        <radialGradient id={coldPulseId} cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor={minColor} stopOpacity="0.95" />
+                          <stop offset="60%" stopColor={minColor} stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="transparent" />
+                        </radialGradient>
+                        {/* Sweep angular gradient */}
+                        <linearGradient id="sweepFade" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#00e676" stopOpacity="0.25" />
+                          <stop offset="100%" stopColor="#00e676" stopOpacity="0" />
+                        </linearGradient>
+                        <mask id="radarMask">
+                          <circle cx={CX} cy={CY} r={MAXR} fill="white" />
+                        </mask>
+                      </defs>
 
-                  {/* Cold pixel cluster if storm detected */}
-                  {stormDetected && (
-                    <>
-                      <circle cx="415" cy="285" r="20" fill="url(#coldGradient)" opacity="0.9" />
-                      <circle cx="415" cy="285" r="8" fill={minColor} opacity="0.95" />
-                      <circle cx="415" cy="285" r="4" fill="rgba(255,0,128,1)" />
-                      <circle cx="415" cy="285" r="12" fill="none" stroke="rgba(239,83,80,0.6)" strokeWidth="1.5" strokeDasharray="3 2">
-                        <animate attributeName="r" values="12;18;12" dur="2s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" values="0.6;0.1;0.6" dur="2s" repeatCount="indefinite" />
-                      </circle>
-                    </>
-                  )}
+                      {/* Outer bezel */}
+                      <circle cx={CX} cy={CY} r={MAXR+18} fill="#000f00" stroke="#003300" strokeWidth="1.5" />
 
-                  {/* Range rings */}
-                  <circle cx="400" cy="300" r="60" stroke="#172338" strokeWidth="1.5" fill="none" />
-                  <text x="405" y="235" fill="#607d8b" fontSize="10">50 km</text>
-                  <circle cx="400" cy="300" r="120" stroke="#172338" strokeWidth="1.5" fill="none" strokeDasharray="4 4" />
-                  <text x="405" y="175" fill="#607d8b" fontSize="10">100 km</text>
-                  <circle cx="400" cy="300" r="180" stroke="#172338" strokeWidth="1.5" fill="none" />
-                  <text x="405" y="115" fill="#607d8b" fontSize="10">150 km</text>
-                  <circle cx="400" cy="300" r="240" stroke="#172338" strokeWidth="1.5" fill="none" strokeDasharray="4 4" />
-                  <text x="405" y="55" fill="#607d8b" fontSize="10">200 km</text>
-                  <line x1="400" y1="0" x2="400" y2="600" stroke="#172338" strokeWidth="1" />
-                  <line x1="0" y1="300" x2="800" y2="300" stroke="#172338" strokeWidth="1" />
+                      {/* Degree tick marks around bezel */}
+                      {Array.from({length:72},(_,i)=>{
+                        const a = i*5, isMajor = a%30===0, isMed = a%10===0;
+                        const r1 = MAXR+3, r2 = MAXR+(isMajor?16:isMed?10:5);
+                        const p1 = radarXY(a, r1), p2 = radarXY(a, r2);
+                        return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+                          stroke={isMajor?'#00e676':isMed?'#007d2b':'#004d15'}
+                          strokeWidth={isMajor?1.5:0.8} />;
+                      })}
 
-                  {/* ---- LIGHTNING STRIKES ON MAP ---- */}
-                  {strikes.map(s => {
-                    const freshness = Math.max(0, 1 - s.age / 300000); // 1=new, 0=5min old
-                    const isClose = s.dist < 50;
-                    const isMid = s.dist < 100;
-                    const opacity = 0.2 + freshness * 0.8;
-                    const r = s.age < 2000 ? 6 : s.age < 10000 ? 4 : 2.5;
-                    const color = isClose ? 'rgba(239,83,80,1)' : isMid ? 'rgba(255,152,0,1)' : 'rgba(255,235,59,1)';
-                    return (
-                      <g key={s.id} opacity={opacity}>
-                        {/* Flash ring for fresh strikes */}
-                        {s.age < 3000 && (
-                          <circle cx={s.x} cy={s.y} r={12} fill="none"
-                            stroke={color} strokeWidth="1.5" opacity={0.6 * freshness}>
-                            <animate attributeName="r" values="4;16;4" dur="0.8s" repeatCount="1" />
-                            <animate attributeName="opacity" values="0.8;0;0" dur="0.8s" repeatCount="1" />
+                      {/* Azimuth degree labels every 30° */}
+                      {azLabels.map(a => {
+                        const p = radarXY(a, MAXR+26);
+                        return <text key={a} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
+                          fill="#00a040" fontSize="9" fontFamily="monospace" fontWeight="600">
+                          {String(a).padStart(3,'0')}°
+                        </text>;
+                      })}
+
+                      {/* Cardinal N/E/S/W labels */}
+                      {cardinals.map(c => {
+                        const p = radarXY(c.a, MAXR+42);
+                        return <text key={c.lbl} x={p.x} y={p.y} textAnchor="middle" dominantBaseline="middle"
+                          fill="#00e676" fontSize="13" fontFamily="monospace" fontWeight="900" letterSpacing="1">
+                          {c.lbl}
+                        </text>;
+                      })}
+
+                      {/* Radar face background */}
+                      <circle cx={CX} cy={CY} r={MAXR} fill="#00050080" />
+
+                      {/* Azimuth spokes every 30° */}
+                      {spokes.map(a => {
+                        const p = radarXY(a, MAXR);
+                        return <line key={a} x1={CX} y1={CY} x2={p.x} y2={p.y}
+                          stroke="#002200" strokeWidth={a%90===0?1.2:0.7} />;
+                      })}
+
+                      {/* Range rings */}
+                      {rings.map((r,i) => (
+                        <g key={r}>
+                          <circle cx={CX} cy={CY} r={r} fill="none"
+                            stroke={i%2===0?"#004400":"#002a00"}
+                            strokeWidth={i%2===0?1.2:0.8}
+                            strokeDasharray={i%2===0?"none":"5 4"} />
+                          <text x={CX+4} y={CY-r+12} fill="#007030" fontSize="9" fontFamily="monospace">{kmLabels[i]} km</text>
+                        </g>
+                      ))}
+
+                      {/* BT field overlay */}
+                      <circle cx={CX} cy={CY} r={64} fill="url(#btField)" opacity="0.8" mask="url(#radarMask)" />
+
+                      {/* Cold core storm cell */}
+                      {stormDetected && (
+                        <g mask="url(#radarMask)">
+                          <circle cx={CX+15} cy={CY-18} r={22} fill={`url(#${coldPulseId})`} opacity="0.9" />
+                          <circle cx={CX+15} cy={CY-18} r={8} fill={minColor} opacity="0.97" />
+                          <circle cx={CX+15} cy={CY-18} r={3.5} fill="#ff1744" />
+                          <circle cx={CX+15} cy={CY-18} r={14} fill="none" stroke="#ff174480" strokeWidth="1.5" strokeDasharray="3 2">
+                            <animate attributeName="r" values="14;22;14" dur="1.8s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="0.7;0.05;0.7" dur="1.8s" repeatCount="indefinite" />
                           </circle>
-                        )}
-                        {/* Strike dot */}
-                        <circle cx={s.x} cy={s.y} r={r} fill={color} />
-                        {/* Lightning bolt symbol for close strikes */}
-                        {isClose && s.age < 30000 && (
-                          <text x={s.x+4} y={s.y-4} fill={color} fontSize="8" fontFamily="monospace">⚡</text>
-                        )}
+                        </g>
+                      )}
+
+                      {/* Rotating sweep arm */}
+                      <g mask="url(#radarMask)">
+                        <path d={`M ${CX} ${CY} L ${radarXY(0,MAXR).x} ${radarXY(0,MAXR).y} A ${MAXR} ${MAXR} 0 0 0 ${radarXY(-30,MAXR).x} ${radarXY(-30,MAXR).y} Z`}
+                          fill="url(#sweepFade)" opacity="0.6">
+                          <animateTransform attributeName="transform" type="rotate"
+                            from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`}
+                            dur="5s" repeatCount="indefinite" />
+                        </path>
+                        <line x1={CX} y1={CY} x2={radarXY(0,MAXR).x} y2={radarXY(0,MAXR).y}
+                          stroke="#00e676" strokeWidth="1.8" opacity="0.85">
+                          <animateTransform attributeName="transform" type="rotate"
+                            from={`0 ${CX} ${CY}`} to={`360 ${CX} ${CY}`}
+                            dur="5s" repeatCount="indefinite" />
+                        </line>
                       </g>
-                    );
-                  })}
 
-                  {/* BT readout at VOBL */}
-                  {voblBT !== null && voblBT !== undefined && (
-                    <text x="320" y="320" fill={voblBT < -40 ? '#ef5350' : voblBT < -20 ? '#ffc107' : '#4caf50'} fontSize="11" fontFamily="monospace" fontWeight="bold">
-                      VOBL: {voblBT}°C
-                    </text>
-                  )}
-                  {minBT !== null && minBT !== undefined && (
-                    <text x="320" y="340" fill="#607d8b" fontSize="9" fontFamily="monospace">
-                      min(50km): {minBT}°C
-                    </text>
-                  )}
-                </svg>
+                      {/* Lightning strikes */}
+                      {strikes.map(s => {
+                        const freshness = Math.max(0, 1 - s.age / 300000);
+                        const isClose = s.dist < 50, isMid = s.dist < 100;
+                        const opacity = 0.25 + freshness * 0.75;
+                        const r = s.age < 2000 ? 5 : s.age < 10000 ? 3.5 : 2;
+                        const color = isClose ? '#ff1744' : isMid ? '#ff9100' : '#ffd600';
+                        return (
+                          <g key={s.id} opacity={opacity}>
+                            {s.age < 3000 && (
+                              <circle cx={s.x} cy={s.y} r={12} fill="none" stroke={color} strokeWidth="1.2">
+                                <animate attributeName="r" values="4;18;4" dur="0.7s" repeatCount="1" />
+                                <animate attributeName="opacity" values="0.9;0;0" dur="0.7s" repeatCount="1" />
+                              </circle>
+                            )}
+                            <circle cx={s.x} cy={s.y} r={r} fill={color} />
+                          </g>
+                        );
+                      })}
 
-                {/* City Labels */}
-                <div className="absolute inset-0 pointer-events-none text-[10px] font-mono text-cyan-300">
-                  <span className="absolute top-[160px] left-[380px]">Doddaballapur (N)</span>
-                  <span className="absolute top-[200px] left-[520px]">Devanahalli (NE)</span>
-                  <span className="absolute top-[300px] left-[590px]">Hoskote (E)</span>
-                  <span className="absolute top-[420px] left-[520px]">Hosur (SE)</span>
-                  <span className="absolute top-[430px] left-[260px]">Ramanagara (SW)</span>
-                  <span className="absolute top-[220px] left-[240px]">Nelamangala (NW)</span>
-                  <span className="absolute top-[380px] left-[370px]">Bengaluru City (S)</span>
-                </div>
+                      {/* VOBL crosshair */}
+                      <line x1={CX-10} y1={CY} x2={CX+10} y2={CY} stroke="#00e676" strokeWidth="1.5" />
+                      <line x1={CX} y1={CY-10} x2={CX} y2={CY+10} stroke="#00e676" strokeWidth="1.5" />
+                      <circle cx={CX} cy={CY} r={4} fill="none" stroke="#00e676" strokeWidth="1.5" />
 
-                {/* VOBL Marker */}
-                <div className="absolute font-mono pointer-events-none" style={{top: '42%', left: '50%', transform: 'translate(-50%, -50%)'}}>
-                  <div className="px-3 py-1.5 rounded-lg bg-[#080d1a] border border-cyan-400 text-white font-bold text-xs flex items-center gap-2">
-                    <span>✈️</span> VOBL AIRPORT CENTER
+                      {/* City labels */}
+                      {[
+                        {lbl:'DODDABALLAPUR',az:350,km:35},{lbl:'DEVANAHALLI',az:30,km:25},
+                        {lbl:'HOSKOTE',az:95,km:40},{lbl:'HOSUR',az:155,km:60},
+                        {lbl:'RAMANAGARA',az:230,km:55},{lbl:'NELAMANGALA',az:295,km:35},
+                        {lbl:'BLR CITY',az:190,km:25}
+                      ].map(c => {
+                        const kmR = c.km * (MAXR/200);
+                        const p = radarXY(c.az, kmR);
+                        return <text key={c.lbl} x={p.x} y={p.y} fill="#006622" fontSize="7.5"
+                          fontFamily="monospace" textAnchor="middle" dominantBaseline="middle">{c.lbl}</text>;
+                      })}
+
+                      {/* BT readout */}
+                      {voblBT !== null && voblBT !== undefined && (
+                        <text x="18" y="30" fill={voblBT < -40 ? '#ff1744' : voblBT < -20 ? '#ff9100' : '#00c853'}
+                          fontSize="10" fontFamily="monospace" fontWeight="bold">
+                          VOBL BT: {voblBT}°C
+                        </text>
+                      )}
+                      {minBT !== null && minBT !== undefined && (
+                        <text x="18" y="44" fill="#006622" fontSize="9" fontFamily="monospace">
+                          MIN(50km): {minBT}°C
+                        </text>
+                      )}
+                    </svg>
                   </div>
-                </div>
-                {/* Storm alert overlay */}
-                {liveStormDetected && (
-                  <div className="absolute top-4 right-4 px-3 py-1.5 rounded bg-red-500/20 border border-red-500/50 text-red-400 text-xs font-bold font-mono animate-pulse">
-                    ⚡ DEEP CONVECTION DETECTED — {liveColdPx} COLD PIXELS (LIVE)
-                  </div>
-                )}
 
-                {/* No BT data — show satellite status */}
-                {(!voblBT && !minBT) && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="text-[#607d8b] text-xs font-mono text-center mt-32">
-                      <div className="text-2xl mb-2">🛰️</div>
-                      <div className="text-cyan-300">HIMAWARI-9 BAND 13 — VOBL 50km BOX</div>
-                      <div className="mt-1">BT values available during daylight hours</div>
-                      <div className="text-[9px] mt-1 text-[#607d8b]">Last fetch: {frame?.timestamp_ist?.replace('T',' ') ?? '—'} IST</div>
+                  {/* ── IR BT COLOR SCALE SIDEBAR ── */}
+                  <div style={{width:84,background:'#000a00',borderLeft:'1px solid #002200',display:'flex',flexDirection:'column',alignItems:'center',padding:'12px 0',gap:4}}>
+                    <div style={{fontSize:8,color:'#00a040',letterSpacing:'0.1em',marginBottom:6,textAlign:'center',lineHeight:1.4}}>IR BT<br/>SCALE</div>
+                    {[
+                      {c:'#9c27b0',lbl:'< -60°C'},
+                      {c:'#3f51b5',lbl:'-60–-50'},
+                      {c:'#2196f3',lbl:'-50–-40'},
+                      {c:'#00bcd4',lbl:'-40–-30'},
+                      {c:'#4caf50',lbl:'-30–-20'},
+                      {c:'#ffc107',lbl:'-20–-10'},
+                      {c:'#ff5722',lbl:'-10–  0'},
+                      {c:'#9e9e9e',lbl:'> 0°C'},
+                    ].map(row => (
+                      <div key={row.lbl} style={{display:'flex',alignItems:'center',gap:5,width:'100%',padding:'0 8px'}}>
+                        <div style={{width:14,height:10,borderRadius:2,background:row.c,flexShrink:0}} />
+                        <span style={{fontSize:7.5,color:'#006622',fontFamily:'monospace',whiteSpace:'nowrap'}}>{row.lbl}</span>
+                      </div>
+                    ))}
+                    <div style={{marginTop:'auto',fontSize:7,color:'#004010',textAlign:'center',padding:'0 6px',lineHeight:1.5}}>
+                      HIMAWARI-9<br/>B13 (10.4µm)
                     </div>
                   </div>
-                )}
+                </div>
+
+                {/* ── BOTTOM STATUS STRIP ── */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 12px',background:'#000f00',borderTop:'1px solid #00320060',fontSize:9,color:'#006622',letterSpacing:'0.06em'}}>
+                  <span>WS: <span style={{color:'#00c853'}}>OPERATIONAL</span></span>
+                  <span>STRIKES(5min): <span style={{color:'#ffd600',fontWeight:700}}>{strikes.length}</span></span>
+                  <span>RATE: <span style={{color:strikes.length>5?'#ff1744':strikes.length>2?'#ff9100':'#00c853',fontWeight:700}}>{strikes.length > 0 ? `${Math.round(strikes.length*12)}/hr` : '0/hr'}</span></span>
+                  {liveStormDetected && <span style={{color:'#ff1744',fontWeight:700,animation:'pulse 1s infinite'}}>⚡ DEEP CONVECTION · {liveColdPx} COLD PX</span>}
+                </div>
               </div>
             );
           })()}
