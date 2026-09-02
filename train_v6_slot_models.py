@@ -172,7 +172,17 @@ def add_v6_features(df: pd.DataFrame) -> pd.DataFrame:
             (df["month"] == 10) & (df["slot"] == 2)
         ).astype(int)
 
-    # --- Monsoon break flag (K-Index based) ---
+    # --- Station-level convective suppression flag (K-Index based) ---
+    # monsoon_break_flag = 1 when K-Index < 25, indicating suppressed convective
+    # potential at the VOBL/43295 station level.
+    #
+    # NOTE: This is NOT the IMD active/break monsoon classification (Rajeevan et al. 2010),
+    # which is defined for the monsoon core zone (central India, 18-28N) using GPCP/TRMM
+    # rainfall anomalies — a definition physically inappropriate for the South Peninsula.
+    # Zero break spells are observed at Bengaluru under that national-scale classification.
+    # The Rajeevan active/break feature was explicitly removed from this model per guidance
+    # from Dr. Geeta Agnihotri (Scientist F, IMD). This K-Index threshold is independently
+    # derived from VOBL radiosonde climatology and is scientifically valid for local use.
     if "K_INDEX" in df.columns:
         df["monsoon_break_flag"] = (df["K_INDEX"] < 25).astype(int)
 

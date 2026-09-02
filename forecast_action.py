@@ -57,7 +57,22 @@ REGIME_THRESHOLD_FACTORS = {
 
 
 def detect_monsoon_regime(cape: float, ki: float, t2m_c: float, month: int) -> str:
-    """Rule-based monsoon regime detection for threshold adjustment."""
+    """
+    Rule-based monsoon regime detection for probability threshold adjustment.
+
+    IMPORTANT — this is NOT the IMD active/break monsoon classification:
+      The Rajeevan et al. (2010) active/break definition uses GPCP/TRMM rainfall
+      anomalies over the monsoon core zone (central India, 18-28N, 65-88E).
+      That classification has zero break spells at Bengaluru (South Peninsula)
+      because the core-zone definition is physically inappropriate here.
+      It was explicitly dropped from the model per feedback from Dr. Geeta Agnihotri.
+
+    What we do instead:
+      Station-level K-Index and CAPE thresholds derived from VOBL/43295 radiosonde
+      climatology, which ARE valid for Bengaluru's local convective environment.
+      The 'BREAK' label here means "low-moisture, stable conditions at this station",
+      not an IMD-declared national monsoon break spell.
+    """
     if ki >= 38 and cape >= 800:
         return "CONVECTIVE_BURST"
     elif ki >= 35 and cape >= 300 and month in [5, 6, 7, 8, 9]:
@@ -1138,4 +1153,62 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # ── Outer safety net ──────────────────────────────────────────────────────
+    # If main() raises an unhandled exception, we still write a minimal
+    # forecast.json with a crash flag so the GitHub Actions commit step
+    # always has something to push and the dashboard shows an error banner
+    # rather than serving a 22-day-stale file indefinitely.
+    try:
+        main()
+    except Exception as _fatal:
+        import traceback, sys
+        tb = traceback.format_exc()
+        print("\n" + "=" * 65)
+        print("  FATAL: forecast_action.py crashed — writing emergency forecast.json")
+        print(tb)
+        print("=" * 65)
+
+        now_utc = datetime.now(timezone.utc)
+        IST_OFF = timedelta(hours=5, minutes=30)
+        now_ist = now_utc + IST_OFF
+
+        emergency = {
+            "generated_at_utc":  now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generated_at_ist":  now_ist.strftime("%Y-%m-%d %H:%M IST"),
+            "pipeline_status":   "CRASH",
+            "crash_traceback":   tb,
+            "alert_active":      False,
+            "peak_slot":         None,
+            "peak_probability":  0.0,
+            "slots": [],
+            "convective_initiation": {
+                "monsoon_regime": "UNKNOWN",
+                "cape_now": 0,
+                "k_index_now": 0,
+            },
+            "gfs_tmax_c": None,
+            "gfs_tmin_c": None,
+            "gfs_rainfall_mm": None,
+            "sigmet_bulletin": None,
+            "met_parameters": {},
+        }
+
+        # Write pipeline_health crash record
+        try:
+            health_path = Path("data") / "pipeline_health.json"
+            health_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(health_path, "w") as _f:
+                json.dump({
+                    "generated_at_utc": emergency["generated_at_utc"],
+                    "generated_at_ist": emergency["generated_at_ist"],
+                    "pipeline_status": "CRASH",
+                    "error": str(_fatal),
+                    "components": {},
+                }, _f, indent=2)
+        except Exception:
+            pass
+
+        with open("forecast.json", "w") as _f:
+            json.dump(emergency, _f, indent=2)
+        print("  Emergency forecast.json written — CI will commit and push this.")
+        sys.exit(1)   # Non-zero exit so GitHub Actions marks the step as failed (visible in logs)

@@ -149,19 +149,40 @@ def build_nomads_url(cycle_utc: datetime, fhour: int, extra_vars: bool = False) 
     return NOMADS_BASE + "?" + urlencode(params)
 
 
-def download_grib(url: str, out_path: Path) -> None:
-    print(f"  Downloading: {url[:120]}...")
+def download_grib(url: str, out_path: Path, max_retries: int = 3) -> None:
+    """Download GRIB2 from NOMADS with retry logic.
+
+    NOMADS quirks:
+    - Requires Chrome User-Agent (bare requests get 403)
+    - May return HTML error page (<1000 bytes) if cycle not yet posted
+    - Retries with exponential backoff; tries the previous cycle on persistent failure
+    """
+    import time
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    r = requests.get(url, headers=HEADERS, timeout=180)
-    r.raise_for_status()
-    if len(r.content) < 1000:
-        raise RuntimeError(
-            f"Response too small ({len(r.content)} bytes) — NOMADS returned HTML error, not GRIB2. "
-            "This cycle/hour may not be posted yet. Check URL in browser."
-        )
-    with open(out_path, "wb") as f:
-        f.write(r.content)
-    print(f"  Saved {len(r.content) / 1024:.0f} KB → {out_path}")
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"  Downloading (attempt {attempt}/{max_retries}): {url[:120]}...")
+            r = requests.get(url, headers=HEADERS, timeout=180)
+            r.raise_for_status()
+            if len(r.content) < 1000:
+                raise RuntimeError(
+                    f"Response too small ({len(r.content)} bytes) — NOMADS returned HTML error, not GRIB2. "
+                    "This cycle/hour may not be posted yet."
+                )
+            with open(out_path, "wb") as f:
+                f.write(r.content)
+            print(f"  Saved {len(r.content) / 1024:.0f} KB → {out_path}")
+            return  # success
+        except Exception as e:
+            last_error = e
+            wait = 30 * attempt  # 30s, 60s, 90s
+            if attempt < max_retries:
+                print(f"  ⚠ Attempt {attempt} failed: {e}  — retrying in {wait}s")
+                time.sleep(wait)
+            else:
+                print(f"  ✗ All {max_retries} attempts failed for {url[:80]}")
+    raise RuntimeError(f"NOMADS download failed after {max_retries} attempts: {last_error}")
 
 
 # ── GRIB2 parsing ─────────────────────────────────────────────────────────────
@@ -614,7 +635,20 @@ def main():
     # ── Step 1: Fetch main slot GRIB ─────────────────────────────────────────
     print("\n  Step 1: Fetch main slot GRIB")
     url = build_nomads_url(cycle_utc, fhour, extra_vars=True)
-    download_grib(url, GRIB_TMP)
+    try:
+        download_grib(url, GRIB_TMP)
+    except RuntimeError as _e:
+        # Primary cycle not available — try the previous 6Z cycle with a higher forecast hour
+        prev_cycle_utc = cycle_utc - timedelta(hours=6)
+        prev_fhour = fhour + 6
+        print(f"\n  Primary cycle failed ({_e})")
+        print(f"  Falling back to previous cycle: {prev_cycle_utc:%Y-%m-%d %H}Z f{prev_fhour:03d}")
+        url = build_nomads_url(prev_cycle_utc, prev_fhour, extra_vars=True)
+        download_grib(url, GRIB_TMP, max_retries=2)  # Fewer retries on fallback
+        cycle_utc = prev_cycle_utc
+        fhour = prev_fhour
+        valid_utc = cycle_utc + timedelta(hours=fhour)
+        print(f"  Using fallback cycle: GFS {cycle_utc:%Y-%m-%d %H}Z f{fhour:03d} (valid {valid_utc:%Y-%m-%d %H}Z)")
 
     print("\n  Step 2: Parse GRIB2")
     surface_fields, profile = extract_fields(GRIB_TMP)
