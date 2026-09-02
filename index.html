@@ -1117,32 +1117,43 @@
           style: {
             version: 8,
             sources: {
-              'esri-sat': {
+              'topo': {
                 type: 'raster',
-                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'],
                 tileSize: 256,
-                attribution: '© Esri, Maxar, Earthstar Geographics'
+                attribution: '© Esri, HERE, Garmin, FAO, NOAA, USGS'
               },
-              'esri-labels': {
-                type: 'raster',
-                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}'],
-                tileSize: 256
+              'terrain-dem': {
+                type: 'raster-dem',
+                tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                encoding: 'terrarium',
+                maxzoom: 15
               }
             },
             layers: [
-              { id: 'satellite', type: 'raster', source: 'esri-sat', paint: { 'raster-opacity': 0.92, 'raster-brightness-min': 0.05, 'raster-brightness-max': 0.85, 'raster-saturation': -0.15, 'raster-contrast': 0.08 } },
-              { id: 'labels', type: 'raster', source: 'esri-labels', paint: { 'raster-opacity': 0.85 } }
+              { id: 'topo-base', type: 'raster', source: 'topo', paint: { 'raster-opacity': 1.0 } }
             ]
           },
           center: [VOBL.lng, VOBL.lat],
-          zoom: 10,
-          pitch: 45,
-          bearing: -10,
+          zoom: 9,
+          pitch: 52,
+          bearing: -15,
           antialias: true,
         });
         mapRef.current = map;
         map.on('error', () => setMapError(true));
         map.on('load', () => {
+          // 3D terrain
+          map.setTerrain({ source: 'terrain-dem', exaggeration: 1.6 });
+          // Atmosphere sky
+          map.addLayer({ id: 'sky', type: 'sky', paint: {
+            'sky-type': 'atmosphere',
+            'sky-atmosphere-sun': [0, 80],
+            'sky-atmosphere-sun-intensity': 5,
+            'sky-atmosphere-color': 'rgba(10,20,40,1)',
+            'sky-horizon-blend': 0.4
+          }});
           map.addSource('storm-heat', { type: 'geojson', data: buildHeatmapGeoJSON(peakProb) });
           map.addLayer({
             id: 'storm-heat-layer', type: 'heatmap', source: 'storm-heat',
