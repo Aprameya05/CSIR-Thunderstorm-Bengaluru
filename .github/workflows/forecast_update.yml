@@ -36,7 +36,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-
+          
+      - name: Reset stale data files
+        run: python clean_stale_data.py
+        
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
