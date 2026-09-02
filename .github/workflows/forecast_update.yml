@@ -1,5 +1,4 @@
 name: Update Forecast JSON
-
 # ── Cron schedule (UTC) ──────────────────────────────────────────────────────
 # 4 runs per day, one per slot (IST = UTC + 5:30).
 # Each run fires ~15 min before the slot window opens, after NOMADS posting.
@@ -11,7 +10,6 @@ name: Update Forecast JSON
 #
 # Plus an extra evening run at 16:15 UTC (21:45 IST) for the public dashboard
 # refresh after the peak afternoon slot.
-
 on:
   schedule:
     - cron: "45 17 * * *"   # Slot 0  — 23:15 IST (prev-day 06Z cycle)
@@ -25,11 +23,9 @@ on:
         description: "Force a specific slot (0-3, leave empty for auto)"
         required: false
         default: ""
-
 jobs:
   update-forecast:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,12 +41,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-
       - name: Install system libs
         run: |
           sudo apt-get update -q
           sudo apt-get install -y libeccodes-dev libgeos-dev 2>/dev/null || true
-
       - name: Install dependencies
         run: |
           pip install --upgrade pip
@@ -72,7 +66,6 @@ jobs:
             "scipy>=1.12.0" \
             "boto3>=1.34.0" \
             "pyproj>=3.6.0"
-
       - name: Install Himawari dependencies
         run: |
           pip install \
@@ -80,11 +73,9 @@ jobs:
             "dask>=2024.1.0" \
             "trollimage>=1.8.0"
         continue-on-error: true
-
       - name: Show library versions
         run: |
           python -c "import sklearn,xgboost,joblib,shap; print(f'sklearn={sklearn.__version__} xgb={xgboost.__version__} joblib={joblib.__version__} shap={shap.__version__}')"
-
       - name: Fetch GFS real-time data
         run: |
           SLOT_ARG=""
@@ -94,11 +85,9 @@ jobs:
           python gfs_fetcher.py $SLOT_ARG || echo "GFS fetch failed — pipeline will use climatology defaults"
           [ -f data/gfs_realtime_43295.csv ] && head -2 data/gfs_realtime_43295.csv || echo "No GFS CSV"
         continue-on-error: true
-
       - name: Fetch Himawari-9 satellite data
         run: python fetch_himawari_realtime.py
         continue-on-error: true
-
       - name: Run forecast pipeline
         run: |
           SLOT_ARG=""
@@ -121,21 +110,24 @@ jobs:
               if age > 3:
                   print('WARNING: forecast.json older than 3h')
           "
-
       - name: Fetch live METAR (VOBL)
         run: python fetch_metar.py
         continue-on-error: true
-
       - name: Compute real-time SHAP
         run: python compute_realtime_shap.py
         continue-on-error: true
-
       - name: Run daily verification
         run: python verify_today.py
         continue-on-error: true
-
       - name: Populate skill scores
         run: python populate_skill_scores.py
+        continue-on-error: true
+
+      - name: Send WhatsApp alerts
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          WORKER_ADMIN_KEY: ${{ secrets.WORKER_ADMIN_KEY }}
+        run: python send_alerts.py
         continue-on-error: true
 
       - name: Push alert notification
@@ -173,16 +165,19 @@ jobs:
           fi
         continue-on-error: true
 
+      - name: Inject Worker URL into dashboard
+        run: |
+          sed -i "s|WORKER_URL_PLACEHOLDER|${{ secrets.WORKER_URL }}|g" index.html
+          echo "Worker URL injected into index.html"
+
       - name: Commit and push forecast outputs
         run: |
           git config --global user.name  "CSIR Forecast Bot"
           git config --global user.email "bot@csir-thunderstorm.in"
-
           cp forecast.json /tmp/forecast_generated.json
           git pull origin main --no-rebase || true
           cp /tmp/forecast_generated.json forecast.json
           git add forecast.json
-
           git add \
             data/gfs_realtime_43295.csv \
             data/upperair_realtime_43295.csv \
@@ -196,10 +191,8 @@ jobs:
             data/forecast_log.csv \
             data/alert_history.json \
             2>/dev/null || true
-
           git diff --staged --quiet || \
             git commit -m "auto: forecast $(date -u '+%Y-%m-%d %H:%M UTC')"
-
           git push origin main --force-with-lease || git push origin main || {
             echo "Push failed — attempting rebase and retry"
             git pull origin main --rebase
@@ -208,7 +201,6 @@ jobs:
             git diff --staged --quiet || git commit -m "auto: forecast retry $(date -u '+%Y-%m-%d %H:%M UTC')"
             git push origin main
           }
-
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
