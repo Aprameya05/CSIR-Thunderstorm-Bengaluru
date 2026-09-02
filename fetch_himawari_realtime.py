@@ -415,11 +415,32 @@ def main():
         log.warning(f"Latest slot empty — trying {fallback.strftime('%H:%M')} UTC")
         result = try_scene(fallback)
         if result is None:
+            # Both S3 and JAXA unavailable (common in CI environments).
+            # Write a "data unavailable" placeholder with today's timestamp so
+            # himawari_realtime.json never stays stale from a previous run.
             log.error(
                 "\n✗ Both sources failed for both slots.\n"
-                "  Run: python fetch_himawari_realtime.py --diag\n"
-                "  to check which hosts your network allows."
+                "  Writing placeholder record so himawari_realtime.json stays current."
             )
+            now_utc = datetime.datetime.utcnow()
+            ist_dt  = now_utc + datetime.timedelta(hours=5, minutes=30)
+            placeholder = {
+                "timestamp_utc":         now_utc.strftime("%Y-%m-%dT%H:%M:%S"),
+                "timestamp_ist":         ist_dt.strftime("%Y-%m-%dT%H:%M:%S"),
+                "vobl_bt_celsius":       None,
+                "min_bt_50km":           None,
+                "mean_bt_50km":          None,
+                "cold_pixels_count":     0,
+                "storm_detected":        False,
+                "nearest_pixel_dist_km": None,
+                "threshold_celsius":     THRESHOLD_C,
+                "data_source":           "Himawari-9 — UNAVAILABLE (S3/JAXA unreachable)",
+                "bt_trend_1h":           None,
+            }
+            OUT_DIR.mkdir(exist_ok=True)
+            with open(OUT_FILE, "w") as f:
+                json.dump(placeholder, f, indent=2)
+            log.info(f"Placeholder written → {OUT_FILE}")
             return 1
 
     bt = result["bt"]

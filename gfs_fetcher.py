@@ -752,8 +752,12 @@ def main():
     if not args.skip_multiday:
         print("\n  Step 6: Fetch multi-day outlook (f024/f048)")
         outlook = fetch_multiday_outlook(cycle_utc, today_str)
-        if outlook:
-            write_multiday_json(outlook, today_str)
+        # Always call write_multiday_json even on empty outlook so the staleness
+        # filter removes entries older than today_str from the JSON.
+        # Without this, a failed fetch leaves stale future-day entries forever.
+        write_multiday_json(outlook or [], today_str)
+        if not outlook:
+            print("  ⚠ Multiday fetch returned no data — stale entries cleaned, JSON reset to empty")
     else:
         print("\n  Step 6: Skipping multiday fetch (--skip-multiday)")
 
