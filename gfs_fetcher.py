@@ -573,6 +573,8 @@ def write_multiday_json(outlook: list[dict], today_str: str) -> None:
         try:
             with open(OUT_PATH_MULTIDAY) as f:
                 existing = json.load(f)
+            if not isinstance(existing, list):
+                existing = []  # guardian may have written a dict placeholder; reset
             existing = [e for e in existing if str(e.get("date", "")) >= today_str]
         except Exception:
             existing = []

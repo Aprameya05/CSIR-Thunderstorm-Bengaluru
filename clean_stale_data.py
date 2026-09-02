@@ -105,17 +105,9 @@ def placeholder_verification():
 
 
 def placeholder_multiday():
-    """Empty multiday list — gfs_fetcher will repopulate this run."""
-    utc_s, ist_s, now_utc = now_strings()
-    today = (now_utc + IST_OFF).strftime("%Y-%m-%d")
-    return {
-        "generated_at_utc": utc_s,
-        "generated_at_ist": ist_s,
-        "station": "VOBL",
-        "station_id": "43295",
-        "outlook": [],
-        "note": f"reset by clean_stale_data guardian — outlook cleared for {today}",
-    }
+    """Empty multiday list — gfs_fetcher writes a plain JSON list, not a dict.
+    Must return [] so write_multiday_json can merge correctly."""
+    return []
 
 
 # ── File registry ─────────────────────────────────────────────────────────────
@@ -128,7 +120,7 @@ FILE_REGISTRY = {
     "pipeline_health.json":   ("generated_at_utc", placeholder_pipeline_health),
     "skill_scores.json":      ("generated_at", placeholder_skill_scores),
     "verification_today.json":("generated_at", placeholder_verification),
-    "gfs_multiday_43295.json":("generated_at_utc", placeholder_multiday),
+    "gfs_multiday_43295.json":(None,               placeholder_multiday),  # plain list — use mtime
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -215,8 +207,9 @@ def main():
         if not args.dry_run:
             placeholder = factory()
             fpath.write_text(json.dumps(placeholder, indent=2))
-            print(f"[guardian]    → reset to placeholder with timestamp "
-                  f"{placeholder.get(ts_key or 'generated_at_utc', '?')}")
+            ts_display = (placeholder.get(ts_key or 'generated_at_utc', '?')
+                          if isinstance(placeholder, dict) else 'empty list')
+            print(f"[guardian]    → reset to placeholder: {ts_display}")
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print()
