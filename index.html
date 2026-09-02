@@ -999,10 +999,11 @@
       const mapContainerRef = React.useRef(null);
       const mapRef = React.useRef(null);
       const [mapReady, setMapReady] = React.useState(false);
+      const [mapError, setMapError] = React.useState(false);
 
-      const peakProb = liveData?.peak_probability ?? Math.max(...slots.map(s => s.ts_probability || 0));
+      const peakProb = liveData?.peak_probability ?? (slots.length > 0 ? Math.max(...slots.map(s => s.ts_probability || 0)) : 0);
       const alertActive = liveData?.alert_active ?? (peakProb >= 0.35);
-      const peakSlot = slots.reduce((a, b) => (a.ts_probability > b.ts_probability ? a : b), slots[0]);
+      const peakSlot = slots.length > 0 ? slots.reduce((a, b) => (a.ts_probability > b.ts_probability ? a : b), slots[0]) : null;
       const riskColor = mapRiskColor(peakProb);
       const riskLabel = mapRiskLabel(peakProb);
 
@@ -1010,201 +1011,232 @@
       const ci = liveData?.convective_initiation || {};
       const sat = liveData?.satellite?.himawari9 || {};
       const genAt = liveData?.generated_at || lastUpdated || '—';
+      const ciRisk = ci.initiation_risk || 'LOW';
+      const ciColor = ciRisk === 'HIGH' ? '#ef5350' : ciRisk === 'MODERATE' ? '#ff9800' : '#4caf50';
 
-      // Init map once
+      const SLOT_NAMES = ['LATE NIGHT', 'MORNING', 'AFTERNOON', 'EVENING'];
+      const SLOT_TIMES = ['0001–0600', '0601–1200', '1201–1800', '1801–2400'];
+
       React.useEffect(() => {
         if (!mapContainerRef.current || mapRef.current || typeof maplibregl === 'undefined') return;
         const map = new maplibregl.Map({
           container: mapContainerRef.current,
-          style: 'https://tiles.openfreemap.org/styles/liberty',
+          style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
           center: [VOBL.lng, VOBL.lat],
-          zoom: 10.5,
-          pitch: 48,
-          bearing: -15,
+          zoom: 10,
+          pitch: 40,
+          bearing: -10,
           antialias: true,
         });
         mapRef.current = map;
-
+        map.on('error', () => setMapError(true));
         map.on('load', () => {
-          // Heatmap layer
-          map.addSource('storm-heat', {
-            type: 'geojson',
-            data: buildHeatmapGeoJSON(peakProb),
-          });
+          map.addSource('storm-heat', { type: 'geojson', data: buildHeatmapGeoJSON(peakProb) });
           map.addLayer({
-            id: 'storm-heat-layer',
-            type: 'heatmap',
-            source: 'storm-heat',
+            id: 'storm-heat-layer', type: 'heatmap', source: 'storm-heat',
             paint: {
               'heatmap-weight': ['get', 'intensity'],
-              'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 1.2, 13, 2.5],
+              'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 1.5, 13, 3.5],
               'heatmap-color': [
                 'interpolate', ['linear'], ['heatmap-density'],
                 0, 'rgba(0,0,0,0)',
-                0.2, 'rgba(56,189,248,0.3)',
-                0.4, 'rgba(255,213,0,0.55)',
-                0.65, 'rgba(255,152,0,0.75)',
-                0.85, 'rgba(239,83,80,0.88)',
-                1, 'rgba(180,0,0,0.95)',
+                0.15, 'rgba(0,220,180,0.3)',
+                0.35, 'rgba(56,189,248,0.55)',
+                0.55, 'rgba(255,213,0,0.72)',
+                0.75, 'rgba(255,100,0,0.88)',
+                1, 'rgba(220,0,0,0.96)',
               ],
-              'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 28, 13, 55],
-              'heatmap-opacity': 0.82,
+              'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 38, 13, 75],
+              'heatmap-opacity': 0.88,
             },
           });
-
-          // VOBL airport marker ring
-          map.addSource('vobl-point', {
-            type: 'geojson',
-            data: { type: 'Feature', geometry: { type: 'Point', coordinates: [VOBL.lng, VOBL.lat] }, properties: {} },
+          map.addSource('vobl-src', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Point', coordinates: [VOBL.lng, VOBL.lat] }, properties: {} } });
+          map.addLayer({ id: 'vobl-outer', type: 'circle', source: 'vobl-src',
+            paint: { 'circle-radius': 24, 'circle-color': 'rgba(56,189,248,0.08)', 'circle-stroke-width': 2, 'circle-stroke-color': '#38bdf8' }
           });
-          map.addLayer({ id: 'vobl-ring-outer', type: 'circle', source: 'vobl-point',
-            paint: { 'circle-radius': 18, 'circle-color': 'rgba(56,189,248,0.12)', 'circle-stroke-width': 2, 'circle-stroke-color': '#38bdf8' }
+          map.addLayer({ id: 'vobl-inner', type: 'circle', source: 'vobl-src',
+            paint: { 'circle-radius': 7, 'circle-color': alertActive ? '#ef5350' : '#38bdf8', 'circle-stroke-width': 2.5, 'circle-stroke-color': '#fff' }
           });
-          map.addLayer({ id: 'vobl-ring-inner', type: 'circle', source: 'vobl-point',
-            paint: { 'circle-radius': 6, 'circle-color': '#38bdf8', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }
-          });
-
-          // VOBL popup
-          new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 28 })
+          new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 32 })
             .setLngLat([VOBL.lng, VOBL.lat])
-            .setHTML(`<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:#040711;padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);">⚡ VOBL / Station 43295</div>`)
+            .setHTML(`<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:rgba(4,7,17,0.95);padding:8px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.35);white-space:nowrap">✈ VOBL / Station 43295<br><span style="color:${alertActive ? '#ef5350' : '#4caf50'};font-size:10px">${riskLabel} RISK · ${(peakProb*100).toFixed(0)}%</span></div>`)
             .addTo(map);
-
+          map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
           setMapReady(true);
         });
-
-        map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-
-        return () => { map.remove(); mapRef.current = null; };
+        return () => { if (mapRef.current) { map.remove(); mapRef.current = null; } };
       }, []);
 
-      // Update heatmap when probability changes
       React.useEffect(() => {
         if (!mapRef.current || !mapReady) return;
         const src = mapRef.current.getSource('storm-heat');
         if (src) src.setData(buildHeatmapGeoJSON(peakProb));
       }, [peakProb, mapReady]);
 
-      const slotColors = ['#7e57c2','#29b6f6','#ef5350','#ff9800'];
-      const slotLabels = ['00-06h','06-12h','12-18h','18-24h'];
-
       return (
-        <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0, background: '#040711' }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0, background: '#080c18', overflow: 'hidden' }}>
           {/* MAP */}
           <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
 
-          {/* Dark overlay for readability */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(4,7,17,0.88) 0%, rgba(4,7,17,0.55) 38%, rgba(4,7,17,0) 60%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(4,7,17,0.9) 0%, rgba(4,7,17,0) 35%)', pointerEvents: 'none' }} />
+          {/* Gradient vignettes */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(4,7,17,0.93) 0%, rgba(4,7,17,0.65) 240px, rgba(4,7,17,0.1) 420px)', pointerEvents: 'none', zIndex: 2 }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 175, background: 'linear-gradient(to top, rgba(4,7,17,1) 0%, rgba(4,7,17,0) 100%)', pointerEvents: 'none', zIndex: 2 }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to bottom, rgba(4,7,17,0.7) 0%, rgba(4,7,17,0) 100%)', pointerEvents: 'none', zIndex: 2 }} />
 
-          {/* TOP STATUS BAR */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'rgba(4,7,17,0.72)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(56,189,248,0.1)', zIndex: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: '#607d8b', fontFamily: 'monospace' }}>CSIR TS NOWCAST</span>
-              <span style={{ fontSize: 10, color: '#263d55', fontFamily: 'monospace' }}>·</span>
-              <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#546e7a' }}>VOBL / 43295</span>
-              <span style={{ fontSize: 10, color: '#263d55', fontFamily: 'monospace' }}>·</span>
-              <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#38bdf8', opacity: 0.7 }}>{genAt}</span>
+          {/* ── TOP BAR ── */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', background: 'rgba(4,7,17,0.88)', backdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(56,189,248,0.1)', zIndex: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 4, color: '#38bdf8', fontFamily: 'monospace' }}>CSIR TS NOWCAST</span>
+              <span style={{ fontSize: 9, color: '#172338', fontFamily: 'monospace' }}>|</span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#455a64' }}>VOBL / IMD 43295</span>
+              <span style={{ fontSize: 9, color: '#172338', fontFamily: 'monospace' }}>|</span>
+              <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#546e7a' }}>{genAt}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {isLiveData && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#4caf50', fontFamily: 'monospace', background: 'rgba(76,175,80,0.12)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(76,175,80,0.25)' }}>● LIVE</span>}
-              {fetchLatencyMs && <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#607d8b' }}>{fetchLatencyMs}ms</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {alertActive && <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 2, color: '#ef5350', fontFamily: 'monospace', background: 'rgba(239,83,80,0.12)', padding: '3px 10px', borderRadius: 6, border: '1px solid rgba(239,83,80,0.3)', animation: 'pulse 2s infinite' }}>⚡ ALERT</span>}
+              {isLiveData && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#4caf50', fontFamily: 'monospace', background: 'rgba(76,175,80,0.12)', padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(76,175,80,0.25)' }}>● LIVE</span>}
+              {fetchLatencyMs && <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#37474f' }}>{fetchLatencyMs}ms</span>}
             </div>
           </div>
 
-          {/* LEFT PANEL */}
-          <div style={{ position: 'absolute', top: 44, left: 0, bottom: 140, width: 230, padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 10, zIndex: 10, overflowY: 'auto' }}>
-            {/* Peak probability */}
-            <div style={{ background: 'rgba(6,10,20,0.85)', border: `1px solid ${alertActive ? 'rgba(239,83,80,0.4)' : 'rgba(56,189,248,0.15)'}`, borderRadius: 14, padding: '14px 14px' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 6 }}>PEAK PROBABILITY</div>
-              <div style={{ fontSize: 44, fontWeight: 900, fontFamily: 'monospace', color: riskColor, lineHeight: 1 }}>{(peakProb * 100).toFixed(0)}<span style={{ fontSize: 18 }}>%</span></div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: riskColor, marginTop: 4 }}>{riskLabel} RISK</div>
-              {alertActive && (
-                <div style={{ marginTop: 8, background: 'rgba(239,83,80,0.12)', border: '1px solid rgba(239,83,80,0.35)', borderRadius: 8, padding: '6px 10px', fontSize: 9, fontWeight: 700, letterSpacing: 1, color: '#ef5350', fontFamily: 'monospace' }}>
-                  ⚡ ALERT ACTIVE · SLOT {peakSlot?.slot ?? '?'}
-                </div>
-              )}
+          {/* ── LEFT PANEL ── */}
+          <div style={{ position: 'absolute', top: 50, left: 12, bottom: 155, width: 218, display: 'flex', flexDirection: 'column', gap: 7, zIndex: 10, overflowY: 'auto' }}>
+
+            {/* Peak Prob */}
+            <div style={{ background: 'rgba(5,8,18,0.9)', backdropFilter: 'blur(16px)', border: `1px solid ${alertActive ? 'rgba(239,83,80,0.55)' : 'rgba(56,189,248,0.22)'}`, borderRadius: 15, padding: '15px 16px', boxShadow: alertActive ? '0 0 32px rgba(239,83,80,0.15)' : '0 0 20px rgba(56,189,248,0.06)' }}>
+              <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 3.5, color: '#37474f', fontFamily: 'monospace', marginBottom: 10 }}>PEAK PROBABILITY</div>
+              <div style={{ fontSize: 52, fontWeight: 900, fontFamily: 'monospace', color: riskColor, lineHeight: 1, textShadow: `0 0 40px ${riskColor}55` }}>
+                {(peakProb * 100).toFixed(0)}<span style={{ fontSize: 22, opacity: 0.75 }}>%</span>
+              </div>
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: riskColor, boxShadow: `0 0 10px ${riskColor}` }} />
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 2.5, color: riskColor, fontFamily: 'monospace' }}>{riskLabel} RISK</span>
+              </div>
+              <div style={{ marginTop: 10, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ height: 4, width: `${Math.max(peakProb * 100, 1.5)}%`, background: `linear-gradient(90deg, rgba(56,189,248,0.7), ${riskColor})`, borderRadius: 4, transition: 'width 1s ease' }} />
+              </div>
             </div>
 
-            {/* GFS Indices */}
-            <div style={{ background: 'rgba(6,10,20,0.85)', border: '1px solid rgba(56,189,248,0.12)', borderRadius: 14, padding: '12px 14px' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 8 }}>GFS STABILITY</div>
-              {[
-                { label: 'CAPE', value: gfs.ua_cape_jkg != null ? `${Math.round(gfs.ua_cape_jkg)} J/kg` : '—' },
-                { label: 'K-INDEX', value: gfs.ua_k_index != null ? gfs.ua_k_index.toFixed(1) : '—' },
-                { label: 'LI', value: gfs.ua_lifted_index != null ? gfs.ua_lifted_index.toFixed(1) : '—' },
-                { label: 'TT', value: gfs.ua_totals_totals != null ? gfs.ua_totals_totals.toFixed(1) : '—' },
-              ].map(r => (
-                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>{r.label}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#cfd8dc', fontFamily: 'monospace' }}>{r.value}</span>
-                </div>
-              ))}
+            {/* GFS Stability */}
+            <div style={{ background: 'rgba(5,8,18,0.9)', backdropFilter: 'blur(16px)', border: '1px solid rgba(56,189,248,0.12)', borderRadius: 15, padding: '12px 14px' }}>
+              <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 3.5, color: '#37474f', fontFamily: 'monospace', marginBottom: 10 }}>GFS STABILITY</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {[
+                  { k: 'CAPE', v: gfs.ua_cape_jkg != null ? `${Math.round(gfs.ua_cape_jkg)}` : '—', u: 'J/kg', hi: (gfs.ua_cape_jkg || 0) > 1500 },
+                  { k: 'K-IDX', v: gfs.ua_k_index != null ? gfs.ua_k_index.toFixed(1) : '—', u: '', hi: (gfs.ua_k_index || 0) > 35 },
+                  { k: 'LI', v: gfs.ua_lifted_index != null ? gfs.ua_lifted_index.toFixed(1) : '—', u: '', hi: (gfs.ua_lifted_index || 0) < -3 },
+                  { k: 'TT', v: gfs.ua_totals_totals != null ? gfs.ua_totals_totals.toFixed(1) : '—', u: '', hi: (gfs.ua_totals_totals || 0) > 50 },
+                ].map(r => (
+                  <div key={r.k} style={{ background: 'rgba(0,0,0,0.35)', borderRadius: 9, padding: '7px 9px', border: r.hi ? '1px solid rgba(255,152,0,0.3)' : '1px solid transparent' }}>
+                    <div style={{ fontSize: 8, color: '#37474f', fontFamily: 'monospace', marginBottom: 3 }}>{r.k}</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: r.hi ? '#ff9800' : '#78909c', fontFamily: 'monospace' }}>{r.v}<span style={{ fontSize: 8, opacity: 0.6 }}>{r.u}</span></div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Satellite */}
             {sat.available && (
-              <div style={{ background: 'rgba(6,10,20,0.85)', border: '1px solid rgba(126,87,194,0.2)', borderRadius: 14, padding: '12px 14px' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 8 }}>HIMAWARI-9</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>MIN BT</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: sat.storm_detected ? '#ef5350' : '#cfd8dc', fontFamily: 'monospace' }}>{sat.min_bt_50km != null ? `${sat.min_bt_50km.toFixed(1)}°C` : '—'}</span>
+              <div style={{ background: 'rgba(5,8,18,0.9)', backdropFilter: 'blur(16px)', border: '1px solid rgba(126,87,194,0.2)', borderRadius: 15, padding: '12px 14px' }}>
+                <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 3.5, color: '#37474f', fontFamily: 'monospace', marginBottom: 10 }}>HIMAWARI-9 IR</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 9, color: '#455a64', fontFamily: 'monospace' }}>MIN BT</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: sat.storm_detected ? '#ef5350' : '#78909c', fontFamily: 'monospace' }}>{sat.min_bt_50km != null ? `${sat.min_bt_50km.toFixed(1)}°C` : '—'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>BT TREND</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: sat.bt_trend_1h < 0 ? '#ef5350' : '#4caf50', fontFamily: 'monospace' }}>{sat.bt_trend_1h != null ? `${sat.bt_trend_1h > 0 ? '+' : ''}${sat.bt_trend_1h.toFixed(1)}°` : '—'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 9, color: '#455a64', fontFamily: 'monospace' }}>BT TREND</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: (sat.bt_trend_1h || 0) < 0 ? '#ef5350' : '#4caf50', fontFamily: 'monospace' }}>{sat.bt_trend_1h != null ? `${sat.bt_trend_1h > 0 ? '+' : ''}${sat.bt_trend_1h.toFixed(1)}°/h` : '—'}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace' }}>STORM</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: sat.storm_detected ? '#ef5350' : '#4caf50', fontFamily: 'monospace' }}>{sat.storm_detected ? 'DETECTED' : 'NONE'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: sat.storm_detected ? 'rgba(239,83,80,0.1)' : 'rgba(76,175,80,0.07)', borderRadius: 9, padding: '6px 9px', border: `1px solid ${sat.storm_detected ? 'rgba(239,83,80,0.25)' : 'rgba(76,175,80,0.2)'}` }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: sat.storm_detected ? '#ef5350' : '#4caf50', boxShadow: sat.storm_detected ? '0 0 8px #ef5350' : '0 0 8px #4caf50' }} />
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1, color: sat.storm_detected ? '#ef5350' : '#4caf50', fontFamily: 'monospace' }}>{sat.storm_detected ? 'DEEP CONVECTION' : 'NO STORM CELL'}</span>
                 </div>
               </div>
             )}
 
-            {/* Monsoon regime */}
-            {ci.monsoon_regime && (
-              <div style={{ background: 'rgba(6,10,20,0.85)', border: '1px solid rgba(56,189,248,0.1)', borderRadius: 14, padding: '10px 14px' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: '#607d8b', fontFamily: 'monospace', marginBottom: 4 }}>REGIME</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace' }}>{ci.monsoon_regime}</div>
-                {ci.cape_trend && <div style={{ fontSize: 9, color: '#546e7a', fontFamily: 'monospace', marginTop: 2 }}>CAPE {ci.cape_trend}</div>}
+            {/* Regime + CI */}
+            {(ci.monsoon_regime || ciRisk) && (
+              <div style={{ background: 'rgba(5,8,18,0.9)', backdropFilter: 'blur(16px)', border: '1px solid rgba(56,189,248,0.1)', borderRadius: 15, padding: '11px 14px' }}>
+                <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 3.5, color: '#37474f', fontFamily: 'monospace', marginBottom: 8 }}>SYNOPTIC REGIME</div>
+                {ci.monsoon_regime && <div style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', fontFamily: 'monospace', marginBottom: 4 }}>{ci.monsoon_regime}</div>}
+                {ci.cape_trend && <div style={{ fontSize: 9, color: '#455a64', fontFamily: 'monospace', marginBottom: 8 }}>CAPE TREND: {ci.cape_trend}</div>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '5px 8px' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: ciColor, boxShadow: `0 0 6px ${ciColor}` }} />
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.5, color: ciColor, fontFamily: 'monospace' }}>CI RISK: {ciRisk}</span>
+                </div>
               </div>
             )}
 
-            {/* Nav shortcuts */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 'auto' }}>
+            {/* Nav */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 'auto' }}>
               {[['FORECAST','📈'],['RADAR MAP','🛰'],['ALERTS','🔔']].map(([tab, icon]) => (
                 <button key={tab} onClick={() => onNavTabChange(tab)}
-                  style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.14)', borderRadius: 9, padding: '7px 10px', fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: '#38bdf8', fontFamily: 'monospace', cursor: 'pointer', textAlign: 'left' }}>
+                  style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.14)', borderRadius: 9, padding: '7px 12px', fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: '#38bdf8', fontFamily: 'monospace', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s' }}>
                   {icon} {tab}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* BOTTOM SLOT CARDS */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, padding: '10px 12px', background: 'rgba(4,7,17,0.85)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(56,189,248,0.08)', zIndex: 10 }}>
-            {slots.slice(0,4).map((s, i) => {
+          {/* ── HEATMAP LEGEND (bottom-right) ── */}
+          <div style={{ position: 'absolute', bottom: 158, right: 52, zIndex: 20, background: 'rgba(4,7,17,0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(56,189,248,0.14)', borderRadius: 13, padding: '11px 14px' }}>
+            <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 3, color: '#37474f', fontFamily: 'monospace', marginBottom: 9 }}>TS PROBABILITY HEATMAP</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {[
+                { grad: 'linear-gradient(90deg,rgba(220,0,0,0.6),rgba(220,0,0,0.9))', label: 'HIGH  ≥55%', c:'#ef5350' },
+                { grad: 'linear-gradient(90deg,rgba(255,100,0,0.5),rgba(255,100,0,0.85))', label: 'MODERATE  35–55%', c:'#ff9800' },
+                { grad: 'linear-gradient(90deg,rgba(255,213,0,0.4),rgba(255,213,0,0.75))', label: 'LOW  15–35%', c:'#fdd835' },
+                { grad: 'linear-gradient(90deg,rgba(56,189,248,0.25),rgba(56,189,248,0.55))', label: 'MINIMAL  <15%', c:'#38bdf8' },
+              ].map(({ grad, label, c }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <div style={{ width: 28, height: 9, borderRadius: 5, background: grad }} />
+                  <span style={{ fontSize: 9, color: '#607d8b', fontFamily: 'monospace' }}>{label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 9, paddingTop: 8, borderTop: '1px solid rgba(56,189,248,0.08)', fontSize: 8, color: '#37474f', fontFamily: 'monospace', lineHeight: 1.6 }}>
+              σ=18km Gaussian · VOBL-centred<br/>13 BLR neighbourhood zones
+            </div>
+          </div>
+
+          {/* ── SLOT CARDS ── */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, padding: '10px 14px 14px', zIndex: 20 }}>
+            {slots.slice(0, 4).map((s, i) => {
               const p = s.ts_probability || 0;
               const col = mapRiskColor(p);
+              const risk = mapRiskLabel(p);
               const isSelected = i === selectedSlotIndex;
+              const isPeak = peakSlot && s.slot_id === peakSlot.slot_id;
               return (
                 <button key={i} onClick={() => onSelectSlot(i)}
-                  style={{ background: isSelected ? 'rgba(56,189,248,0.1)' : 'rgba(6,10,20,0.7)', border: `1px solid ${isSelected ? 'rgba(56,189,248,0.35)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 12, padding: '10px 8px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: '#607d8b', fontFamily: 'monospace', marginBottom: 4 }}>{slotLabels[i]}</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, fontFamily: 'monospace', color: col }}>{(p*100).toFixed(0)}<span style={{fontSize:10}}>%</span></div>
-                  <div style={{ marginTop: 5, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
-                    <div style={{ height: 3, width: `${Math.max(p*100,2)}%`, background: col, borderRadius: 3, transition: 'width 0.5s' }} />
+                  style={{ background: isSelected ? 'rgba(56,189,248,0.1)' : 'rgba(5,8,18,0.88)', backdropFilter: 'blur(14px)', border: `1px solid ${isSelected ? 'rgba(56,189,248,0.45)' : isPeak ? `${col}44` : 'rgba(255,255,255,0.06)'}`, borderRadius: 14, padding: '12px 12px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.25s', boxShadow: isSelected ? `0 0 24px rgba(56,189,248,0.12)` : isPeak ? `0 0 20px ${col}18` : 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 2, color: isSelected ? '#38bdf8' : '#455a64', fontFamily: 'monospace' }}>{SLOT_NAMES[i]}</div>
+                      <div style={{ fontSize: 8, color: '#263d55', fontFamily: 'monospace', marginTop: 2 }}>{SLOT_TIMES[i]} IST</div>
+                    </div>
+                    {isPeak && <span style={{ fontSize: 7, background: `${col}22`, border: `1px solid ${col}55`, borderRadius: 5, padding: '2px 6px', color: col, fontFamily: 'monospace', fontWeight: 800 }}>PEAK</span>}
                   </div>
-                  <div style={{ fontSize: 8, color: isSelected ? '#38bdf8' : '#546e7a', fontFamily: 'monospace', marginTop: 4 }}>{s.label || `SLOT ${i}`}</div>
+                  <div style={{ fontSize: 30, fontWeight: 900, fontFamily: 'monospace', color: col, lineHeight: 1, textShadow: `0 0 18px ${col}44` }}>
+                    {(p * 100).toFixed(0)}<span style={{ fontSize: 12, opacity: 0.65 }}>%</span>
+                  </div>
+                  <div style={{ marginTop: 7, height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: 3, width: `${Math.max(p * 100, 1.5)}%`, background: col, borderRadius: 3, transition: 'width 0.7s ease', opacity: 0.85 }} />
+                  </div>
+                  <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1.5, color: col, fontFamily: 'monospace', marginTop: 6, opacity: 0.85 }}>{risk}</div>
                 </button>
               );
             })}
           </div>
 
-          {/* Map loading fallback */}
-          {!mapReady && (
+          {!mapReady && !mapError && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
-              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#546e7a', letterSpacing: 2 }}>LOADING MAP...</div>
+              <div style={{ fontFamily: 'monospace', color: '#38bdf8', fontSize: 11, letterSpacing: 3, opacity: 0.5 }}>LOADING MAP...</div>
+            </div>
+          )}
+          {mapError && (
+            <div style={{ position: 'absolute', inset: 0, background: '#080c18', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
+              <div style={{ fontFamily: 'monospace', color: '#37474f', fontSize: 10, letterSpacing: 2 }}>MAP TILES UNAVAILABLE</div>
             </div>
           )}
         </div>
