@@ -1182,12 +1182,12 @@
 
       // Keep VOBL popup in sync with real forecast data
       React.useEffect(() => {
-        if (!voblPopupRef.current) return;
+        if (!voblPopupRef.current || !mapReady) return;
         const color = alertActive ? '#ef5350' : peakProb >= 0.15 ? '#ffc107' : '#4caf50';
         voblPopupRef.current.setHTML(
           `<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:rgba(4,7,17,0.95);padding:8px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.35);white-space:nowrap">✈ VOBL / Station 43295<br><span style="color:${color};font-size:10px">${riskLabel} RISK · ${(peakProb*100).toFixed(0)}%</span></div>`
         );
-      }, [peakProb, alertActive, riskLabel]);
+      }, [peakProb, alertActive, riskLabel, mapReady]);
 
       return (
         <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0, background: '#080c18', overflow: 'hidden' }}>
@@ -2367,6 +2367,7 @@
                     // Date.now() is UTC ms; parsed.getTime() is also UTC ms — direct subtraction correct
                     ageHours = (Date.now() - parsed.getTime()) / 3600000;
                     if (ageHours < 2)       { ageLabel = `${Math.round(ageHours * 60)} min ago`; staleLevel = 'ok'; }
+                    else if (ageHours < 7)  { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'ok'; }
                     else if (ageHours < 14) { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'warn'; }
                     else                    { ageLabel = `${ageHours.toFixed(1)} hr ago`;        staleLevel = 'stale'; }
                   }
@@ -5863,7 +5864,7 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
             />
 
             {/* ── STALE DATA BANNER ── */}
-            {dataAgeHours !== null && dataAgeHours > 4 && (
+            {dataAgeHours !== null && dataAgeHours > 7 && (
               <div className="relative z-30 flex items-center justify-between gap-3 px-4 py-2 bg-amber-950/80 border-b border-amber-500/50 font-mono text-xs backdrop-blur-sm">
                 <span className="flex items-center gap-2 text-amber-300">
                   <span className="text-base">⚠</span>
