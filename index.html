@@ -6,14 +6,27 @@
   <title>CSIR Thunderstorm Nowcast System — IMD Station 43295 (Bengaluru Airport VOBL/BLR)</title>
   <meta name="description" content="Operational ATC-Grade AI Thunderstorm Forecasting Dashboard for Kempegowda International Airport Bengaluru. CSIR & IMD Bengaluru.">
 
-  <!-- Unregister stale service workers -->
+  <!-- Kill all service workers and caches — forces latest version for every visitor -->
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(r => r.unregister());
-      });
-    }
+    (function() {
+      // Unregister every SW
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+      }
+      // Nuke every cache entry
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        });
+      }
+    })();
   </script>
+  <!-- Prevent HTTP cache from serving stale HTML -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 
   <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
