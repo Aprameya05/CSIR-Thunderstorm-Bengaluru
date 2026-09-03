@@ -1097,6 +1097,7 @@
     function DashboardOverviewPage({ slots, selectedSlotIndex, onSelectSlot, isLiveData, lastUpdated, liveTime, liveData, onNavTabChange, fetchLatencyMs, mousePos }) {
       const mapContainerRef = React.useRef(null);
       const mapRef = React.useRef(null);
+      const voblPopupRef = React.useRef(null);
       const [mapReady, setMapReady] = React.useState(false);
       const [mapError, setMapError] = React.useState(false);
       const [winW, setWinW] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
@@ -1163,9 +1164,9 @@
           map.addLayer({ id: 'vobl-inner', type: 'circle', source: 'vobl-src',
             paint: { 'circle-radius': 7, 'circle-color': alertActive ? '#ef5350' : '#38bdf8', 'circle-stroke-width': 2.5, 'circle-stroke-color': '#fff' }
           });
-          new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 32 })
+          voblPopupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 32 })
             .setLngLat([VOBL.lng, VOBL.lat])
-            .setHTML(`<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:rgba(4,7,17,0.95);padding:8px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.35);white-space:nowrap">✈ VOBL / Station 43295<br><span style="color:${alertActive ? '#ef5350' : '#4caf50'};font-size:10px">${riskLabel} RISK · ${(peakProb*100).toFixed(0)}%</span></div>`)
+            .setHTML(`<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:rgba(4,7,17,0.95);padding:8px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.35);white-space:nowrap">✈ VOBL / Station 43295<br><span style="color:#4caf50;font-size:10px">LOADING...</span></div>`)
             .addTo(map);
           map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
           setMapReady(true);
@@ -1178,6 +1179,15 @@
         const src = mapRef.current.getSource('storm-heat');
         if (src) src.setData(buildHeatmapGeoJSON(peakProb));
       }, [peakProb, mapReady]);
+
+      // Keep VOBL popup in sync with real forecast data
+      React.useEffect(() => {
+        if (!voblPopupRef.current) return;
+        const color = alertActive ? '#ef5350' : peakProb >= 0.15 ? '#ffc107' : '#4caf50';
+        voblPopupRef.current.setHTML(
+          `<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:rgba(4,7,17,0.95);padding:8px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.35);white-space:nowrap">✈ VOBL / Station 43295<br><span style="color:${color};font-size:10px">${riskLabel} RISK · ${(peakProb*100).toFixed(0)}%</span></div>`
+        );
+      }, [peakProb, alertActive, riskLabel]);
 
       return (
         <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 0, background: '#080c18', overflow: 'hidden' }}>
