@@ -1,6 +1,6 @@
 {
   "date": "2026-09-04",
-  "generated_at": "2026-09-04 00:47 IST",
+  "generated_at": "2026-09-04 01:39 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0,
@@ -109,15 +109,15 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-09-03T19:10:00",
-      "timestamp_ist": "2026-09-04T00:40:00",
-      "vobl_bt_celsius": -22.15,
-      "min_bt_50km": -54.3,
-      "mean_bt_50km": -24.16,
-      "cold_pixels_count": 90,
+      "timestamp_utc": "2026-09-03T20:00:00",
+      "timestamp_ist": "2026-09-04T01:30:00",
+      "vobl_bt_celsius": 3.48,
+      "min_bt_50km": -54.89,
+      "mean_bt_50km": -18.26,
+      "cold_pixels_count": 72,
       "storm_detected": true,
       "alert_level": "GREEN",
-      "nearest_pixel_dist_km": 30.27,
+      "nearest_pixel_dist_km": 31.45,
       "threshold_celsius": -40.0,
       "bt_trend_1h": null,
       "data_source": "Himawari-9 Band 13 (10.4\u00b5m) via NOAA AWS S3",
@@ -187,14 +187,14 @@
         "bt_trend_1h": -0.04
       },
       {
-        "timestamp_utc": "2026-09-03T19:10:00",
-        "timestamp_ist": "2026-09-04T00:40:00",
-        "vobl_bt_celsius": -22.15,
-        "min_bt_50km": -54.3,
-        "mean_bt_50km": -24.16,
-        "cold_pixels_count": 90,
+        "timestamp_utc": "2026-09-03T20:00:00",
+        "timestamp_ist": "2026-09-04T01:30:00",
+        "vobl_bt_celsius": 3.48,
+        "min_bt_50km": -54.89,
+        "mean_bt_50km": -18.26,
+        "cold_pixels_count": 72,
         "storm_detected": true,
-        "nearest_pixel_dist_km": 30.27,
+        "nearest_pixel_dist_km": 31.45,
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
         "bt_trend_1h": null
@@ -209,9 +209,9 @@
   "convective_initiation": {
     "instability_score": 17.6,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 12.2h (1300\u20131800 IST)",
+    "initiation_message": "Peak convective window in 11.3h (1300\u20131800 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 12.2,
+    "hours_to_peak": 11.3,
     "cape_now": 6.0,
     "ki_now": 31.41,
     "li_now": 0.78,
@@ -224,7 +224,7 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-09-04 00:47 IST"
+    "computed_at": "2026-09-04 01:39 IST"
   },
   "multiday_outlook": [],
   "analogs": {
@@ -274,7 +274,7 @@
     "query_cape": 6.0,
     "query_ki": 31.41,
     "query_li": 0.78,
-    "computed_at": "2026-09-04 00:47 IST"
+    "computed_at": "2026-09-04 01:39 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -316,7 +316,7 @@
         "impact_pct": 0.0
       }
     ],
-    "computed_at": "2026-09-04 00:47 IST"
+    "computed_at": "2026-09-04 01:39 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -329,7 +329,7 @@
     "ki_used": 31.41,
     "t2m_c": 28.0,
     "month": 9,
-    "computed_at": "2026-09-04 00:47 IST"
+    "computed_at": "2026-09-04 01:39 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -702,16 +702,16 @@
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-09-03T19:00:00.000Z",
+    "obs_time": "2026-09-03T20:00:00.000Z",
     "temp_c": 23,
     "dewpoint_c": 20,
     "rh_pct": 83.2,
-    "wind_dir": 270,
-    "wind_speed_kt": 6,
+    "wind_dir": 280,
+    "wind_speed_kt": 5,
     "wind_gust_kt": null,
     "visibility_sm": 3.73,
     "visibility_km": 6.0,
-    "altimeter_hpa": 1015,
+    "altimeter_hpa": 1014,
     "flight_category": "MVFR",
     "wx_string": "",
     "sky_cover": [
@@ -725,13 +725,13 @@
       }
     ],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 031900Z 27006KT 6000 SCT012 SCT080 23/20 Q1015 NOSIG",
-    "fetched_utc": "2026-09-03T19:17:54Z"
+    "raw": "METAR VOBL 032000Z 28005KT 6000 SCT012 SCT080 23/20 Q1014 NOSIG",
+    "fetched_utc": "2026-09-03T20:09:46Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-09-03T19:17:54Z",
-    "generated_at_ist": "2026-09-04 00:47 IST",
+    "generated_at_utc": "2026-09-03T20:09:46Z",
+    "generated_at_ist": "2026-09-04 01:39 IST",
     "components": {
       "gfs": {
         "status": "MISSING",
@@ -742,9 +742,9 @@
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-09-03T19:10:00",
+        "timestamp_utc": "2026-09-03T20:00:00",
         "storm_detected": true,
-        "min_bt_50km": -54.3,
+        "min_bt_50km": -54.89,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
