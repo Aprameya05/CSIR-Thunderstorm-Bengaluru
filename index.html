@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSIR Thunderstorm Nowcast System — IMD Station 43295 (Bengaluru Airport VOBL/BLR)</title>
-  <meta name="description" content="Operational ATC-Grade AI Thunderstorm Forecasting Dashboard for Kempegowda International Airport Bengaluru. CSIR & IMD Bengaluru.">
+  <title>IMD Thunderstorm Nowcast — Station 43295 (Bengaluru Airport VOBL/BLR)</title>
+  <meta name="description" content="Operational ATC-Grade AI Thunderstorm Forecasting Dashboard for Kempegowda International Airport Bengaluru. IMD Bengaluru, Station 43295.">
 
   <!-- Kill all service workers and caches — forces latest version for every visitor -->
   <script>
@@ -338,8 +338,11 @@
 
     /* ── PAGE GRID TEXTURE (subtle dot grid on content pages) ──── */
     .page-grid-bg {
+      background-color: rgba(4,7,17,0.97);
       background-image: radial-gradient(rgba(56,189,248,0.07) 1px, transparent 1px);
       background-size: 28px 28px;
+      position: relative;
+      z-index: 10;
     }
 
     /* ── PAGE HERO BANNER ────────────────────────────────────────── */
@@ -822,7 +825,7 @@
       'METAR': 'METeorological Aerodrome Report — standardised real-time surface weather observation from airport',
       'VOBL':  'ICAO code for Kempegowda International Airport, Bengaluru',
       'IMD':   'India Meteorological Department',
-      'CSIR':  'Council of Scientific & Industrial Research',
+      'IMD':   'India Meteorological Department — national weather service of India',
     };
 
     function Tooltip({ term, children, className = '' }) {
@@ -936,39 +939,48 @@
                   THUNDERSTORM NOWCAST
                 </h1>
                 <p className="text-[9px] font-mono text-[#3d5a72] tracking-widest uppercase">
-                  CSIR · IMD 43295 · VOBL/BLR
+                  IMD BENGALURU · 43295 · VOBL/BLR
                 </p>
               </div>
             </div>
 
-            {/* Desktop nav — spaced pill style */}
-            <nav className="hidden lg:flex items-center gap-1 font-mono text-[10px] font-bold"
-              style={{
-                background:'rgba(4,8,18,0.65)',
-                border:'1px solid rgba(56,189,248,0.1)',
-                borderRadius:'14px',
-                padding:'5px 6px',
-                backdropFilter:'blur(10px)',
-              }}>
-              {navTabs.map((tab) => {
-                const isActive = activeNavTab === tab;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => onNavTabChange(tab)}
-                    className={`relative px-4 py-2 rounded-lg tracking-wider transition-all duration-200 ${
-                      isActive ? 'nav-tab-active' : 'text-[#4a6880] hover:text-[#90cce8]'
-                    }`}
-                    style={isActive ? {
-                      background:'rgba(56,189,248,0.12)',
-                      boxShadow:'0 0 16px rgba(56,189,248,0.18)',
-                    } : {}}
-                  >
-                    {tab}
-                  </button>
-                );
-              })}
-            </nav>
+            {/* Desktop nav — grouped sections */}
+            {(() => {
+              const NAV_GROUPS = [
+                { label: 'NOWCAST', tabs: ['DASHBOARD', 'FORECAST', 'RADAR MAP'] },
+                { label: 'ANALYSIS', tabs: ['MODELS', 'EXPLAINABILITY', 'REGIMES', 'WHATIF'] },
+                { label: 'HISTORY', tabs: ['MULTIDAY', 'CLIMATOLOGY', 'SKILL SCORES'] },
+                { label: 'OPS', tabs: ['ALERTS', 'LIVE API', 'ATC VIEW'] },
+              ];
+              return (
+                <nav className="hidden lg:flex items-center gap-3 font-mono text-[10px] font-bold"
+                  style={{
+                    background:'rgba(4,8,18,0.65)',
+                    border:'1px solid rgba(56,189,248,0.1)',
+                    borderRadius:'14px',
+                    padding:'5px 8px',
+                    backdropFilter:'blur(10px)',
+                  }}>
+                  {NAV_GROUPS.map((group, gi) => (
+                    <div key={group.label} className="flex items-center gap-0.5">
+                      {gi > 0 && <div style={{width:1,height:18,background:'rgba(56,189,248,0.15)',margin:'0 4px'}} />}
+                      <span style={{color:'rgba(56,189,248,0.3)',fontSize:7,letterSpacing:'0.18em',marginRight:2,fontWeight:900}}>{group.label}</span>
+                      {group.tabs.map(tab => {
+                        const isActive = activeNavTab === tab;
+                        const shortLabel = tab === 'EXPLAINABILITY' ? 'EXPLAIN' : tab === 'CLIMATOLOGY' ? 'CLIMAT.' : tab === 'SKILL SCORES' ? 'SCORES' : tab;
+                        return (
+                          <button key={tab} onClick={() => onNavTabChange(tab)}
+                            className={`relative px-3 py-1.5 rounded-lg tracking-wider transition-all duration-200 ${isActive ? 'nav-tab-active' : 'text-[#4a6880] hover:text-[#90cce8]'}`}
+                            style={isActive ? {background:'rgba(56,189,248,0.12)',boxShadow:'0 0 16px rgba(56,189,248,0.18)'} : {}}>
+                            {shortLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </nav>
+              );
+            })()}
 
             {/* Right: time + live badge + hamburger */}
             <div className="flex items-center gap-3 font-mono">
@@ -1002,6 +1014,28 @@
                 <span className={`block w-4 h-0.5 transition-all ${mobileMenuOpen ? '-rotate-45 -translate-y-1.5 bg-cyan-400' : 'bg-[#607d8b]'}`} />
               </button>
             </div>
+          </div>
+
+          {/* IMD Institutional Strip */}
+          <div style={{
+            borderTop:'1px solid rgba(56,189,248,0.08)',
+            padding:'3px 0',
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'center',
+            gap:16,
+            fontSize:8,
+            fontFamily:'monospace',
+            letterSpacing:'0.16em',
+            color:'rgba(56,189,248,0.4)',
+          }}>
+            <span>INDIA METEOROLOGICAL DEPARTMENT</span>
+            <span style={{color:'rgba(56,189,248,0.2)'}}>·</span>
+            <span>STATION 43295 · VOBL/BLR</span>
+            <span style={{color:'rgba(56,189,248,0.2)'}}>·</span>
+            <span>DR. GEETA AGNIHOTRI · SCIENTIST F</span>
+            <span style={{color:'rgba(56,189,248,0.2)'}}>·</span>
+            <span>NOWCAST SYSTEM v2.0</span>
           </div>
 
           {/* Mobile nav dropdown */}
@@ -1128,7 +1162,20 @@
         if (!mapContainerRef.current || mapRef.current || typeof maplibregl === 'undefined') return;
         const map = new maplibregl.Map({
           container: mapContainerRef.current,
-          style: 'https://tiles.openfreemap.org/styles/liberty',
+          style: {
+            version: 8,
+            glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+            sources: {
+              'esri-dark': {
+                type: 'raster',
+                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+                maxzoom: 16,
+              }
+            },
+            layers: [{ id: 'esri-dark-layer', type: 'raster', source: 'esri-dark' }]
+          },
           center: [VOBL.lng, VOBL.lat],
           zoom: 10,
           pitch: 48,
@@ -1168,6 +1215,34 @@
             .setLngLat([VOBL.lng, VOBL.lat])
             .setHTML(`<div style="font-family:monospace;font-size:11px;color:#38bdf8;background:rgba(4,7,17,0.95);padding:8px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.35);white-space:nowrap">✈ VOBL / Station 43295<br><span style="color:#4caf50;font-size:10px">LOADING...</span></div>`)
             .addTo(map);
+          // Add range rings at 50/100/150/200 km centred on VOBL
+          const makeRingGeoJSON = (centerLng, centerLat, radiusKm) => {
+            const pts = 128;
+            const coords = [];
+            for (let i = 0; i <= pts; i++) {
+              const angle = (i / pts) * 2 * Math.PI;
+              const dLat = (radiusKm / 111.32) * Math.cos(angle);
+              const dLng = (radiusKm / (111.32 * Math.cos(centerLat * Math.PI / 180))) * Math.sin(angle);
+              coords.push([centerLng + dLng, centerLat + dLat]);
+            }
+            return { type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} };
+          };
+          const ringFeatures = [50, 100, 150, 200].map(r => makeRingGeoJSON(VOBL.lng, VOBL.lat, r));
+          map.addSource('range-rings', { type: 'geojson', data: { type: 'FeatureCollection', features: ringFeatures } });
+          map.addLayer({ id: 'range-rings-layer', type: 'line', source: 'range-rings', paint: {
+            'line-color': 'rgba(56,189,248,0.25)', 'line-width': 1, 'line-dasharray': [4, 4],
+          }});
+          // Range ring labels
+          const ringLabels = [50, 100, 150, 200].map(r => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [VOBL.lng, VOBL.lat + r / 111.32] },
+            properties: { label: `${r} km` }
+          }));
+          map.addSource('ring-labels', { type: 'geojson', data: { type: 'FeatureCollection', features: ringLabels } });
+          map.addLayer({ id: 'ring-labels-layer', type: 'symbol', source: 'ring-labels', layout: {
+            'text-field': ['get', 'label'], 'text-size': 9, 'text-anchor': 'bottom',
+          }, paint: { 'text-color': 'rgba(56,189,248,0.55)', 'text-halo-color': 'rgba(0,0,0,0.6)', 'text-halo-width': 1 }});
+
           map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
           setMapReady(true);
         });
@@ -1202,7 +1277,7 @@
           {/* ── TOP BAR ── */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', background: 'rgba(4,7,17,0.88)', backdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(56,189,248,0.1)', zIndex: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 4, color: '#38bdf8', fontFamily: 'monospace' }}>CSIR TS NOWCAST</span>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 4, color: '#38bdf8', fontFamily: 'monospace' }}>IMD TS NOWCAST</span>
               <span style={{ fontSize: 9, color: '#172338', fontFamily: 'monospace' }}>|</span>
               <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#455a64' }}>VOBL / IMD 43295</span>
               <span style={{ fontSize: 9, color: '#172338', fontFamily: 'monospace' }}>|</span>
@@ -1936,7 +2011,7 @@
                   {/* Footer */}
                   <div className="text-[8px] text-[#3d5066] border-t border-[#172338] pt-1.5 flex items-center justify-between">
                     <span>NCEP GFS · {gfsCycle} run{gfsDate ? ` · ${gfsDate}` : ''}</span>
-                    <span className="text-[7px] text-[#3d5066] italic">NOT a CSIR/IMD forecast</span>
+                    <span className="text-[7px] text-[#3d5066] italic">NOT an official IMD forecast</span>
                   </div>
 
                 </div>
@@ -2103,7 +2178,7 @@
                     <div className="text-xs font-bold text-emerald-400">ACTIVE</div>
                   </div>
                   <div className="p-2 rounded bg-[#050811]/90 border border-[#172338]">
-                    <div className="text-[9px] text-[#607d8b]">CSIR & IMD</div>
+                    <div className="text-[9px] text-[#607d8b]">IMD Bengaluru</div>
                     <div className="text-xs font-bold text-white">BENGALURU</div>
                   </div>
                 </div>
@@ -3578,7 +3653,7 @@
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div>
                 <h4 className="text-xs font-bold text-amber-300">OCTOBER POST-MONSOON MISS PATTERN — RESEARCH FINDINGS</h4>
-                <p className="text-[9px] text-[#607d8b]">Walk-forward SHAP analysis · CSIR_October_PostMonsoon_Analysis.ipynb · Aug 2026</p>
+                <p className="text-[9px] text-[#607d8b]">Walk-forward SHAP analysis · IMD_October_PostMonsoon_Analysis.ipynb · Aug 2026</p>
               </div>
               <span className="text-[9px] text-emerald-300 font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">FIX APPLIED IN PRODUCTION</span>
             </div>
@@ -5455,7 +5530,7 @@
                 <div className="text-right">
                   <div className="text-[9px] text-[#607d8b] font-bold">S-BAND RADAR</div>
                   <div className="text-sm font-bold text-white">BENGALURU ACTIVE</div>
-                  <div className="text-[9px] text-[#607d8b]">CSIR/IMD STATION 43295</div>
+                  <div className="text-[9px] text-[#607d8b]">IMD STATION 43295</div>
                 </div>
               </div>
             </div>
@@ -5768,10 +5843,10 @@
           const pred = s.ts_predicted ? '⚡ ALERT' : 'STABLE';
           return `  ${labels[s.slot] || `Slot ${s.slot}`}: ${p}% — ${pred}`;
         }).join('\n');
-        const text = `CSIR Thunderstorm Nowcast — VOBL Bengaluru — ${liveData.date || new Date().toISOString().slice(0,10)}
+        const text = `IMD Thunderstorm Nowcast — VOBL Bengaluru — ${liveData.date || new Date().toISOString().slice(0,10)}
 Regime: ${regime} | Max Prob: ${(maxProb*100).toFixed(1)}%
 ${slotLines}
-Source: csir-thunderstorm-bengaluru.pages.dev`;
+Source: csir-thunderstorm-bengaluru.pages.dev | IMD Station 43295`;
         navigator.clipboard.writeText(text).then(() => {
           setCopyFeedback(true);
           setTimeout(() => setCopyFeedback(false), 2000);
@@ -6330,10 +6405,14 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
             badge="LIVE VERIFICATION"
             badgeColor="green"
           />
-          <div className="atc-card rounded-2xl p-4">
+          <div className="atc-card rounded-2xl p-4 space-y-3">
             <div className="rounded-xl p-3" style={{background:'rgba(255,193,7,0.08)', border:'1px solid rgba(255,193,7,0.2)'}}>
               <div className="text-[10px] font-mono text-[#ffc107]">ℹ ACCUMULATION NOTE</div>
               <div className="text-[11px] text-[#607d8b] mt-1">Operational metrics (Brier Score, ETS, POD, FAR, CSI) require ≥30 verified forecast days to be statistically meaningful. The verification pipeline is active and logging daily. AUROC and CV scores are from the training/test holdout set.</div>
+            </div>
+            <div className="rounded-xl p-3" style={{background:'rgba(56,189,248,0.06)', border:'1px solid rgba(56,189,248,0.18)'}}>
+              <div className="text-[10px] font-mono text-[#38bdf8]">⏳ DATA AWAITED — 2026 TABLE-II OBSERVATION DATA</div>
+              <div className="text-[11px] text-[#607d8b] mt-1">Rolling skill scores for 2026 depend on IMD Table-II observation data for Station 43295 (Col AA weather code 9 = thunderstorm, Col AB time of commencement). This dataset has been requested from Dr. Geeta Agnihotri. Once received, the verification pipeline will ingest it and all event-based metrics (POD, FAR, ETS, CSI) will populate automatically. Current scores reflect Aug 2025 – Aug 2026 holdout only.</div>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3">
@@ -6388,7 +6467,7 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
         const perm = await Notification.requestPermission();
         setNotifStatus(perm);
         if (perm === 'granted') {
-          new Notification('⚡ CSIR TS Alert — Subscribed', {
+          new Notification('⚡ IMD TS Alert — Subscribed', {
             body: `You'll be notified when thunderstorm probability exceeds ${pushThreshold}% at VOBL.`,
             icon: '/manifest.json'
           });
@@ -6747,14 +6826,14 @@ Source: csir-thunderstorm-bengaluru.pages.dev`;
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').then(reg => {
-          console.log('[CSIR SW] Registered:', reg.scope);
+          console.log('[IMD SW] Registered:', reg.scope);
           // Listen for forecast updates from SW
           navigator.serviceWorker.addEventListener('message', e => {
             if (e.data?.type === 'FORECAST_UPDATED') {
-              console.log('[CSIR SW] Forecast updated in background');
+              console.log('[IMD SW] Forecast updated in background');
             }
           });
-        }).catch(err => console.warn('[CSIR SW] Registration failed:', err));
+        }).catch(err => console.warn('[IMD SW] Registration failed:', err));
       });
     }
   </script>
