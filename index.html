@@ -1038,28 +1038,32 @@
             <span>NOWCAST SYSTEM v2.0</span>
           </div>
 
-          {/* Mobile nav dropdown */}
+          {/* Mobile nav dropdown — grouped */}
           {mobileMenuOpen && (
-            <nav className="lg:hidden mb-2 border-t pt-2 grid grid-cols-2 gap-1.5 font-mono text-xs font-bold"
+            <nav className="lg:hidden mb-2 border-t pt-3 pb-1 font-mono text-xs font-bold space-y-3"
               style={{ borderColor:'rgba(56,189,248,0.12)' }}>
-              {navTabs.map((tab, i) => (
-                <button
-                  key={tab}
-                  onClick={() => { onNavTabChange(tab); setMobileMenuOpen(false); }}
-                  className="px-3 py-2.5 rounded-lg text-left transition-all flex items-center gap-2"
-                  style={activeNavTab === tab ? {
-                    background:'rgba(56,189,248,0.1)',
-                    border:'1px solid rgba(56,189,248,0.35)',
-                    color:'#38bdf8',
-                    textShadow:'0 0 8px rgba(56,189,248,0.6)',
-                  } : {
-                    background:'rgba(4,8,18,0.5)',
-                    border:'1px solid rgba(56,189,248,0.08)',
-                    color:'#4a6880',
-                  }}
-                >
-                  {tab}
-                </button>
+              {[
+                { label: 'NOWCAST', tabs: ['DASHBOARD', 'FORECAST', 'RADAR MAP'] },
+                { label: 'ANALYSIS', tabs: ['MODELS', 'EXPLAINABILITY', 'REGIMES', 'WHATIF'] },
+                { label: 'HISTORY', tabs: ['MULTIDAY', 'CLIMATOLOGY', 'SKILL SCORES'] },
+                { label: 'OPS', tabs: ['ALERTS', 'LIVE API', 'ATC VIEW'] },
+              ].map(group => (
+                <div key={group.label}>
+                  <div style={{fontSize:8,letterSpacing:'0.2em',color:'rgba(56,189,248,0.35)',fontWeight:900,marginBottom:4,paddingLeft:4}}>{group.label}</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {group.tabs.map(tab => (
+                      <button key={tab} onClick={() => { onNavTabChange(tab); setMobileMenuOpen(false); }}
+                        className="px-2 py-2.5 rounded-lg text-center transition-all"
+                        style={activeNavTab === tab ? {
+                          background:'rgba(56,189,248,0.12)', border:'1px solid rgba(56,189,248,0.4)', color:'#38bdf8', textShadow:'0 0 8px rgba(56,189,248,0.6)',
+                        } : {
+                          background:'rgba(4,8,18,0.5)', border:'1px solid rgba(56,189,248,0.08)', color:'#4a6880',
+                        }}>
+                        {tab === 'EXPLAINABILITY' ? 'EXPLAIN' : tab === 'CLIMATOLOGY' ? 'CLIMAT.' : tab === 'SKILL SCORES' ? 'SCORES' : tab}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
           )}
@@ -1553,7 +1557,7 @@
             style={peakSlotData.ts_probability >= (peakSlotData.threshold || 0.30) ? {} : {
               boxShadow: '0 0 30px rgba(56,189,248,0.12), 0 0 80px rgba(56,189,248,0.04)',
             }}>
-              {/* Concentric glow rings behind gauge */}
+              {/* Convective Risk Hero */}
               <div className="relative w-full flex flex-col items-center">
                 <div className="flex items-center gap-1 mb-1">
                   <span className="text-[9px] font-mono font-bold uppercase tracking-widest"
@@ -1563,8 +1567,16 @@
                   </span>
                   {liveData?.himawari_override_active && <span className="text-[7px] text-orange-400 font-bold border border-orange-500/40 px-1 rounded">SAT</span>}
                 </div>
-                <div className="relative">
-                  {/* Outer glow ring */}
+                {/* Big probability number */}
+                <div style={{
+                  fontSize: 44, fontWeight: 900, lineHeight: 1, letterSpacing: '-0.04em',
+                  color: peakSlotData.ts_probability >= 0.50 ? '#ef5350' : peakSlotData.ts_probability >= 0.30 ? '#ff9800' : peakSlotData.ts_probability >= 0.15 ? '#ffc107' : '#4caf50',
+                  textShadow: peakSlotData.ts_probability >= 0.30 ? '0 0 20px rgba(239,83,80,0.5)' : '0 0 20px rgba(56,189,248,0.4)',
+                  fontFamily: 'JetBrains Mono, monospace',
+                }}>
+                  {(peakSlotData.ts_probability * 100).toFixed(0)}<span style={{fontSize:18,fontWeight:700}}>%</span>
+                </div>
+                <div className="relative mt-1">
                   <div className="absolute inset-0 rounded-full" style={{
                     background: peakSlotData.ts_probability >= 0.30
                       ? 'radial-gradient(circle, rgba(239,83,80,0.15) 0%, transparent 70%)'
@@ -1572,7 +1584,7 @@
                     transform: 'scale(1.4)',
                     animation: 'aurora-1 4s ease-in-out infinite',
                   }} />
-                  <CircularArcGauge probability={peakSlotData.ts_probability} threshold={peakSlotData.threshold || 0.30} size={100} />
+                  <CircularArcGauge probability={peakSlotData.ts_probability} threshold={peakSlotData.threshold || 0.30} size={80} />
                 </div>
               </div>
               <div className="w-full mt-1">
@@ -2903,7 +2915,32 @@
                     </div>
                   </div>
 
-                  {/* Footer: threshold + model calibration */}
+                  {/* Probability fill bar */}
+                  <div className="relative z-20 mt-2 mb-3">
+                    <div className="flex justify-between text-[8px] text-[#3d5066] mb-1">
+                      <span>0%</span>
+                      <span style={{position:'absolute',left:`${(s.threshold*100)}%`,color:'rgba(255,255,255,0.4)',transform:'translateX(-50%)'}}>▲{(s.threshold*100).toFixed(0)}%</span>
+                      <span>100%</span>
+                    </div>
+                    <div className="relative h-3 rounded-full overflow-hidden" style={{background:'rgba(4,7,17,0.8)',border:'1px solid rgba(56,189,248,0.12)'}}>
+                      {/* Threshold marker */}
+                      <div style={{position:'absolute',top:0,bottom:0,left:`${s.threshold*100}%`,width:1.5,background:'rgba(255,255,255,0.35)',zIndex:2}} />
+                      {/* Fill */}
+                      <div style={{
+                        position:'absolute',top:0,left:0,bottom:0,
+                        width:`${Math.min(s.ts_probability*100,100)}%`,
+                        background: s.ts_probability >= 0.50 ? 'linear-gradient(90deg,#c62828,#ef5350)'
+                          : s.ts_probability >= 0.30 ? 'linear-gradient(90deg,#e65100,#ff9800)'
+                          : s.ts_probability >= 0.15 ? 'linear-gradient(90deg,#f57f17,#ffc107)'
+                          : 'linear-gradient(90deg,#1b5e20,#4caf50)',
+                        transition:'width 1s cubic-bezier(0.16,1,0.3,1)',
+                        boxShadow: s.ts_probability >= 0.30 ? '0 0 8px rgba(239,83,80,0.5)' : '0 0 8px rgba(76,175,80,0.4)',
+                        borderRadius:'inherit',
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Footer: threshold + status */}
                   <div className="relative z-20 border-t border-[#172338] pt-3 text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[#607d8b]">DECISION LIMIT</span>
@@ -3998,6 +4035,8 @@
     function ExplainabilityPage({ liveData }) {
       const [shapSlot, setShapSlot] = useState(2);
       const [ragQuery, setRagQuery] = useState('');
+      const [apiWarming, setApiWarming] = useState(false);
+      const [apiWarmSec, setApiWarmSec] = useState(0);
       const [ragLogs, setRagLogs] = useState(
         `System ready. Connect to /rag/explain endpoint to activate Llama-3.3 powered meteorological explanation. Ask: Why did Slot 2 fire today?`
       );
@@ -4021,6 +4060,8 @@
         const query = ragQuery || 'Why did Slot 2 fire today?';
         const today = new Date().toISOString().split('T')[0];
         setRagLogs(`[RAG EXPLAINABILITY LOG — ENDPOINT /rag/explain]:\nQuery: "${query}"\n\nConnecting to Llama-3.3 engine...`);
+        setApiWarming(true); setApiWarmSec(0);
+        const warmTimer = setInterval(() => setApiWarmSec(s => s + 1), 1000);
         try {
           const res = await fetch('https://csir-thunderstorm-api.onrender.com/rag/explain', {
             method: 'POST',
@@ -4041,6 +4082,9 @@
             `[ERROR] Could not reach API: ${err.message}\n` +
             `Check: https://csir-thunderstorm-api.onrender.com/docs`
           );
+        } finally {
+          clearInterval(warmTimer);
+          setApiWarming(false);
         }
       };
 
@@ -4439,6 +4483,26 @@
                 </button>
               ))}
             </div>
+
+            {/* API cold-start warming indicator */}
+            {apiWarming && (
+              <div className="rounded-xl p-4 border border-purple-500/30 bg-purple-950/20 space-y-2">
+                <div className="flex items-center gap-3 text-[11px] text-purple-300 font-mono font-bold">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+                  API WARMING UP — Render free tier cold start ({apiWarmSec}s elapsed, usually 15–30s)
+                </div>
+                <div className="h-1.5 rounded-full bg-[#0a0f1e] overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-purple-700 to-purple-400 animate-pulse" style={{width:`${Math.min(apiWarmSec/30*100,95)}%`,transition:'width 1s linear'}} />
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {['Loading model weights','Warming Llama-3.3','Fetching SHAP context'].map((s,i) => (
+                    <div key={i} className="h-5 rounded animate-pulse" style={{background:'rgba(139,92,246,0.1)',border:'1px solid rgba(139,92,246,0.15)'}}>
+                      <span className="text-[8px] text-purple-400/60 px-2 leading-5 block">{apiWarmSec > i*8 ? `✓ ${s}` : s}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Terminal Log Output with Live Blinking Cursor Animation */}
             <div className="p-3.5 rounded bg-[#080d1a] border border-[#172338] text-xs text-emerald-400 whitespace-pre-wrap leading-relaxed relative font-mono">
@@ -5426,35 +5490,44 @@
         return () => clearInterval(id);
       }, []);
 
+      const atcAccent = isAlert ? '#ef5350' : '#38bdf8';
+      const atcBg = isAlert ? 'rgba(30,4,4,1)' : 'rgba(2,4,12,1)';
+      const atcBorder = isAlert ? 'rgba(239,83,80,0.18)' : 'rgba(56,189,248,0.12)';
+
       return (
-        <div className={`fixed inset-0 z-[200] flex flex-col font-mono text-white transition-colors duration-1000 ${
-          isAlert ? 'bg-red-950' : 'bg-[#020409]'
-        }`}>
+        <div className="fixed inset-0 z-[200] flex flex-col font-mono text-white" style={{background: atcBg, transition:'background 1s'}}>
+          {/* Scanline overlay */}
+          <div style={{position:'fixed',inset:0,backgroundImage:'repeating-linear-gradient(0deg,rgba(0,0,0,0.08) 0px,rgba(0,0,0,0.08) 1px,transparent 1px,transparent 3px)',pointerEvents:'none',zIndex:1}} />
+          {/* Alert pulse overlay */}
+          {isAlert && <div style={{position:'fixed',inset:0,background:'radial-gradient(ellipse at center,rgba(239,83,80,0.06) 0%,transparent 70%)',pointerEvents:'none',zIndex:1,animation:'pulse-slow 2s ease-in-out infinite'}} />}
 
           {/* ── Header bar ── */}
-          <div className="flex justify-between items-center px-8 py-4 border-b border-[#172338]">
+          <div className="flex justify-between items-center px-8 py-3 relative z-10" style={{borderBottom:`1px solid ${atcBorder}`,background:'rgba(0,0,0,0.4)',backdropFilter:'blur(10px)'}}>
             <div>
-              <h1 className="text-2xl font-extrabold text-cyan-400 tracking-tight">VOBL ATC CONVECTIVE ALERT MONITOR</h1>
-              <p className="text-[10px] text-[#607d8b]">IMD Station 43295 · Kempegowda International Airport Bengaluru · Runway 09L/27R Sector</p>
+              <div className="flex items-center gap-3">
+                <div style={{width:8,height:8,borderRadius:'50%',background:atcAccent,boxShadow:`0 0 10px ${atcAccent}`,animation:'pulse-slow 1.5s ease-in-out infinite'}} />
+                <h1 className="text-xl font-extrabold tracking-tight" style={{color:atcAccent,textShadow:`0 0 20px ${atcAccent}60`}}>VOBL ATC CONVECTIVE ALERT MONITOR</h1>
+              </div>
+              <p className="text-[9px] mt-0.5" style={{color:'rgba(96,125,139,0.8)',letterSpacing:'0.12em'}}>IMD STATION 43295 · KEMPEGOWDA INTERNATIONAL · RUNWAY 09L/27R SECTOR</p>
             </div>
             <div className="flex items-center gap-6">
-              <div className="text-right font-mono">
-                <div className="text-lg font-bold text-white">{istTime}</div>
-                <div className="text-[10px] text-[#607d8b]">GEN: {liveData?.generated_at ?? '—'}</div>
+              <div className="text-right">
+                <div className="text-2xl font-extrabold tabular-nums" style={{color:atcAccent,textShadow:`0 0 16px ${atcAccent}80`}}>{istTime}</div>
+                <div className="text-[9px]" style={{color:'rgba(96,125,139,0.7)',letterSpacing:'0.1em'}}>GEN: {liveData?.generated_at ?? '—'} IST</div>
+              </div>
+              <div className="text-right">
+                <div className={`text-2xl font-extrabold tracking-tight ${isAlert ? 'animate-pulse' : ''}`} style={{color:atcAccent,textShadow:`0 0 24px ${atcAccent}`}}>
+                  {isAlert ? '⚡ CONVECTIVE ALERT' : '✓ ALL CLEAR'}
+                </div>
+                <div className="text-[9px] font-bold mt-0.5" style={{color: isAlert ? 'rgba(239,83,80,0.7)' : 'rgba(76,175,80,0.7)',letterSpacing:'0.14em'}}>
+                  {isAlert ? 'OPERATIONAL ACTION REQUIRED' : 'STATUS NOMINAL'}{isSatOverride && ' · SAT OVERRIDE'}
+                </div>
               </div>
               <button onClick={onExitAtc}
-                className="px-5 py-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 hover:bg-cyan-500/40 transition-all text-sm font-bold flex items-center gap-2">
-                <span>⬅</span><span>RETURN TO DASHBOARD</span>
+                className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all"
+                style={{background:'rgba(56,189,248,0.1)',border:'1px solid rgba(56,189,248,0.3)',color:'#38bdf8'}}>
+                <span>⬅</span><span>DASHBOARD</span>
               </button>
-              <div className="text-right">
-                <div className={`text-3xl font-extrabold ${isAlert ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
-                  {isAlert ? 'CONVECTIVE ALERT' : 'ALL CLEAR'}
-                </div>
-                <div className="text-[10px] text-[#607d8b] font-bold mt-0.5">
-                  {isAlert ? 'OPERATIONAL ACTION REQUIRED' : 'STATUS NOMINAL'}
-                  {isSatOverride && <span className="ml-2 text-orange-400">· SAT OVERRIDE</span>}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -5951,10 +6024,23 @@ Source: csir-thunderstorm-bengaluru.pages.dev | IMD Station 43295`;
             {dataAgeHours !== null && dataAgeHours > 7 && (
               <div className="relative z-30 flex items-center justify-between gap-3 px-4 py-2 bg-amber-950/80 border-b border-amber-500/50 font-mono text-xs backdrop-blur-sm">
                 <span className="flex items-center gap-2 text-amber-300">
-                  <span className="text-base">⚠</span>
-                  <span>FORECAST DATA IS <strong>{dataAgeHours.toFixed(1)}h OLD</strong> — Pipeline may have stalled. Last run: {liveData.generated_at}</span>
+                  <span className="text-base animate-pulse">⚠</span>
+                  <span>DATA IS <strong>{dataAgeHours.toFixed(1)}h OLD</strong> — Pipeline may have stalled. Last run: {liveData.generated_at}</span>
                 </span>
-                <span className="text-amber-500 text-[10px] shrink-0">Expected update every 6h</span>
+                <span className="text-amber-400 text-[10px] shrink-0 font-bold">
+                  {(() => {
+                    if (!liveData?.generated_at) return 'Next run: unknown';
+                    try {
+                      const lastRun = new Date(liveData.generated_at);
+                      const nextRun = new Date(lastRun.getTime() + 6 * 3600000);
+                      const now = new Date();
+                      const diffMin = Math.round((nextRun - now) / 60000);
+                      if (diffMin < 0) return 'Next run: overdue — check pipeline';
+                      if (diffMin < 60) return `Next run in ~${diffMin} min`;
+                      return `Next run at ${nextRun.toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit'})} IST`;
+                    } catch { return 'Next run: unknown'; }
+                  })()}
+                </span>
               </div>
             )}
 
@@ -6218,13 +6304,65 @@ Source: csir-thunderstorm-bengaluru.pages.dev | IMD Station 43295`;
             badge="GFS GUIDANCE"
             badgeColor="purple"
           />
-          {loading && <div className="text-center text-[#607d8b] font-mono text-sm py-12">Loading multi-day outlook…</div>}
+          {loading && (
+            <div className="atc-card rounded-2xl p-6 space-y-3">
+              {[...Array(5)].map((_,i) => (
+                <div key={i} className="h-8 rounded-lg animate-pulse" style={{background:'rgba(56,189,248,0.06)',width:`${70+i*6}%`}} />
+              ))}
+            </div>
+          )}
           {!loading && outlook.length === 0 && (
             <div className="atc-card rounded-2xl p-8 text-center">
               <div className="text-4xl mb-3">📡</div>
               <div className="text-[#607d8b] font-mono text-sm">Multi-day GFS data not yet available. Will populate on next pipeline run (5× daily).</div>
             </div>
           )}
+          {/* 5-Day probability bar chart */}
+          {!loading && outlook.length > 0 && (() => {
+            const days = outlook.slice(0, 7);
+            const BAR_H = 120;
+            const barW = Math.floor(600 / days.length);
+            const padL = 44, padB = 28, padT = 12, padR = 8;
+            const W = padL + days.length * barW + padR;
+            const H = BAR_H + padT + padB;
+            return (
+              <div className="atc-card rounded-2xl p-4">
+                <div className="text-[10px] font-mono text-[#607d8b] font-bold uppercase tracking-wider mb-3">DERIVED TS PROBABILITY — {days.length}-DAY OUTLOOK</div>
+                <div style={{overflowX:'auto'}}>
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{width:'100%',maxWidth:W*2,display:'block',fontFamily:'JetBrains Mono,monospace'}}>
+                    {/* Grid lines */}
+                    {[0.25,0.5,0.75,1].map(f => {
+                      const y = padT + BAR_H * (1 - f);
+                      return <g key={f}>
+                        <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(56,189,248,0.08)" strokeWidth="1" />
+                        <text x={padL - 4} y={y + 3} fontSize="7" textAnchor="end" fill="rgba(96,125,139,0.7)">{(f*100).toFixed(0)}%</text>
+                      </g>;
+                    })}
+                    {/* 35% threshold line */}
+                    {(() => { const y = padT + BAR_H * (1 - 0.35); return <line x1={padL} y1={y} x2={W-padR} y2={y} stroke="rgba(255,152,0,0.4)" strokeWidth="1" strokeDasharray="4 3" />; })()}
+                    {/* Bars */}
+                    {days.map((day, i) => {
+                      const prob = deriveProbability(day);
+                      const bh = prob * BAR_H;
+                      const x = padL + i * barW + barW * 0.15;
+                      const bw = barW * 0.70;
+                      const fill = prob >= 0.55 ? ['#c62828','#ef5350'] : prob >= 0.35 ? ['#e65100','#ff9800'] : prob >= 0.15 ? ['#f57f17','#ffc107'] : ['#1b5e20','#4caf50'];
+                      const label = day.date ? day.date.slice(5) : `D+${i+1}`;
+                      return <g key={i}>
+                        <defs><linearGradient id={`bg${i}`} x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stopColor={fill[0]} /><stop offset="100%" stopColor={fill[1]} /></linearGradient></defs>
+                        <rect x={x} y={padT + BAR_H - bh} width={bw} height={bh} fill={`url(#bg${i})`} rx="3" opacity="0.85" />
+                        <text x={x + bw/2} y={padT + BAR_H - bh - 3} fontSize="8" textAnchor="middle" fill={fill[1]} fontWeight="700">{(prob*100).toFixed(0)}%</text>
+                        <text x={x + bw/2} y={H - padB + 12} fontSize="7" textAnchor="middle" fill="rgba(144,164,174,0.8)">{label}</text>
+                        <text x={x + bw/2} y={H - padB + 21} fontSize="6" textAnchor="middle" fill="rgba(96,125,139,0.6)">{riskLabel(prob)}</text>
+                      </g>;
+                    })}
+                    {/* Threshold label */}
+                    {(() => { const y = padT + BAR_H * (1 - 0.35); return <text x={W - padR} y={y - 2} fontSize="6" textAnchor="end" fill="rgba(255,152,0,0.6)">ALERT LIMIT</text>; })()}
+                  </svg>
+                </div>
+              </div>
+            );
+          })()}
           {outlook.map((day, i) => {
             const prob = deriveProbability(day);
             const cape = day.CAPE || 0;
