@@ -5829,7 +5829,7 @@
       const fetchRealForecast = async () => {
         try {
           const t0 = performance.now();
-          const res = await fetch('./forecast.json');
+          const res = await fetch('./forecast.json', { cache: 'no-cache' });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json = await res.json();
           const latency = performance.now() - t0;

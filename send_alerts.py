@@ -29,7 +29,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 DATA_DIR      = Path("data")
-FORECAST_PATH = DATA_DIR / "forecast.json"
+FORECAST_PATH = Path("forecast.json")   # root-level, not data/
 FALLBACK_SUB  = DATA_DIR / "subscribers.json"
 IST_OFF       = timedelta(hours=5, minutes=30)
 
@@ -140,7 +140,7 @@ def build_message(forecast: dict, sub: dict, is_alert: bool) -> str:
 
     if is_alert:
         return (
-            f"{emoji} CSIR TS ALERT — VOBL/43295\n"
+            f"{emoji} IMD TS ALERT — VOBL/43295\n"
             f"Hi {name}, thunderstorm probability has exceeded your threshold!\n"
             f"Risk: {risk}  |  Peak: {peak_prob*100:.0f}%  |  Slot: {peak_slot}\n"
             f"{slots_txt}\n"
@@ -149,7 +149,7 @@ def build_message(forecast: dict, sub: dict, is_alert: bool) -> str:
         )
     else:
         return (
-            f"☀️ CSIR TS Daily Digest — VOBL/43295\n"
+            f"☀️ IMD TS Daily Digest — VOBL/43295\n"
             f"Good morning {name}! Today's 6-hour outlook:\n"
             f"Peak risk: {risk}  |  {peak_prob*100:.0f}%\n"
             f"{slots_txt}\n"
