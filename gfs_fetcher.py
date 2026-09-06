@@ -539,8 +539,12 @@ def write_upperair_csv(row: dict) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
     if OUT_PATH_UA.exists():
         existing = pd.read_csv(OUT_PATH_UA)
-        existing = existing[~((existing["date"] == row["date"]) &
-                              (existing["slot"] == row["slot"]))]
+        if "slot" in existing.columns:
+            existing = existing[~((existing["date"] == row["date"]) &
+                                  (existing["slot"] == row["slot"]))]
+        else:
+            # Old CSV missing slot column — drop today and rewrite fresh
+            existing = existing[existing["date"] != row["date"]]
         out = pd.concat([existing, pd.DataFrame([row])], ignore_index=True)
     else:
         out = pd.DataFrame([row])
@@ -553,8 +557,12 @@ def write_gfs_realtime_csv(row: dict) -> None:
     os.makedirs(DATA_DIR, exist_ok=True)
     if OUT_PATH_GFS.exists():
         existing = pd.read_csv(OUT_PATH_GFS)
-        existing = existing[~((existing["date"] == row["date"]) &
-                              (existing["slot"] == row["slot"]))]
+        if "slot" in existing.columns:
+            existing = existing[~((existing["date"] == row["date"]) &
+                                  (existing["slot"] == row["slot"]))]
+        else:
+            # Old CSV missing slot column — drop today and rewrite fresh
+            existing = existing[existing["date"] != row["date"]]
         out = pd.concat([existing, pd.DataFrame([row])], ignore_index=True)
     else:
         out = pd.DataFrame([row])
