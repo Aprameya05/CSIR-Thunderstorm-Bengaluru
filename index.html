@@ -1259,6 +1259,10 @@
           map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
           setMapReady(true);
         });
+        // Fallback: if load event already fired or any step threw, idle guarantees the overlay clears
+        map.on('idle', () => { setMapReady(true); });
+        // Hard fallback after 5s regardless
+        setTimeout(() => { setMapReady(true); }, 5000);
         return () => { if (mapRef.current) { map.remove(); mapRef.current = null; } };
       }, []);
 
