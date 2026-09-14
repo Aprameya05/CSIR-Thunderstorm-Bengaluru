@@ -1,10 +1,10 @@
 {
-  "period_start": "2026-08-31",
-  "period_end": "2026-09-07",
+  "period_start": "2026-09-07",
+  "period_end": "2026-09-14",
   "lookback_days": 7,
-  "generated_at": "2026-09-07T16:30:52.712723+05:30",
+  "generated_at": "2026-09-14T16:43:07.207897+05:30",
   "regime": "UNKNOWN",
-  "today_max_prob_pct": 1.3,
+  "today_max_prob_pct": 11.0,
   "metrics": {
     "labeled_rows": 0,
     "ts_days": 0,
