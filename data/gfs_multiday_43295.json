@@ -2,21 +2,21 @@
   {
     "date": "2026-09-18",
     "day_label": "Tomorrow",
-    "CAPE": 704.0,
-    "K_INDEX": 41.49,
-    "LIFTED_INDEX": -1.76,
-    "TOTALS_TOTALS": 45.24,
-    "PRECIP_WATER": 43.4,
+    "CAPE": 463.0,
+    "K_INDEX": 39.87,
+    "LIFTED_INDEX": -2.13,
+    "TOTALS_TOTALS": 45.51,
+    "PRECIP_WATER": 46.9,
     "gfs_fhour": 24
   },
   {
     "date": "2026-09-19",
     "day_label": "Day+2",
-    "CAPE": 785.0,
-    "K_INDEX": 40.41,
-    "LIFTED_INDEX": -2.88,
-    "TOTALS_TOTALS": 47.06,
-    "PRECIP_WATER": 43.0,
+    "CAPE": 428.0,
+    "K_INDEX": 38.23,
+    "LIFTED_INDEX": -2.32,
+    "TOTALS_TOTALS": 46.02,
+    "PRECIP_WATER": 46.4,
     "gfs_fhour": 48
   }
 ]
