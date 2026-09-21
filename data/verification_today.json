@@ -1,5 +1,5 @@
 {
-  "date_verified": "2026-09-19",
+  "date_verified": "2026-09-20",
   "slots_verified": 0,
   "thunderstorm_observed": null,
   "slot_results": [],
@@ -9,5 +9,5 @@
     "HSS": 0.0,
     "Brier": 0.0
   },
-  "note": "2026-09-19 absent from IMD file"
+  "note": "2026-09-20 absent from IMD file"
 }
