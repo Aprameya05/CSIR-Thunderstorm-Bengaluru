@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-10-01 09:37",
+  "source_version": "v6",
+  "cal_years": [
+    2024,
+    2025
+  ],
+  "dry_run": false,
+  "slots": [
+    {
+      "slot": 0,
+      "status": "skipped",
+      "reason": "only 670 rows, 0 positives"
+    },
+    {
+      "slot": 1,
+      "status": "skipped",
+      "reason": "only 670 rows, 0 positives"
+    },
+    {
+      "slot": 2,
+      "status": "ok",
+      "model_used": "nowcast_slot2_xgb_v6_temporal.pkl",
+      "cal_rows": 670,
+      "cal_positives": 55,
+      "brier_before": 0.078,
+      "brier_after": 0.0657,
+      "improvement": 0.0123,
+      "output": "nowcast_slot2_xgb_v6_recal.pkl"
+    },
+    {
+      "slot": 3,
+      "status": "skipped",
+      "reason": "only 670 rows, 0 positives"
+    }
+  ]
+}

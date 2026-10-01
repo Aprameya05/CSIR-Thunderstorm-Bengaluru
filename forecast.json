@@ -1,6 +1,6 @@
 {
   "date": "2026-10-01",
-  "generated_at": "2026-10-01 07:59 IST",
+  "generated_at": "2026-10-01 15:07 IST",
   "alert_active": true,
   "peak_slot": 2,
   "peak_probability": 0.3028,
@@ -10,8 +10,8 @@
       "slot": 0,
       "label": "Late Night",
       "time": "0001-0600 IST",
-      "ts_probability": 0.85,
-      "ts_predicted": true,
+      "ts_probability": 0.0385,
+      "ts_predicted": false,
       "threshold": 0.24,
       "primary": false,
       "source": "gfs+upperair",
@@ -26,16 +26,14 @@
       "prob_delta": -0.8115,
       "trend": "down",
       "trend_diff": -0.811,
-      "prev_probability": 0.85,
-      "ts_probability_pre_metar": 0.0385,
-      "metar_override": true
+      "prev_probability": 0.85
     },
     {
       "slot": 1,
       "label": "Morning",
       "time": "0601-1200 IST",
-      "ts_probability": 0.85,
-      "ts_predicted": true,
+      "ts_probability": 0.0213,
+      "ts_predicted": false,
       "threshold": 0.15,
       "primary": false,
       "source": "gfs+upperair",
@@ -50,15 +48,13 @@
       "prob_delta": -0.8287,
       "trend": "down",
       "trend_diff": -0.829,
-      "prev_probability": 0.85,
-      "ts_probability_pre_metar": 0.0213,
-      "metar_override": true
+      "prev_probability": 0.85
     },
     {
       "slot": 2,
       "label": "Afternoon",
       "time": "1201-1800 IST",
-      "ts_probability": 0.85,
+      "ts_probability": 0.3028,
       "ts_predicted": true,
       "threshold": 0.1,
       "primary": true,
@@ -74,16 +70,14 @@
       "prob_delta": -0.5472,
       "trend": "down",
       "trend_diff": -0.547,
-      "prev_probability": 0.85,
-      "ts_probability_pre_metar": 0.3028,
-      "metar_override": true
+      "prev_probability": 0.85
     },
     {
       "slot": 3,
       "label": "Evening",
       "time": "1801-2400 IST",
-      "ts_probability": 0.85,
-      "ts_predicted": true,
+      "ts_probability": 0.11,
+      "ts_predicted": false,
       "threshold": 0.39,
       "primary": false,
       "source": "gfs",
@@ -98,9 +92,7 @@
       "prob_delta": -0.74,
       "trend": "down",
       "trend_diff": -0.74,
-      "prev_probability": 0.85,
-      "ts_probability_pre_metar": 0.11,
-      "metar_override": true
+      "prev_probability": 0.85
     }
   ],
   "met_parameters": {
@@ -219,10 +211,10 @@
   "gfs_cycle": "2026-09-30 06Z f012",
   "convective_initiation": {
     "instability_score": 64.3,
-    "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 5.0h (1300\u20131800 IST)",
+    "initiation_status": "CONVECTIVE WINDOW ACTIVE",
+    "initiation_message": "Currently in peak thunderstorm window (1300\u20131800 IST)",
     "initiation_risk": "MODERATE",
-    "hours_to_peak": 5.0,
+    "hours_to_peak": 0,
     "cape_now": 688.0,
     "ki_now": 37.72,
     "li_now": -4.47,
@@ -235,7 +227,7 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-10-01 07:59 IST"
+    "computed_at": "2026-10-01 15:07 IST"
   },
   "multiday_outlook": [
     {
@@ -310,7 +302,7 @@
     "query_cape": 688.0,
     "query_ki": 37.72,
     "query_li": -4.47,
-    "computed_at": "2026-10-01 07:59 IST"
+    "computed_at": "2026-10-01 15:07 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -352,7 +344,7 @@
         "impact_pct": 6.6
       }
     ],
-    "computed_at": "2026-10-01 07:59 IST"
+    "computed_at": "2026-10-01 15:07 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -365,7 +357,7 @@
     "ki_used": 37.72,
     "t2m_c": 23.5,
     "month": 10,
-    "computed_at": "2026-10-01 07:59 IST"
+    "computed_at": "2026-10-01 15:07 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -487,7 +479,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 03:04 IST"
+      "computed_at": "2026-10-01 07:59 IST"
     },
     "1": {
       "slot": 1,
@@ -569,7 +561,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 03:04 IST"
+      "computed_at": "2026-10-01 07:59 IST"
     },
     "2": {
       "slot": 2,
@@ -651,7 +643,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 03:04 IST"
+      "computed_at": "2026-10-01 07:59 IST"
     },
     "3": {
       "slot": 3,
@@ -733,7 +725,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 03:04 IST"
+      "computed_at": "2026-10-01 07:59 IST"
     }
   },
   "metar": {
@@ -768,17 +760,16 @@
     "raw": "METAR VOBL 010200Z 29005KT 4000 BR SCT008 SCT012 BKN080 21/20 Q1018 BECMG 5000 BR",
     "fetched_utc": "2026-10-01T02:29:26Z"
   },
-  "metar_ts_override": true,
-  "sigmet_bulletin": "VCBB SIGMET X01 VALID 0759/1359 UTC 01/OCT/2026\nVOBL FIR THUNDERSTORM FCST\nTS LIGHT OBS/FCST AT 0759 UTC\nTOP FL300 CB\nMOV NE 10KT\nINTENSITY NC\nFCST AT 1359 UTC TS LIGHT STNR\nNC=",
+  "sigmet_bulletin": "VCBB SIGMET X01 VALID 1507/2107 UTC 01/OCT/2026\nVOBL FIR THUNDERSTORM FCST\nTS LIGHT OBS/FCST AT 1507 UTC\nTOP FL300 CB\nMOV NE 10KT\nINTENSITY NC\nFCST AT 2107 UTC TS LIGHT STNR\nNC=",
   "pipeline_health": {
-    "generated_at_utc": "2026-10-01T02:29:26Z",
-    "generated_at_ist": "2026-10-01 07:59 IST",
+    "generated_at_utc": "2026-10-01T09:37:08Z",
+    "generated_at_ist": "2026-10-01 15:07 IST",
     "components": {
       "gfs": {
         "status": "OK",
         "cycle": "2026-09-30 06Z f012",
         "fetched_utc": "2026-09-30 16:25",
-        "staleness": "STALE (604m)",
+        "staleness": "STALE (1032m)",
         "rows": 3
       },
       "himawari9": {
@@ -801,18 +792,5 @@
         "status": "OK"
       }
     }
-  },
-  "verification_daily": {
-    "date_verified": "2026-09-30",
-    "slots_verified": 0,
-    "thunderstorm_observed": null,
-    "slot_results": [],
-    "rolling_30d": {
-      "POD": 0.0,
-      "FAR": 0.0,
-      "HSS": 0.0,
-      "Brier": 0.0
-    },
-    "note": "2026-09-30 absent from IMD file"
   }
 }
