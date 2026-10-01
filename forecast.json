@@ -1,9 +1,9 @@
 {
   "date": "2026-10-01",
-  "generated_at": "2026-10-01 03:04 IST",
+  "generated_at": "2026-10-01 07:59 IST",
   "alert_active": true,
   "peak_slot": 2,
-  "peak_probability": 0.3846,
+  "peak_probability": 0.3028,
   "model_version": "v5_temporal_v4_ensemble",
   "slots": [
     {
@@ -23,10 +23,10 @@
       "lifted_index": -1.82,
       "totals_totals": 46.5,
       "regime_adjustment": 1.0,
-      "prob_delta": 0.0,
-      "trend": "stable",
-      "trend_diff": 0.0,
-      "prev_probability": 0.038,
+      "prob_delta": -0.8115,
+      "trend": "down",
+      "trend_diff": -0.811,
+      "prev_probability": 0.85,
       "ts_probability_pre_metar": 0.0385,
       "metar_override": true
     },
@@ -47,10 +47,10 @@
       "lifted_index": -2.32,
       "totals_totals": 48.4,
       "regime_adjustment": 1.0,
-      "prob_delta": 0.0,
-      "trend": "stable",
-      "trend_diff": 0.0,
-      "prev_probability": 0.021,
+      "prob_delta": -0.8287,
+      "trend": "down",
+      "trend_diff": -0.829,
+      "prev_probability": 0.85,
       "ts_probability_pre_metar": 0.0213,
       "metar_override": true
     },
@@ -62,20 +62,20 @@
       "ts_predicted": true,
       "threshold": 0.1,
       "primary": true,
-      "source": "gfs",
+      "source": "gfs+upperair",
       "model_used": "nowcast_slot2_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.779,
-      "cape": 234.0,
-      "k_index": 40.4,
-      "lifted_index": -1.82,
-      "totals_totals": 46.5,
+      "raw_probability": 0.5044,
+      "cape": 688.0,
+      "k_index": 37.7,
+      "lifted_index": -4.47,
+      "totals_totals": 49.0,
       "regime_adjustment": 1.0,
-      "prob_delta": 0.0,
-      "trend": "stable",
-      "trend_diff": 0.0,
-      "prev_probability": 0.385,
-      "ts_probability_pre_metar": 0.3846,
+      "prob_delta": -0.5472,
+      "trend": "down",
+      "trend_diff": -0.547,
+      "prev_probability": 0.85,
+      "ts_probability_pre_metar": 0.3028,
       "metar_override": true
     },
     {
@@ -95,56 +95,43 @@
       "lifted_index": -1.82,
       "totals_totals": 46.5,
       "regime_adjustment": 1.0,
-      "prob_delta": 0.0,
-      "trend": "stable",
-      "trend_diff": 0.0,
-      "prev_probability": 0.11,
+      "prob_delta": -0.74,
+      "trend": "down",
+      "trend_diff": -0.74,
+      "prev_probability": 0.85,
       "ts_probability_pre_metar": 0.11,
       "metar_override": true
     }
   ],
   "met_parameters": {
-    "ua_cape_jkg": 234.0,
-    "ua_cape_raw": 234.0,
-    "ua_k_index": 40.4,
-    "ua_lifted_index": -1.82,
-    "ua_totals_totals": 46.5,
-    "ERA5_u_500hPa": -3.104077100753784,
-    "ERA5_v_500hPa": -4.36855936050415,
-    "ERA5_u_850hPa": -3.7606470584869385,
-    "ERA5_v_850hPa": -0.1511279344558715,
-    "instability_level": "Marginal"
+    "ua_cape_jkg": 688.0,
+    "ua_cape_raw": 688.0,
+    "ua_k_index": 37.7,
+    "ua_lifted_index": -4.47,
+    "ua_totals_totals": 49.0,
+    "ERA5_u_500hPa": -5.110722541809082,
+    "ERA5_v_500hPa": -3.516787052154541,
+    "ERA5_u_850hPa": -3.277768611907959,
+    "ERA5_v_850hPa": -0.7322776913642883,
+    "instability_level": "Moderate"
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-09-30T21:20:00",
-      "timestamp_ist": "2026-10-01T02:50:00",
-      "vobl_bt_celsius": -45.14,
-      "min_bt_50km": -58.12,
-      "mean_bt_50km": -43.69,
-      "cold_pixels_count": 373,
-      "storm_detected": true,
+      "timestamp_utc": "2026-10-01T02:20:00",
+      "timestamp_ist": "2026-10-01T07:50:00",
+      "vobl_bt_celsius": -3.38,
+      "min_bt_50km": -20.66,
+      "mean_bt_50km": -0.18,
+      "cold_pixels_count": 0,
+      "storm_detected": false,
       "alert_level": "GREEN",
-      "nearest_pixel_dist_km": 2.17,
+      "nearest_pixel_dist_km": null,
       "threshold_celsius": -40.0,
-      "bt_trend_1h": 1.62,
+      "bt_trend_1h": null,
       "data_source": "Himawari-9 Band 13 (10.4\u00b5m) via NOAA AWS S3",
       "available": true
     },
     "history": [
-      {
-        "timestamp_utc": "2026-09-29T21:20:00",
-        "timestamp_ist": "2026-09-30T02:50:00",
-        "vobl_bt_celsius": -58.92,
-        "min_bt_50km": -64.4,
-        "mean_bt_50km": -47.94,
-        "cold_pixels_count": 396,
-        "storm_detected": true,
-        "nearest_pixel_dist_km": 2.17,
-        "threshold_celsius": -40.0,
-        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
-        "bt_trend_1h": 4.2
-      },
       {
         "timestamp_utc": "2026-09-30T02:20:00",
         "timestamp_ist": "2026-09-30T07:50:00",
@@ -209,6 +196,19 @@
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
         "bt_trend_1h": 1.62
+      },
+      {
+        "timestamp_utc": "2026-10-01T02:20:00",
+        "timestamp_ist": "2026-10-01T07:50:00",
+        "vobl_bt_celsius": -3.38,
+        "min_bt_50km": -20.66,
+        "mean_bt_50km": -0.18,
+        "cold_pixels_count": 0,
+        "storm_detected": false,
+        "nearest_pixel_dist_km": null,
+        "threshold_celsius": -40.0,
+        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
+        "bt_trend_1h": null
       }
     ]
   },
@@ -218,15 +218,15 @@
   "gfs_valid_date": "01 Oct 2026",
   "gfs_cycle": "2026-09-30 06Z f012",
   "convective_initiation": {
-    "instability_score": 49.8,
+    "instability_score": 64.3,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 9.9h (1300\u20131800 IST)",
+    "initiation_message": "Peak convective window in 5.0h (1300\u20131800 IST)",
     "initiation_risk": "MODERATE",
-    "hours_to_peak": 9.9,
-    "cape_now": 216.0,
-    "ki_now": 39.52,
-    "li_now": -2.32,
-    "tt_now": 48.44,
+    "hours_to_peak": 5.0,
+    "cape_now": 688.0,
+    "ki_now": 37.72,
+    "li_now": -4.47,
+    "tt_now": 49.05,
     "srh_0_3km": -6.2,
     "ehi": 0.0,
     "brn": 15.38,
@@ -235,87 +235,87 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-10-01 03:04 IST"
+    "computed_at": "2026-10-01 07:59 IST"
   },
   "multiday_outlook": [
     {
       "date": "2026-10-01",
       "day_label": "Tomorrow",
-      "cape": 938.0,
-      "k_index": 42.22,
-      "lifted_index": -3.81,
-      "totals_totals": 48.1,
-      "instability_score": 69.6,
-      "ts_probability_slot2": 0.418,
+      "cape": 750.0,
+      "k_index": 39.95,
+      "lifted_index": -3.49,
+      "totals_totals": 48.89,
+      "instability_score": 65.4,
+      "ts_probability_slot2": 0.392,
       "risk_level": "MODERATE",
       "peak_window": "1300\u20131800 IST"
     },
     {
       "date": "2026-10-02",
       "day_label": "Day+2",
-      "cape": 12.0,
-      "k_index": 33.31,
-      "lifted_index": 0.53,
-      "totals_totals": 42.66,
-      "instability_score": 22.9,
-      "ts_probability_slot2": 0.137,
-      "risk_level": "MINIMAL",
+      "cape": 45.0,
+      "k_index": 37.24,
+      "lifted_index": 1.01,
+      "totals_totals": 41.69,
+      "instability_score": 28.4,
+      "ts_probability_slot2": 0.17,
+      "risk_level": "LOW",
       "peak_window": "1300\u20131800 IST"
     }
   ],
   "analogs": {
     "top_5": [
       {
-        "date": "2018-09-20",
-        "cape": 210.2,
-        "k_index": 38.0,
-        "lifted_index": -2.21,
+        "date": "2017-10-06",
+        "cape": 712.8,
+        "k_index": 38.2,
+        "lifted_index": -4.41,
+        "thunderstorm": true,
+        "month": 10
+      },
+      {
+        "date": "2022-10-19",
+        "cape": 698.2,
+        "k_index": 37.9,
+        "lifted_index": -4.88,
+        "thunderstorm": true,
+        "month": 10
+      },
+      {
+        "date": "2023-11-02",
+        "cape": 656.4,
+        "k_index": 37.2,
+        "lifted_index": -4.86,
+        "thunderstorm": false,
+        "month": 11
+      },
+      {
+        "date": "2015-09-07",
+        "cape": 680.8,
+        "k_index": 39.1,
+        "lifted_index": -4.92,
         "thunderstorm": true,
         "month": 9
       },
       {
-        "date": "2017-10-27",
-        "cape": 169.0,
-        "k_index": 38.5,
-        "lifted_index": -2.39,
+        "date": "2015-10-12",
+        "cape": 677.4,
+        "k_index": 37.8,
+        "lifted_index": -5.45,
         "thunderstorm": false,
         "month": 10
-      },
-      {
-        "date": "2021-09-05",
-        "cape": 235.0,
-        "k_index": 38.3,
-        "lifted_index": -2.67,
-        "thunderstorm": false,
-        "month": 9
-      },
-      {
-        "date": "2023-09-05",
-        "cape": 207.5,
-        "k_index": 38.4,
-        "lifted_index": -2.88,
-        "thunderstorm": false,
-        "month": 9
-      },
-      {
-        "date": "2022-09-30",
-        "cape": 192.4,
-        "k_index": 37.1,
-        "lifted_index": -2.07,
-        "thunderstorm": false,
-        "month": 9
       }
     ],
-    "ts_rate": 0.2,
-    "query_cape": 216.0,
-    "query_ki": 39.52,
-    "query_li": -2.32,
-    "computed_at": "2026-10-01 03:04 IST"
+    "ts_rate": 0.6,
+    "query_cape": 688.0,
+    "query_ki": 37.72,
+    "query_li": -4.47,
+    "computed_at": "2026-10-01 07:59 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
-    "total_disrupted_est": 16,
-    "disruption_pct": 11.2,
+    "total_disrupted_est": 13,
+    "disruption_pct": 9.1,
     "overall_risk": "MODERATE",
     "disruption_factor": 0.6,
     "slots": [
@@ -338,10 +338,10 @@
       {
         "slot": 2,
         "label": "Afternoon",
-        "ts_probability": 0.3846,
+        "ts_probability": 0.3028,
         "departures": 52,
-        "disrupted_est": 12,
-        "impact_pct": 23.1
+        "disrupted_est": 9,
+        "impact_pct": 18.2
       },
       {
         "slot": 3,
@@ -352,7 +352,7 @@
         "impact_pct": 6.6
       }
     ],
-    "computed_at": "2026-10-01 03:04 IST"
+    "computed_at": "2026-10-01 07:59 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -361,11 +361,11 @@
     "auroc": 1.0,
     "description": "Dry thermal low baseline, low storm occurrence",
     "color": "green",
-    "cape_used": 216.0,
-    "ki_used": 39.52,
+    "cape_used": 688.0,
+    "ki_used": 37.72,
     "t2m_c": 23.5,
     "month": 10,
-    "computed_at": "2026-10-01 03:04 IST"
+    "computed_at": "2026-10-01 07:59 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -487,7 +487,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 02:18 IST"
+      "computed_at": "2026-10-01 03:04 IST"
     },
     "1": {
       "slot": 1,
@@ -569,7 +569,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 02:18 IST"
+      "computed_at": "2026-10-01 03:04 IST"
     },
     "2": {
       "slot": 2,
@@ -651,7 +651,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 02:18 IST"
+      "computed_at": "2026-10-01 03:04 IST"
     },
     "3": {
       "slot": 3,
@@ -733,26 +733,26 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 02:18 IST"
+      "computed_at": "2026-10-01 03:04 IST"
     }
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-09-30T21:30:00.000Z",
-    "temp_c": 20,
-    "dewpoint_c": 18,
-    "rh_pct": 88.3,
-    "wind_dir": 180,
+    "obs_time": "2026-10-01T02:00:00.000Z",
+    "temp_c": 21,
+    "dewpoint_c": 20,
+    "rh_pct": 94.0,
+    "wind_dir": 290,
     "wind_speed_kt": 5,
     "wind_gust_kt": null,
-    "visibility_sm": 3.11,
-    "visibility_km": 5.0,
-    "altimeter_hpa": 1017,
-    "flight_category": "MVFR",
-    "wx_string": "-TSRA",
+    "visibility_sm": 2.49,
+    "visibility_km": 4.0,
+    "altimeter_hpa": 1018,
+    "flight_category": "IFR",
+    "wx_string": "BR",
     "sky_cover": [
       {
-        "cover": "FEW",
+        "cover": "SCT",
         "base_ft": 800
       },
       {
@@ -760,45 +760,42 @@
         "base_ft": 1200
       },
       {
-        "cover": "FEW",
-        "base_ft": 2500
-      },
-      {
         "cover": "BKN",
         "base_ft": 8000
       }
     ],
-    "thunderstorm_present": true,
-    "raw": "METAR VOBL 302130Z 18005KT 5000 -TSRA FEW008 SCT012 FEW025CB BKN080 20/18 Q1017 NOSIG",
-    "fetched_utc": "2026-09-30T21:34:43Z"
+    "thunderstorm_present": false,
+    "raw": "METAR VOBL 010200Z 29005KT 4000 BR SCT008 SCT012 BKN080 21/20 Q1018 BECMG 5000 BR",
+    "fetched_utc": "2026-10-01T02:29:26Z"
   },
   "metar_ts_override": true,
-  "sigmet_bulletin": "VCBB SIGMET X01 VALID 0304/0904 UTC 01/OCT/2026\nVOBL FIR THUNDERSTORM FCST\nTS LIGHT OBS/FCST AT 0304 UTC\nTOP FL300 CB\nMOV NE 10KT\nINTENSITY NC\nFCST AT 0904 UTC TS LIGHT STNR\nNC=",
+  "sigmet_bulletin": "VCBB SIGMET X01 VALID 0759/1359 UTC 01/OCT/2026\nVOBL FIR THUNDERSTORM FCST\nTS LIGHT OBS/FCST AT 0759 UTC\nTOP FL300 CB\nMOV NE 10KT\nINTENSITY NC\nFCST AT 1359 UTC TS LIGHT STNR\nNC=",
   "pipeline_health": {
-    "generated_at_utc": "2026-09-30T21:34:42Z",
-    "generated_at_ist": "2026-10-01 03:04 IST",
+    "generated_at_utc": "2026-10-01T02:29:26Z",
+    "generated_at_ist": "2026-10-01 07:59 IST",
     "components": {
       "gfs": {
         "status": "OK",
         "cycle": "2026-09-30 06Z f012",
         "fetched_utc": "2026-09-30 16:25",
-        "staleness": "FRESH",
-        "rows": 2
+        "staleness": "STALE (604m)",
+        "rows": 3
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-09-30T21:20:00",
-        "storm_detected": true,
-        "min_bt_50km": -58.12,
+        "timestamp_utc": "2026-10-01T02:20:00",
+        "storm_detected": false,
+        "min_bt_50km": -20.66,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
         "status": "OK",
         "slots_available": [
           0,
-          1
+          1,
+          2
         ],
-        "n_slots": 2
+        "n_slots": 3
       },
       "metar": {
         "status": "OK"
@@ -806,7 +803,7 @@
     }
   },
   "verification_daily": {
-    "date_verified": "2026-09-29",
+    "date_verified": "2026-09-30",
     "slots_verified": 0,
     "thunderstorm_observed": null,
     "slot_results": [],
@@ -816,6 +813,6 @@
       "HSS": 0.0,
       "Brier": 0.0
     },
-    "note": "2026-09-29 absent from IMD file"
+    "note": "2026-09-30 absent from IMD file"
   }
 }
