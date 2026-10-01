@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-01",
-  "generated_at": "2026-10-01 22:33 IST",
+  "date": "2026-10-02",
+  "generated_at": "2026-10-02 02:31 IST",
   "alert_active": false,
   "peak_slot": 2,
   "peak_probability": 0.0621,
@@ -10,44 +10,44 @@
       "slot": 0,
       "label": "Late Night",
       "time": "0001-0600 IST",
-      "ts_probability": 0.0508,
+      "ts_probability": 0.0028,
       "ts_predicted": false,
       "threshold": 0.24,
       "primary": false,
       "source": "gfs+upperair",
       "model_used": "nowcast_slot0_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0426,
-      "cape": 234.0,
-      "k_index": 40.4,
-      "lifted_index": -1.82,
-      "totals_totals": 46.5,
+      "raw_probability": 0.0059,
+      "cape": 530.0,
+      "k_index": 37.2,
+      "lifted_index": -2.43,
+      "totals_totals": 46.9,
       "regime_adjustment": 1.0,
-      "prob_delta": 0.0123,
-      "trend": "up",
-      "trend_diff": 0.012,
-      "prev_probability": 0.038
+      "prob_delta": -0.048,
+      "trend": "down",
+      "trend_diff": -0.048,
+      "prev_probability": 0.051
     },
     {
       "slot": 1,
       "label": "Morning",
       "time": "0601-1200 IST",
-      "ts_probability": 0.0213,
+      "ts_probability": 0.0015,
       "ts_predicted": false,
       "threshold": 0.15,
       "primary": false,
       "source": "gfs+upperair",
       "model_used": "nowcast_slot1_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0195,
-      "cape": 216.0,
-      "k_index": 39.5,
-      "lifted_index": -2.32,
-      "totals_totals": 48.4,
+      "raw_probability": 0.001,
+      "cape": 131.0,
+      "k_index": 35.9,
+      "lifted_index": -0.55,
+      "totals_totals": 44.8,
       "regime_adjustment": 1.0,
-      "prob_delta": 0.0,
-      "trend": "stable",
-      "trend_diff": 0.0,
+      "prob_delta": -0.0198,
+      "trend": "down",
+      "trend_diff": -0.02,
       "prev_probability": 0.021
     },
     {
@@ -58,19 +58,19 @@
       "ts_predicted": false,
       "threshold": 0.1,
       "primary": true,
-      "source": "gfs+upperair",
+      "source": "gfs",
       "model_used": "nowcast_slot2_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.1911,
-      "cape": 688.0,
-      "k_index": 37.7,
-      "lifted_index": -4.47,
-      "totals_totals": 49.0,
+      "raw_probability": 0.1013,
+      "cape": 530.0,
+      "k_index": 37.2,
+      "lifted_index": -2.43,
+      "totals_totals": 46.9,
       "regime_adjustment": 1.0,
-      "prob_delta": -0.2407,
-      "trend": "down",
-      "trend_diff": -0.241,
-      "prev_probability": 0.303
+      "prob_delta": 0.0,
+      "trend": "stable",
+      "trend_diff": 0.0,
+      "prev_probability": 0.062
     },
     {
       "slot": 3,
@@ -80,63 +80,50 @@
       "ts_predicted": false,
       "threshold": 0.39,
       "primary": false,
-      "source": "gfs+upperair",
+      "source": "gfs",
       "model_used": "nowcast_slot3_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0649,
-      "cape": 1145.0,
-      "k_index": 42.3,
-      "lifted_index": -4.39,
-      "totals_totals": 48.2,
+      "raw_probability": 0.0265,
+      "cape": 530.0,
+      "k_index": 37.2,
+      "lifted_index": -2.43,
+      "totals_totals": 46.9,
       "regime_adjustment": 1.0,
-      "prob_delta": -0.1353,
-      "trend": "down",
-      "trend_diff": -0.135,
-      "prev_probability": 0.167
+      "prob_delta": 0.0,
+      "trend": "stable",
+      "trend_diff": 0.0,
+      "prev_probability": 0.031
     }
   ],
   "met_parameters": {
-    "ua_cape_jkg": 688.0,
-    "ua_cape_raw": 688.0,
-    "ua_k_index": 37.7,
-    "ua_lifted_index": -4.47,
-    "ua_totals_totals": 49.0,
-    "ERA5_u_500hPa": -5.110722541809082,
-    "ERA5_v_500hPa": -3.516787052154541,
-    "ERA5_u_850hPa": -3.277768611907959,
-    "ERA5_v_850hPa": -0.7322776913642883,
+    "ua_cape_jkg": 530.0,
+    "ua_cape_raw": 530.0,
+    "ua_k_index": 37.2,
+    "ua_lifted_index": -2.43,
+    "ua_totals_totals": 46.9,
+    "ERA5_u_500hPa": -4.866010665893555,
+    "ERA5_v_500hPa": -4.692187309265137,
+    "ERA5_u_850hPa": -5.933136463165283,
+    "ERA5_v_850hPa": -0.5959413647651672,
     "instability_level": "Moderate"
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-10-01T16:50:00",
-      "timestamp_ist": "2026-10-01T22:20:00",
-      "vobl_bt_celsius": -9.52,
-      "min_bt_50km": -42.07,
-      "mean_bt_50km": -8.83,
-      "cold_pixels_count": 3,
-      "storm_detected": true,
+      "timestamp_utc": "2026-10-01T20:50:00",
+      "timestamp_ist": "2026-10-02T02:20:00",
+      "vobl_bt_celsius": 7.46,
+      "min_bt_50km": -22.62,
+      "mean_bt_50km": 3.67,
+      "cold_pixels_count": 0,
+      "storm_detected": false,
       "alert_level": "GREEN",
-      "nearest_pixel_dist_km": 26.3,
+      "nearest_pixel_dist_km": null,
       "threshold_celsius": -40.0,
       "bt_trend_1h": null,
       "data_source": "Himawari-9 Band 13 (10.4\u00b5m) via NOAA AWS S3",
       "available": true
     },
     "history": [
-      {
-        "timestamp_utc": "2026-09-30T16:20:00",
-        "timestamp_ist": "2026-09-30T21:50:00",
-        "vobl_bt_celsius": -70.97,
-        "min_bt_50km": -76.28,
-        "mean_bt_50km": -69.56,
-        "cold_pixels_count": 493,
-        "storm_detected": true,
-        "nearest_pixel_dist_km": 2.17,
-        "threshold_celsius": -40.0,
-        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
-        "bt_trend_1h": null
-      },
       {
         "timestamp_utc": "2026-09-30T20:40:00",
         "timestamp_ist": "2026-10-01T02:10:00",
@@ -201,68 +188,69 @@
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
         "bt_trend_1h": null
+      },
+      {
+        "timestamp_utc": "2026-10-01T20:50:00",
+        "timestamp_ist": "2026-10-02T02:20:00",
+        "vobl_bt_celsius": 7.46,
+        "min_bt_50km": -22.62,
+        "mean_bt_50km": 3.67,
+        "cold_pixels_count": 0,
+        "storm_detected": false,
+        "nearest_pixel_dist_km": null,
+        "threshold_celsius": -40.0,
+        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
+        "bt_trend_1h": null
       }
     ]
   },
-  "gfs_tmax_c": 33.9,
-  "gfs_tmin_c": 21.9,
-  "gfs_rainfall_mm": 0.0,
-  "gfs_valid_date": "01 Oct 2026",
-  "gfs_cycle": "N/A",
+  "gfs_tmax_c": 29.1,
+  "gfs_tmin_c": 21.2,
+  "gfs_rainfall_mm": 0.3,
+  "gfs_valid_date": "02 Oct 2026",
+  "gfs_cycle": "2026-10-01 06Z f012",
   "convective_initiation": {
-    "instability_score": 64.3,
-    "initiation_status": "POST-CONVECTIVE",
-    "initiation_message": "Next peak window in 14.4h (tomorrow 1300 IST)",
-    "initiation_risk": "MODERATE",
-    "hours_to_peak": 14.4,
-    "cape_now": 688.0,
-    "ki_now": 37.72,
-    "li_now": -4.47,
-    "tt_now": 49.05,
-    "srh_0_3km": null,
-    "ehi": null,
-    "brn": null,
+    "instability_score": 33.0,
+    "initiation_status": "PRE-CONVECTIVE",
+    "initiation_message": "Peak convective window in 10.5h (1300\u20131800 IST)",
+    "initiation_risk": "LOW",
+    "hours_to_peak": 10.5,
+    "cape_now": 131.0,
+    "ki_now": 35.86,
+    "li_now": -0.55,
+    "tt_now": 44.79,
+    "srh_0_3km": -4.45,
+    "ehi": 0.0,
+    "brn": 46.84,
     "cape_tendency_jkgh": null,
     "cape_trend": "STEADY",
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-10-01 22:33 IST"
+    "computed_at": "2026-10-02 02:31 IST"
   },
   "multiday_outlook": [
     {
-      "date": "2026-10-01",
-      "day_label": "Tomorrow",
-      "cape": 750.0,
-      "k_index": 39.95,
-      "lifted_index": -3.49,
-      "totals_totals": 48.89,
-      "instability_score": 65.4,
-      "ts_probability_slot2": 0.392,
-      "risk_level": "MODERATE",
-      "peak_window": "1300\u20131800 IST"
-    },
-    {
       "date": "2026-10-02",
       "day_label": "Tomorrow",
-      "cape": 159.0,
-      "k_index": 32.16,
-      "lifted_index": -1.21,
-      "totals_totals": 43.49,
-      "instability_score": 28.9,
-      "ts_probability_slot2": 0.173,
+      "cape": 135.0,
+      "k_index": 37.77,
+      "lifted_index": -0.45,
+      "totals_totals": 43.88,
+      "instability_score": 34.7,
+      "ts_probability_slot2": 0.208,
       "risk_level": "LOW",
       "peak_window": "1300\u20131800 IST"
     },
     {
       "date": "2026-10-03",
       "day_label": "Day+2",
-      "cape": 215.0,
-      "k_index": 33.3,
-      "lifted_index": -0.83,
-      "totals_totals": 42.85,
-      "instability_score": 29.9,
-      "ts_probability_slot2": 0.179,
+      "cape": 170.0,
+      "k_index": 39.23,
+      "lifted_index": 0.04,
+      "totals_totals": 43.74,
+      "instability_score": 36.0,
+      "ts_probability_slot2": 0.216,
       "risk_level": "LOW",
       "peak_window": "1300\u20131800 IST"
     }
@@ -270,74 +258,74 @@
   "analogs": {
     "top_5": [
       {
-        "date": "2017-10-06",
-        "cape": 712.8,
-        "k_index": 38.2,
-        "lifted_index": -4.41,
-        "thunderstorm": true,
-        "month": 10
-      },
-      {
-        "date": "2022-10-19",
-        "cape": 698.2,
-        "k_index": 37.9,
-        "lifted_index": -4.88,
-        "thunderstorm": true,
-        "month": 10
-      },
-      {
-        "date": "2023-11-02",
-        "cape": 656.4,
-        "k_index": 37.2,
-        "lifted_index": -4.86,
+        "date": "2015-11-09",
+        "cape": 162.1,
+        "k_index": 34.7,
+        "lifted_index": -0.58,
         "thunderstorm": false,
         "month": 11
       },
       {
-        "date": "2015-09-07",
-        "cape": 680.8,
-        "k_index": 39.1,
-        "lifted_index": -4.92,
-        "thunderstorm": true,
-        "month": 9
-      },
-      {
-        "date": "2015-10-12",
-        "cape": 677.4,
-        "k_index": 37.8,
-        "lifted_index": -5.45,
+        "date": "2020-10-23",
+        "cape": 212.0,
+        "k_index": 35.7,
+        "lifted_index": -0.98,
         "thunderstorm": false,
         "month": 10
+      },
+      {
+        "date": "2024-10-15",
+        "cape": 118.8,
+        "k_index": 36.2,
+        "lifted_index": -1.84,
+        "thunderstorm": false,
+        "month": 10
+      },
+      {
+        "date": "2023-10-18",
+        "cape": 17.0,
+        "k_index": 35.9,
+        "lifted_index": -0.66,
+        "thunderstorm": false,
+        "month": 10
+      },
+      {
+        "date": "2021-11-18",
+        "cape": 186.6,
+        "k_index": 34.0,
+        "lifted_index": -0.88,
+        "thunderstorm": false,
+        "month": 11
       }
     ],
-    "ts_rate": 0.6,
-    "query_cape": 688.0,
-    "query_ki": 37.72,
-    "query_li": -4.47,
-    "computed_at": "2026-10-01 22:33 IST"
+    "ts_rate": 0.0,
+    "query_cape": 131.0,
+    "query_ki": 35.86,
+    "query_li": -0.55,
+    "computed_at": "2026-10-02 02:31 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
-    "total_disrupted_est": 4,
-    "disruption_pct": 2.8,
+    "total_disrupted_est": 3,
+    "disruption_pct": 2.1,
     "overall_risk": "LOW",
     "disruption_factor": 0.6,
     "slots": [
       {
         "slot": 0,
         "label": "Late Night",
-        "ts_probability": 0.0508,
+        "ts_probability": 0.0028,
         "departures": 8,
         "disrupted_est": 0,
-        "impact_pct": 3.0
+        "impact_pct": 0.2
       },
       {
         "slot": 1,
         "label": "Morning",
-        "ts_probability": 0.0213,
+        "ts_probability": 0.0015,
         "departures": 45,
-        "disrupted_est": 1,
-        "impact_pct": 1.3
+        "disrupted_est": 0,
+        "impact_pct": 0.1
       },
       {
         "slot": 2,
@@ -356,20 +344,20 @@
         "impact_pct": 1.9
       }
     ],
-    "computed_at": "2026-10-01 22:33 IST"
+    "computed_at": "2026-10-02 02:31 IST"
   },
   "synoptic_regime": {
-    "regime_id": "R4",
-    "regime_name": "Strong Solar Heating",
-    "ts_rate": 9.8,
-    "auroc": 0.9,
-    "description": "Strong surface heating with mid-level moisture",
-    "color": "orange",
-    "cape_used": 688.0,
-    "ki_used": 37.72,
-    "t2m_c": 28.0,
+    "regime_id": "R1",
+    "regime_name": "Hot Pre-Monsoon / Stable",
+    "ts_rate": 1.2,
+    "auroc": 1.0,
+    "description": "Dry thermal low baseline, low storm occurrence",
+    "color": "green",
+    "cape_used": 131.0,
+    "ki_used": 35.86,
+    "t2m_c": 23.3,
     "month": 10,
-    "computed_at": "2026-10-01 22:33 IST"
+    "computed_at": "2026-10-02 02:31 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -414,388 +402,382 @@
     "0": {
       "slot": 0,
       "model_used": "nowcast_slot0_xgb_v6_temporal.pkl",
-      "prob": 0.0242,
+      "prob": 0.0008,
       "threshold": 0.12,
       "base_value": 2.3716,
       "top_features": [
         {
-          "feature": "MIN_3d_avg",
-          "shap": -0.65123,
-          "value": 20.0,
+          "feature": "CAPE",
+          "shap": -1.07341,
+          "value": 0.0,
           "direction": "decreases_risk"
         },
         {
-          "feature": "LIFTED_INDEX",
-          "shap": -0.64437,
-          "value": -1.8173,
+          "feature": "K_INDEX",
+          "shap": -0.66195,
+          "value": 30.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "wet_bulb_potential_temp",
-          "shap": -0.61831,
+          "shap": -0.66093,
           "value": 0.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "DRNRF",
-          "shap": -0.60412,
+          "shap": -0.64907,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "MIN_3d_avg",
+          "shap": -0.63793,
+          "value": 20.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "TOTALS_TOTALS",
+          "shap": -0.62644,
+          "value": 44.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "LIFTED_INDEX",
+          "shap": -0.54305,
+          "value": -2.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "RF",
+          "shap": -0.42777,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "slot_month_clim",
+          "shap": -0.36232,
+          "value": 0.02,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "rf_std_7d",
+          "shap": -0.34013,
           "value": 0.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "ERA5_SP",
-          "shap": -0.50332,
-          "value": 91687.5078,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "ERA5_T2M",
-          "shap": -0.49882,
-          "value": 296.6119,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "slot_month_clim",
-          "shap": -0.48241,
-          "value": 0.02,
+          "shap": -0.33476,
+          "value": 91500.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "ERA5_v_850hPa",
-          "shap": 0.41771,
-          "value": -4.2202,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "K_INDEX",
-          "shap": 0.3836,
-          "value": 40.3722,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "RF",
-          "shap": -0.33892,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "LABEL_lag1",
-          "shap": -0.27799,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "rf_std_7d",
-          "shap": -0.27643,
-          "value": 0.0,
+          "shap": -0.29666,
+          "value": 2.0,
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 17:22 IST"
+      "computed_at": "2026-10-01 22:33 IST"
     },
     "1": {
       "slot": 1,
       "model_used": "nowcast_slot1_xgb_v6_temporal.pkl",
-      "prob": 0.0103,
+      "prob": 0.0015,
       "threshold": 0.1,
       "base_value": 3.7014,
       "top_features": [
         {
+          "feature": "CAPE",
+          "shap": -1.02657,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
           "feature": "RF",
-          "shap": -0.85013,
+          "shap": -0.83412,
           "value": 0.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "rf_std_7d",
-          "shap": -0.84591,
+          "shap": -0.76627,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "DRNRF",
+          "shap": -0.71669,
           "value": 0.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "ts_any_yesterday",
-          "shap": -0.8085,
+          "shap": -0.6415,
           "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "TOTALS_TOTALS",
+          "shap": -0.62297,
+          "value": 44.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_CAPE",
+          "shap": -0.62131,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "K_INDEX",
+          "shap": -0.61809,
+          "value": 30.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "MIN_lag1",
-          "shap": -0.74539,
+          "shap": -0.55194,
           "value": 20.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "ERA5_SP",
-          "shap": -0.71072,
-          "value": 91687.5078,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "DRNRF",
-          "shap": -0.6765,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "CAPE",
-          "shap": 0.47792,
-          "value": 234.0,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "wet_bulb_potential_temp",
-          "shap": -0.47546,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "MAX",
-          "shap": -0.37969,
-          "value": 30.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "ERA5_V10",
-          "shap": -0.37823,
+          "shap": -0.4868,
           "value": 1.0,
           "direction": "decreases_risk"
         },
         {
-          "feature": "ERA5_v_700hPa",
-          "shap": -0.36453,
-          "value": -1.3398,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "MAX_3d_avg",
-          "shap": -0.31469,
-          "value": 30.0,
-          "direction": "decreases_risk"
-        }
-      ],
-      "computed_at": "2026-10-01 17:22 IST"
-    },
-    "2": {
-      "slot": 2,
-      "model_used": "nowcast_slot2_xgb_v6_temporal.pkl",
-      "prob": 0.779,
-      "threshold": 0.13,
-      "base_value": 1.4007,
-      "top_features": [
-        {
-          "feature": "ERA5_T2M",
-          "shap": 0.89614,
-          "value": 296.6119,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "K_INDEX",
-          "shap": 0.60566,
-          "value": 40.3722,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "TOTALS_TOTALS",
-          "shap": 0.57652,
-          "value": 46.4767,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "EVP",
-          "shap": -0.37356,
-          "value": 5.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "CAPE",
-          "shap": 0.35031,
-          "value": 234.0,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "LIFTED_INDEX",
-          "shap": -0.35028,
-          "value": -1.8173,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "MIN",
-          "shap": -0.34464,
-          "value": 20.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "SSH",
-          "shap": -0.34031,
-          "value": 300.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "ERA5_U10",
-          "shap": -0.28669,
-          "value": -2.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "moisture_depth",
-          "shap": -0.23592,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "PRECIP_WATER",
-          "shap": 0.2357,
-          "value": 40.8968,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "RF_3d",
-          "shap": -0.23184,
-          "value": 0.0,
-          "direction": "decreases_risk"
-        }
-      ],
-      "computed_at": "2026-10-01 17:22 IST"
-    },
-    "3": {
-      "slot": 3,
-      "model_used": "nowcast_slot3_xgb_v6_temporal.pkl",
-      "prob": 0.1057,
-      "threshold": 0.12,
-      "base_value": 3.0765,
-      "top_features": [
-        {
-          "feature": "LIFTED_INDEX",
-          "shap": -1.01472,
-          "value": -1.8173,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "MIN",
-          "shap": -0.95075,
-          "value": 20.0,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "ERA5_T2M",
-          "shap": -0.60481,
-          "value": 296.6119,
-          "direction": "decreases_risk"
-        },
-        {
-          "feature": "K_INDEX",
-          "shap": 0.51409,
-          "value": 40.3722,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "rf_std_7d",
-          "shap": 0.38097,
-          "value": 0.0,
-          "direction": "increases_risk"
-        },
-        {
-          "feature": "lapse_rate_850_500",
-          "shap": -0.36279,
+          "feature": "wet_bulb_potential_temp",
+          "shap": -0.47509,
           "value": 0.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "ERA5_SP",
-          "shap": -0.35333,
-          "value": 91687.5078,
+          "shap": -0.36859,
+          "value": 91500.0,
+          "direction": "decreases_risk"
+        }
+      ],
+      "computed_at": "2026-10-01 22:33 IST"
+    },
+    "2": {
+      "slot": 2,
+      "model_used": "nowcast_slot2_xgb_v6_temporal.pkl",
+      "prob": 0.001,
+      "threshold": 0.13,
+      "base_value": 1.4007,
+      "top_features": [
+        {
+          "feature": "CAPE",
+          "shap": -1.29519,
+          "value": 0.0,
           "direction": "decreases_risk"
         },
         {
-          "feature": "MIN_3d_avg",
-          "shap": -0.34061,
-          "value": 20.0,
+          "feature": "K_INDEX",
+          "shap": -1.1934,
+          "value": 30.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_v_850hPa",
+          "shap": -0.68712,
+          "value": 2.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_CAPE",
+          "shap": -0.64473,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "TOTALS_TOTALS",
+          "shap": -0.42769,
+          "value": 44.0,
           "direction": "decreases_risk"
         },
         {
           "feature": "EVP",
-          "shap": -0.29965,
+          "shap": -0.33523,
           "value": 5.0,
           "direction": "decreases_risk"
         },
         {
-          "feature": "wet_bulb_potential_temp",
-          "shap": -0.29565,
+          "feature": "ERA5_U10",
+          "shap": -0.30598,
+          "value": -2.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "SSH",
+          "shap": -0.2793,
+          "value": 300.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "RF_3d",
+          "shap": -0.27765,
           "value": 0.0,
           "direction": "decreases_risk"
         },
         {
-          "feature": "DRNRF",
-          "shap": -0.28828,
-          "value": 0.0,
+          "feature": "MIN",
+          "shap": -0.27173,
+          "value": 20.0,
           "direction": "decreases_risk"
         },
         {
-          "feature": "doy_sin",
-          "shap": -0.27839,
-          "value": -1.0,
+          "feature": "doy",
+          "shap": -0.25283,
+          "value": 274.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_v_700hPa",
+          "shap": -0.24075,
+          "value": 1.0,
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-10-01 17:22 IST"
+      "computed_at": "2026-10-01 22:33 IST"
+    },
+    "3": {
+      "slot": 3,
+      "model_used": "nowcast_slot3_xgb_v6_temporal.pkl",
+      "prob": 0.0013,
+      "threshold": 0.12,
+      "base_value": 3.0765,
+      "top_features": [
+        {
+          "feature": "K_INDEX",
+          "shap": -1.25379,
+          "value": 30.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "LIFTED_INDEX",
+          "shap": -0.99323,
+          "value": -2.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "MIN",
+          "shap": -0.80744,
+          "value": 20.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "CAPE",
+          "shap": -0.71494,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_CAPE",
+          "shap": -0.56296,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_T2M",
+          "shap": -0.37498,
+          "value": 299.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "TOTALS_TOTALS",
+          "shap": -0.33598,
+          "value": 44.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "EVP",
+          "shap": -0.31288,
+          "value": 5.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_SP",
+          "shap": -0.30259,
+          "value": 91500.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "MIN_3d_avg",
+          "shap": -0.29693,
+          "value": 20.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "wet_bulb_potential_temp",
+          "shap": -0.29441,
+          "value": 0.0,
+          "direction": "decreases_risk"
+        },
+        {
+          "feature": "ERA5_t_700hPa",
+          "shap": -0.28569,
+          "value": 283.0,
+          "direction": "decreases_risk"
+        }
+      ],
+      "computed_at": "2026-10-01 22:33 IST"
     }
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-10-01T17:00:00.000Z",
-    "temp_c": 24,
+    "obs_time": "2026-10-01T20:30:00.000Z",
+    "temp_c": 22,
     "dewpoint_c": 20,
-    "rh_pct": 78.4,
+    "rh_pct": 88.4,
     "wind_dir": 120,
-    "wind_speed_kt": 5,
+    "wind_speed_kt": 4,
     "wind_gust_kt": null,
     "visibility_sm": 3.73,
     "visibility_km": 6.0,
-    "altimeter_hpa": 1019,
+    "altimeter_hpa": 1018,
     "flight_category": "MVFR",
     "wx_string": "",
     "sky_cover": [
       {
         "cover": "FEW",
         "base_ft": 1200
-      },
-      {
-        "cover": "SCT",
-        "base_ft": 8000
       }
     ],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 011700Z 12005KT 6000 FEW012 SCT080 24/20 Q1019 NOSIG",
-    "fetched_utc": "2026-10-01T17:03:07Z"
+    "raw": "METAR VOBL 012030Z 12004KT 6000 FEW012 22/20 Q1018 NOSIG",
+    "fetched_utc": "2026-10-01T21:01:36Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-10-01T17:03:07Z",
-    "generated_at_ist": "2026-10-01 22:33 IST",
+    "generated_at_utc": "2026-10-01T21:01:35Z",
+    "generated_at_ist": "2026-10-02 02:31 IST",
     "components": {
       "gfs": {
-        "status": "MISSING",
-        "cycle": "N/A",
-        "fetched_utc": "",
-        "staleness": "UNKNOWN",
-        "rows": 0
+        "status": "OK",
+        "cycle": "2026-10-01 06Z f012",
+        "fetched_utc": "2026-10-01 17:02",
+        "staleness": "FRESH",
+        "rows": 2
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-10-01T16:50:00",
-        "storm_detected": true,
-        "min_bt_50km": -42.07,
+        "timestamp_utc": "2026-10-01T20:50:00",
+        "storm_detected": false,
+        "min_bt_50km": -22.62,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
         "status": "OK",
         "slots_available": [
           0,
-          1,
-          2,
-          3
+          1
         ],
-        "n_slots": 4
+        "n_slots": 2
       },
       "metar": {
         "status": "OK"
