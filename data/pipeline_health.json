@@ -1,6 +1,6 @@
 {
-  "generated_at_utc": "2026-10-04T19:35:20Z",
-  "generated_at_ist": "2026-10-05 01:05 IST",
+  "generated_at_utc": "2026-10-04T20:29:17Z",
+  "generated_at_ist": "2026-10-05 01:59 IST",
   "components": {
     "gfs": {
       "status": "OK",
@@ -11,9 +11,9 @@
     },
     "himawari9": {
       "status": "OK",
-      "timestamp_utc": "2026-10-04T19:30:00",
-      "storm_detected": true,
-      "min_bt_50km": -47.35,
+      "timestamp_utc": "2026-10-04T20:20:00",
+      "storm_detected": false,
+      "min_bt_50km": -37.23,
       "staleness": "UNKNOWN"
     },
     "upper_air": {
