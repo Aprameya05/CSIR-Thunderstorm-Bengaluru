@@ -1,19 +1,19 @@
 {
-  "generated_at_utc": "2026-10-27T11:04:23Z",
-  "generated_at_ist": "2026-10-27 16:34 IST",
+  "generated_at_utc": "2026-10-27T15:54:57Z",
+  "generated_at_ist": "2026-10-27 21:24 IST",
   "components": {
     "gfs": {
-      "status": "OK",
-      "cycle": "2026-10-26 06Z f012",
-      "fetched_utc": "2026-10-26 16:47",
-      "staleness": "STALE (1097m)",
-      "rows": 4
+      "status": "MISSING",
+      "cycle": "N/A",
+      "fetched_utc": "",
+      "staleness": "UNKNOWN",
+      "rows": 0
     },
     "himawari9": {
       "status": "OK",
-      "timestamp_utc": "2026-10-27T10:50:00",
+      "timestamp_utc": "2026-10-27T15:40:00",
       "storm_detected": false,
-      "min_bt_50km": -31.86,
+      "min_bt_50km": -14.69,
       "staleness": "UNKNOWN"
     },
     "upper_air": {
