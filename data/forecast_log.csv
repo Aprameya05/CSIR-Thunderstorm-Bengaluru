@@ -1435,3 +1435,7 @@ date,slot,slot_label,probability,predicted,threshold,model_version,issued_at,cap
 2026-11-09,1,0.0,0,0.15,nowcast_slot1_xgb_v6_temporal.pkl,v6_temporal,gfs+upperair,0.0,25.8,3.1,36.4
 2026-11-09,2,0.0,0,0.16,nowcast_slot2_xgb_v6_temporal.pkl,v6_temporal,gfs,49.0,31.9,1.25,39.8
 2026-11-09,3,0.0016,0,0.39,nowcast_slot3_xgb_v6_temporal.pkl,v6_temporal,gfs,49.0,31.9,1.25,39.8
+2026-11-09,0,0.0,0,0.24,nowcast_slot0_xgb_v6_temporal.pkl,v6_temporal,gfs+upperair,49.0,31.9,1.25,39.8
+2026-11-09,1,0.0,0,0.15,nowcast_slot1_xgb_v6_temporal.pkl,v6_temporal,gfs+upperair,0.0,25.8,3.1,36.4
+2026-11-09,2,0.0,0,0.16,nowcast_slot2_xgb_v6_temporal.pkl,v6_temporal,gfs+upperair,0.0,28.9,0.75,39.8
+2026-11-09,3,0.0016,0,0.39,nowcast_slot3_xgb_v6_temporal.pkl,v6_temporal,gfs,49.0,31.9,1.25,39.8
