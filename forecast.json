@@ -1,6 +1,6 @@
 {
   "date": "2026-11-10",
-  "generated_at": "2026-11-10 06:22 IST",
+  "generated_at": "2026-11-10 10:18 IST",
   "alert_active": false,
   "peak_slot": 0,
   "peak_probability": 0.0,
@@ -109,34 +109,21 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-11-10T00:40:00",
-      "timestamp_ist": "2026-11-10T06:10:00",
-      "vobl_bt_celsius": 12.14,
-      "min_bt_50km": 11.57,
-      "mean_bt_50km": 12.45,
+      "timestamp_utc": "2026-11-10T04:40:00",
+      "timestamp_ist": "2026-11-10T10:10:00",
+      "vobl_bt_celsius": 16.88,
+      "min_bt_50km": 14.41,
+      "mean_bt_50km": 16.43,
       "cold_pixels_count": 0,
       "storm_detected": false,
       "alert_level": "GREEN",
       "nearest_pixel_dist_km": null,
       "threshold_celsius": -40.0,
-      "bt_trend_1h": 0.48,
+      "bt_trend_1h": null,
       "data_source": "Himawari-9 Band 13 (10.4\u00b5m) via NOAA AWS S3",
       "available": true
     },
     "history": [
-      {
-        "timestamp_utc": "2026-11-08T20:20:00",
-        "timestamp_ist": "2026-11-09T01:50:00",
-        "vobl_bt_celsius": -44.9,
-        "min_bt_50km": -61.84,
-        "mean_bt_50km": -40.32,
-        "cold_pixels_count": 265,
-        "storm_detected": true,
-        "nearest_pixel_dist_km": 2.17,
-        "threshold_celsius": -40.0,
-        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
-        "bt_trend_1h": null
-      },
       {
         "timestamp_utc": "2026-11-08T21:10:00",
         "timestamp_ist": "2026-11-09T02:40:00",
@@ -201,6 +188,19 @@
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
         "bt_trend_1h": 0.48
+      },
+      {
+        "timestamp_utc": "2026-11-10T04:40:00",
+        "timestamp_ist": "2026-11-10T10:10:00",
+        "vobl_bt_celsius": 16.88,
+        "min_bt_50km": 14.41,
+        "mean_bt_50km": 16.43,
+        "cold_pixels_count": 0,
+        "storm_detected": false,
+        "nearest_pixel_dist_km": null,
+        "threshold_celsius": -40.0,
+        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
+        "bt_trend_1h": null
       }
     ]
   },
@@ -212,9 +212,9 @@
   "convective_initiation": {
     "instability_score": 18.7,
     "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 6.6h (1300\u20131800 IST)",
+    "initiation_message": "Peak convective window in 2.7h (1300\u20131800 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 6.6,
+    "hours_to_peak": 2.7,
     "cape_now": 2.0,
     "ki_now": 31.28,
     "li_now": -0.11,
@@ -227,7 +227,7 @@
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-11-10 06:22 IST"
+    "computed_at": "2026-11-10 10:18 IST"
   },
   "multiday_outlook": [
     {
@@ -302,7 +302,7 @@
     "query_cape": 2.0,
     "query_ki": 31.28,
     "query_li": -0.11,
-    "computed_at": "2026-11-10 06:22 IST"
+    "computed_at": "2026-11-10 10:18 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -344,7 +344,7 @@
         "impact_pct": 0.0
       }
     ],
-    "computed_at": "2026-11-10 06:22 IST"
+    "computed_at": "2026-11-10 10:18 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -357,7 +357,7 @@
     "ki_used": 31.28,
     "t2m_c": 20.4,
     "month": 11,
-    "computed_at": "2026-11-10 06:22 IST"
+    "computed_at": "2026-11-10 10:18 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -479,7 +479,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-10 05:43 IST"
+      "computed_at": "2026-11-10 06:22 IST"
     },
     "1": {
       "slot": 1,
@@ -561,7 +561,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-10 05:43 IST"
+      "computed_at": "2026-11-10 06:22 IST"
     },
     "2": {
       "slot": 2,
@@ -643,7 +643,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-10 05:43 IST"
+      "computed_at": "2026-11-10 06:22 IST"
     },
     "3": {
       "slot": 3,
@@ -725,50 +725,50 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-10 05:43 IST"
+      "computed_at": "2026-11-10 06:22 IST"
     }
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-11-10T00:30:00.000Z",
-    "temp_c": 18,
-    "dewpoint_c": 17,
-    "rh_pct": 93.9,
-    "wind_dir": 20,
-    "wind_speed_kt": 4,
+    "obs_time": "2026-11-10T04:00:00.000Z",
+    "temp_c": 22,
+    "dewpoint_c": 16,
+    "rh_pct": 68.8,
+    "wind_dir": 60,
+    "wind_speed_kt": 6,
     "wind_gust_kt": null,
-    "visibility_sm": 1.24,
-    "visibility_km": 2.0,
-    "altimeter_hpa": 1018,
+    "visibility_sm": 2.49,
+    "visibility_km": 4.0,
+    "altimeter_hpa": 1021,
     "flight_category": "IFR",
-    "wx_string": "BR",
+    "wx_string": "HZ",
     "sky_cover": [
       {
-        "cover": "BKN",
-        "base_ft": 800
+        "cover": "FEW",
+        "base_ft": 1200
       }
     ],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 100030Z 02004KT 2000 BR BKN008 18/17 Q1018 TEMPO 1500 BR",
-    "fetched_utc": "2026-11-10T00:52:54Z"
+    "raw": "METAR VOBL 100400Z 06006KT 4000 HZ FEW012 22/16 Q1021 BECMG 5000 HZ",
+    "fetched_utc": "2026-11-10T04:48:49Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-11-10T00:52:54Z",
-    "generated_at_ist": "2026-11-10 06:22 IST",
+    "generated_at_utc": "2026-11-10T04:48:49Z",
+    "generated_at_ist": "2026-11-10 10:18 IST",
     "components": {
       "gfs": {
         "status": "OK",
         "cycle": "2026-11-09 06Z f012",
         "fetched_utc": "2026-11-09 14:24",
-        "staleness": "STALE (628m)",
+        "staleness": "STALE (864m)",
         "rows": 3
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-11-10T00:40:00",
+        "timestamp_utc": "2026-11-10T04:40:00",
         "storm_detected": false,
-        "min_bt_50km": 11.57,
+        "min_bt_50km": 14.41,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
