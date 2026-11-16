@@ -1,8 +1,8 @@
 {
-  "period_start": "2026-11-02",
-  "period_end": "2026-11-09",
+  "period_start": "2026-11-09",
+  "period_end": "2026-11-16",
   "lookback_days": 7,
-  "generated_at": "2026-11-09T20:10:18.650041+05:30",
+  "generated_at": "2026-11-16T19:46:20.470449+05:30",
   "regime": "UNKNOWN",
   "today_max_prob_pct": 0.2,
   "metrics": {
