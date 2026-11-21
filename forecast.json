@@ -1,9 +1,9 @@
 {
   "date": "2026-11-21",
-  "generated_at": "2026-11-21 09:49 IST",
+  "generated_at": "2026-11-21 19:15 IST",
   "alert_active": false,
-  "peak_slot": 0,
-  "peak_probability": 0.0,
+  "peak_slot": 3,
+  "peak_probability": 0.0016,
   "model_version": "v5_temporal_v4_ensemble",
   "slots": [
     {
@@ -17,7 +17,7 @@
       "source": "gfs+upperair",
       "model_used": "nowcast_slot0_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0003,
+      "raw_probability": 0.0006,
       "cape": 0.0,
       "k_index": -0.6,
       "lifted_index": 11.21,
@@ -39,7 +39,7 @@
       "source": "gfs+upperair",
       "model_used": "nowcast_slot1_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0003,
+      "raw_probability": 0.0004,
       "cape": 0.0,
       "k_index": -11.5,
       "lifted_index": 12.72,
@@ -61,7 +61,7 @@
       "source": "gfs+upperair",
       "model_used": "nowcast_slot2_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0007,
+      "raw_probability": 0.0006,
       "cape": 0.0,
       "k_index": -5.2,
       "lifted_index": 4.01,
@@ -76,22 +76,22 @@
       "slot": 3,
       "label": "Evening",
       "time": "1801-2400 IST",
-      "ts_probability": 0.0,
+      "ts_probability": 0.0016,
       "ts_predicted": false,
       "threshold": 0.39,
       "primary": false,
-      "source": "gfs",
+      "source": "model_defaults",
       "model_used": "nowcast_slot3_xgb_v6_temporal.pkl",
       "model_version": "v6_temporal",
-      "raw_probability": 0.0011,
+      "raw_probability": 0.0022,
       "cape": 0.0,
-      "k_index": -0.6,
-      "lifted_index": 11.21,
-      "totals_totals": 29.1,
+      "k_index": 30.0,
+      "lifted_index": -2.0,
+      "totals_totals": 44.0,
       "regime_adjustment": 1.0,
-      "prob_delta": 0.0,
+      "prob_delta": 0.0016,
       "trend": "stable",
-      "trend_diff": 0,
+      "trend_diff": 0.002,
       "prev_probability": 0
     }
   ],
@@ -109,11 +109,11 @@
   },
   "satellite": {
     "himawari9": {
-      "timestamp_utc": "2026-11-21T04:10:00",
-      "timestamp_ist": "2026-11-21T09:40:00",
-      "vobl_bt_celsius": 20.23,
-      "min_bt_50km": 18.78,
-      "mean_bt_50km": 20.16,
+      "timestamp_utc": "2026-11-21T13:40:00",
+      "timestamp_ist": "2026-11-21T19:10:00",
+      "vobl_bt_celsius": 14.05,
+      "min_bt_50km": 4.9,
+      "mean_bt_50km": 12.88,
       "cold_pixels_count": 0,
       "storm_detected": false,
       "alert_level": "GREEN",
@@ -124,19 +124,6 @@
       "available": true
     },
     "history": [
-      {
-        "timestamp_utc": "2026-11-20T04:10:00",
-        "timestamp_ist": "2026-11-20T09:40:00",
-        "vobl_bt_celsius": 21.89,
-        "min_bt_50km": 20.36,
-        "mean_bt_50km": 22.39,
-        "cold_pixels_count": 0,
-        "storm_detected": false,
-        "nearest_pixel_dist_km": null,
-        "threshold_celsius": -40.0,
-        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
-        "bt_trend_1h": null
-      },
       {
         "timestamp_utc": "2026-11-20T14:10:00",
         "timestamp_ist": "2026-11-20T19:40:00",
@@ -201,33 +188,46 @@
         "threshold_celsius": -40.0,
         "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
         "bt_trend_1h": null
+      },
+      {
+        "timestamp_utc": "2026-11-21T13:40:00",
+        "timestamp_ist": "2026-11-21T19:10:00",
+        "vobl_bt_celsius": 14.05,
+        "min_bt_50km": 4.9,
+        "mean_bt_50km": 12.88,
+        "cold_pixels_count": 0,
+        "storm_detected": false,
+        "nearest_pixel_dist_km": null,
+        "threshold_celsius": -40.0,
+        "data_source": "Himawari-9 Band 13 (10.4um) via NOAA AWS S3",
+        "bt_trend_1h": null
       }
     ]
   },
-  "gfs_tmax_c": 26.6,
-  "gfs_tmin_c": 17.3,
+  "gfs_tmax_c": 33.9,
+  "gfs_tmin_c": 21.9,
   "gfs_rainfall_mm": 0.0,
   "gfs_valid_date": "21 Nov 2026",
-  "gfs_cycle": "2026-11-20 06Z f012",
+  "gfs_cycle": "N/A",
   "convective_initiation": {
     "instability_score": 0.0,
-    "initiation_status": "PRE-CONVECTIVE",
-    "initiation_message": "Peak convective window in 3.2h (1300\u20131800 IST)",
+    "initiation_status": "POST-CONVECTIVE",
+    "initiation_message": "Next peak window in 17.8h (tomorrow 1300 IST)",
     "initiation_risk": "MINIMAL",
-    "hours_to_peak": 3.2,
+    "hours_to_peak": 17.8,
     "cape_now": 0.0,
     "ki_now": -5.23,
     "li_now": 4.01,
     "tt_now": 35.19,
-    "srh_0_3km": -22.12,
-    "ehi": 0.0,
-    "brn": 0.0,
+    "srh_0_3km": null,
+    "ehi": null,
+    "brn": null,
     "cape_tendency_jkgh": null,
     "cape_trend": "STEADY",
     "monsoon_regime": "NEUTRAL",
     "regime_thresh_factor": 1.0,
     "peak_window_ist": "1300\u20131800 IST",
-    "computed_at": "2026-11-21 09:49 IST"
+    "computed_at": "2026-11-21 19:15 IST"
   },
   "multiday_outlook": [
     {
@@ -244,11 +244,23 @@
     },
     {
       "date": "2026-11-22",
+      "day_label": "Tomorrow",
+      "cape": 0.0,
+      "k_index": 13.54,
+      "lifted_index": 4.48,
+      "totals_totals": 35.33,
+      "instability_score": 0.0,
+      "ts_probability_slot2": 0.0,
+      "risk_level": "MINIMAL",
+      "peak_window": "1300\u20131800 IST"
+    },
+    {
+      "date": "2026-11-23",
       "day_label": "Day+2",
       "cape": 0.0,
-      "k_index": 9.79,
-      "lifted_index": 7.88,
-      "totals_totals": 34.65,
+      "k_index": 18.62,
+      "lifted_index": 5.75,
+      "totals_totals": 33.48,
       "instability_score": 0.0,
       "ts_probability_slot2": 0.0,
       "risk_level": "MINIMAL",
@@ -302,7 +314,7 @@
     "query_cape": 0.0,
     "query_ki": -5.23,
     "query_li": 4.01,
-    "computed_at": "2026-11-21 09:49 IST"
+    "computed_at": "2026-11-21 19:15 IST"
   },
   "airport_impact": {
     "total_departures_today": 143,
@@ -338,13 +350,13 @@
       {
         "slot": 3,
         "label": "Evening",
-        "ts_probability": 0,
+        "ts_probability": 0.0016,
         "departures": 38,
         "disrupted_est": 0,
-        "impact_pct": 0.0
+        "impact_pct": 0.1
       }
     ],
-    "computed_at": "2026-11-21 09:49 IST"
+    "computed_at": "2026-11-21 19:15 IST"
   },
   "synoptic_regime": {
     "regime_id": "R1",
@@ -355,9 +367,9 @@
     "color": "green",
     "cape_used": 0.0,
     "ki_used": -5.23,
-    "t2m_c": 19.9,
+    "t2m_c": 28.0,
     "month": 11,
-    "computed_at": "2026-11-21 09:49 IST"
+    "computed_at": "2026-11-21 19:15 IST"
   },
   "verification": {
     "pod": 0.0,
@@ -479,7 +491,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-21 04:52 IST"
+      "computed_at": "2026-11-21 09:49 IST"
     },
     "1": {
       "slot": 1,
@@ -561,7 +573,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-21 04:52 IST"
+      "computed_at": "2026-11-21 09:49 IST"
     },
     "2": {
       "slot": 2,
@@ -643,7 +655,7 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-21 04:52 IST"
+      "computed_at": "2026-11-21 09:49 IST"
     },
     "3": {
       "slot": 3,
@@ -725,45 +737,45 @@
           "direction": "decreases_risk"
         }
       ],
-      "computed_at": "2026-11-21 04:52 IST"
+      "computed_at": "2026-11-21 09:49 IST"
     }
   },
   "metar": {
     "station": "VOBL",
-    "obs_time": "2026-11-21T04:00:00.000Z",
-    "temp_c": 23,
-    "dewpoint_c": 17,
-    "rh_pct": 69.0,
-    "wind_dir": 160,
-    "wind_speed_kt": 7,
+    "obs_time": "2026-11-21T13:00:00.000Z",
+    "temp_c": 25,
+    "dewpoint_c": 10,
+    "rh_pct": 38.8,
+    "wind_dir": 230,
+    "wind_speed_kt": 3,
     "wind_gust_kt": null,
-    "visibility_sm": 1.24,
-    "visibility_km": 2.0,
-    "altimeter_hpa": 1021,
-    "flight_category": "IFR",
-    "wx_string": "HZ",
+    "visibility_sm": 3.73,
+    "visibility_km": 6.0,
+    "altimeter_hpa": 1018,
+    "flight_category": "MVFR",
+    "wx_string": "",
     "sky_cover": [],
     "thunderstorm_present": false,
-    "raw": "METAR VOBL 210400Z 16007KT 2000 HZ NSC 23/17 Q1021 BECMG 3000 HZ",
-    "fetched_utc": "2026-11-21T04:19:28Z"
+    "raw": "METAR VOBL 211300Z 23003KT 6000 NSC 25/10 Q1018 NOSIG",
+    "fetched_utc": "2026-11-21T13:45:17Z"
   },
   "sigmet_bulletin": null,
   "pipeline_health": {
-    "generated_at_utc": "2026-11-21T04:19:27Z",
-    "generated_at_ist": "2026-11-21 09:49 IST",
+    "generated_at_utc": "2026-11-21T13:45:16Z",
+    "generated_at_ist": "2026-11-21 19:15 IST",
     "components": {
       "gfs": {
-        "status": "OK",
-        "cycle": "2026-11-20 06Z f012",
-        "fetched_utc": "2026-11-20 14:24",
-        "staleness": "STALE (835m)",
-        "rows": 3
+        "status": "MISSING",
+        "cycle": "N/A",
+        "fetched_utc": "",
+        "staleness": "UNKNOWN",
+        "rows": 0
       },
       "himawari9": {
         "status": "OK",
-        "timestamp_utc": "2026-11-21T04:10:00",
+        "timestamp_utc": "2026-11-21T13:40:00",
         "storm_detected": false,
-        "min_bt_50km": 18.78,
+        "min_bt_50km": 4.9,
         "staleness": "UNKNOWN"
       },
       "upper_air": {
